@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:17
+    container_name: fibrosync_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: fibrosync_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - fibrosync_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  fibrosync_postgres_data:
