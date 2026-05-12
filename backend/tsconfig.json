@@ -8,7 +8,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
+    "typeRoots": ["./node_modules/@types", "./src/@types"],
     "paths": {
       "@/*": ["src/*"],
       "@config/*": ["src/config/*"],
@@ -22,5 +24,9 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "ts-node": {
+    "files": true,
+    "require": ["tsconfig-paths/register"]
+  }
 }

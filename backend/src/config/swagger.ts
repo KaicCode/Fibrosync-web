@@ -1,6 +1,6 @@
-import { SwaggerOptions } from 'swagger-jsdoc';
+import { Options } from 'swagger-jsdoc';
 
-const swaggerOptions: SwaggerOptions = {
+const swaggerOptions: Options = {
   definition: {
     openapi: '3.0.0',
     info: {

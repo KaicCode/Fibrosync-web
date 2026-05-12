@@ -6,6 +6,7 @@ import { LoginDto, RegisterDto } from '../dtos/auth.dto';
 
 export class AuthService {
   async register(data: RegisterDto) {
+    console.log('Registering user with data:', JSON.stringify(data, null, 2));
     const userExists = await prisma.user.findUnique({
       where: { email: data.email },
     });
