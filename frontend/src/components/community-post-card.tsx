@@ -24,7 +24,7 @@ export function CommunityPostCard({
   badge,
 }: CommunityPostCardProps) {
   return (
-    <article className="card-surface p-5">
+    <article className="card-surface p-4 md:p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <Avatar>
@@ -46,10 +46,10 @@ export function CommunityPostCard({
         </button>
       </div>
 
-      <Badge className="mt-4 w-fit">{badge}</Badge>
+      <Badge className="mt-3 w-fit">{badge}</Badge>
       <p className="mt-3 text-sm leading-6 text-foreground/86">{text}</p>
 
-      <div className="mt-5 flex items-center gap-5 text-sm text-muted-foreground">
+      <div className="mt-4 flex items-center gap-5 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <Heart className="h-4 w-4 text-pink-500" />
           {likes}

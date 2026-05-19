@@ -57,30 +57,30 @@ export function AssistantPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         eyebrow="Assistente FibroSync"
         title="Converse com a IA sobre seu corpo e sua rotina"
         description="Receba respostas objetivas, sugestões práticas e apoio contextualizado aos seus registros."
       />
 
-      <div className="grid gap-6 2xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="card-surface flex min-h-[38rem] flex-col p-6">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-              <Bot className="h-5 w-5" />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(18rem,0.92fr)]">
+        <div className="card-surface flex min-h-[34rem] flex-col p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+              <Bot className="h-4 w-4" />
             </div>
             <div>
               <p className="section-label">Chat inteligente</p>
-              <h2 className="mt-1 text-2xl font-semibold">IA Assistente</h2>
+              <h2 className="mt-1 text-xl font-semibold md:text-2xl">IA Assistente</h2>
             </div>
           </div>
 
-          <div ref={messagesRef} className="scrollbar-none flex-1 space-y-4 overflow-y-auto pr-1">
+          <div ref={messagesRef} className="scrollbar-none flex-1 space-y-3 overflow-y-auto pr-1">
             {messages.map((message, index) => (
               <div
                 key={`${message.time}-${index}`}
-                className={`max-w-[85%] rounded-[1.6rem] px-4 py-3 text-sm leading-6 shadow-soft ${
+                className={`max-w-[88%] rounded-[1.25rem] px-4 py-3 text-sm leading-6 shadow-soft ${
                   message.role === 'assistant'
                     ? 'bg-brand-50 text-foreground'
                     : 'ml-auto bg-brand-gradient text-white'
@@ -98,7 +98,7 @@ export function AssistantPage() {
             ))}
           </div>
 
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-4 flex items-center gap-3">
             <Input
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -115,24 +115,24 @@ export function AssistantPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="card-surface p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-                <Sparkles className="h-5 w-5" />
+        <div className="space-y-5">
+          <div className="card-surface p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                <Sparkles className="h-4 w-4" />
               </div>
               <div>
                 <p className="section-label">Sugestões inteligentes</p>
-                <h2 className="mt-1 text-2xl font-semibold">Ações rápidas</h2>
+                <h2 className="mt-1 text-xl font-semibold md:text-2xl">Ações rápidas</h2>
               </div>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {aiSuggestions.map((suggestion) => (
                 <button
                   key={suggestion.title}
                   type="button"
                   onClick={() => sendMessage(`Quero ajuda com ${suggestion.title.toLowerCase()}.`)}
-                  className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/80 bg-white/85 px-4 py-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:bg-brand-50/70"
+                  className="flex w-full items-center justify-between rounded-[1.2rem] border border-white/80 bg-white/85 px-4 py-3.5 text-left shadow-soft transition hover:-translate-y-0.5 hover:bg-brand-50/70"
                 >
                   <div>
                     <p className="text-sm font-semibold text-foreground">{suggestion.title}</p>
@@ -144,13 +144,13 @@ export function AssistantPage() {
             </div>
           </div>
 
-          <div className="card-surface p-6">
+          <div className="card-surface p-5">
             <p className="section-label">Técnica recomendada</p>
-            <div className="mt-4 rounded-[1.6rem] bg-brand-gradient p-[1px] shadow-glow">
-              <div className="rounded-[1.55rem] bg-white/94 p-5">
+            <div className="mt-4 rounded-[1.4rem] bg-brand-gradient p-[1px] shadow-glow">
+              <div className="rounded-[1.35rem] bg-white/94 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-lg font-semibold text-foreground">Respiração profunda</p>
+                    <p className="text-base font-semibold text-foreground md:text-lg">Respiração profunda</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
                       Faça 5 ciclos de inspiração nasal em 4 tempos e expiração em 6 tempos para reduzir a tensão no fim do dia.
                     </p>

@@ -16,7 +16,7 @@ export function ReportsPage() {
   usePageTitle('Relatórios')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         eyebrow="Analytics premium"
         title="Relatórios visuais com clareza clínica"
@@ -38,34 +38,34 @@ export function ReportsPage() {
         <TabsContent value="semana" className="space-y-6">
           <div className="metric-grid">
             {reportHighlights.map((item) => (
-              <div key={item.label} className="card-surface p-5">
+              <div key={item.label} className="card-surface p-4 md:p-5">
                 <p className="section-label">{item.label}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-[-0.06em] text-foreground">
+                <p className="mt-2 text-2xl font-semibold tracking-[-0.06em] text-foreground">
                   {item.value}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
               </div>
             ))}
-            <div className="card-surface p-5">
+            <div className="card-surface p-4 md:p-5">
               <p className="section-label">Sono reparador</p>
-              <p className="mt-3 text-3xl font-semibold tracking-[-0.06em] text-foreground">68%</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.06em] text-foreground">68%</p>
               <p className="mt-1 text-sm text-muted-foreground">Correlação com dor moderada</p>
             </div>
           </div>
 
-          <div className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
-            <div className="card-surface p-6">
-              <div className="mb-6">
+          <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+            <div className="card-surface p-5">
+              <div className="mb-5">
                 <p className="section-label">Comparativo</p>
-                <h2 className="mt-2 text-2xl font-semibold">Nível de dor médio</h2>
+                <h2 className="mt-2 text-xl font-semibold md:text-2xl">Nível de dor médio</h2>
               </div>
-              <TrendLineChart data={reportTrend} secondaryKey="comparison" height={300} />
+              <TrendLineChart data={reportTrend} secondaryKey="comparison" height={270} />
             </div>
 
-            <div className="card-surface p-6">
-              <div className="mb-6">
+            <div className="card-surface p-5">
+              <div className="mb-5">
                 <p className="section-label">Distribuição</p>
-                <h2 className="mt-2 text-2xl font-semibold">Principais sintomas</h2>
+                <h2 className="mt-2 text-xl font-semibold md:text-2xl">Principais sintomas</h2>
               </div>
               <RingChart
                 data={symptomBreakdown.map((item) => ({
@@ -75,7 +75,7 @@ export function ReportsPage() {
                   fill: item.color,
                 }))}
               />
-              <div className="mt-4 space-y-4">
+              <div className="mt-4 space-y-3">
                 {symptomBreakdown.map((item) => (
                   <div key={item.label} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">

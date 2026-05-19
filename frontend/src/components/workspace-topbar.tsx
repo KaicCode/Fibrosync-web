@@ -16,7 +16,7 @@ export function WorkspaceTopbar({
   const config = workspaceConfig[variant]
 
   return (
-    <header className="sticky top-0 z-20 mb-8 flex items-center gap-4 rounded-[1.8rem] border border-white/70 bg-white/72 px-4 py-3 backdrop-blur-xl md:px-6">
+    <header className="sticky top-0 z-20 mb-6 flex items-center gap-3 rounded-[1.5rem] border border-white/70 bg-white/72 px-3.5 py-2.5 backdrop-blur-xl md:px-5">
       <Button
         variant="secondary"
         size="icon"
@@ -27,8 +27,8 @@ export function WorkspaceTopbar({
       </Button>
 
       <div className="relative hidden flex-1 md:block">
-        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input className="h-12 rounded-full pl-10" placeholder={config.searchPlaceholder} />
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input className="h-11 rounded-full pl-10" placeholder={config.searchPlaceholder} />
       </div>
 
       <div className="ml-auto flex items-center gap-3">
@@ -39,8 +39,8 @@ export function WorkspaceTopbar({
         <Button variant="secondary" size="icon">
           <Bell className="h-4 w-4" />
         </Button>
-        <div className="hidden items-center gap-3 rounded-full border border-white/80 bg-white/85 px-2 py-2 shadow-soft sm:flex">
-          <Avatar className="h-10 w-10">
+        <div className="hidden items-center gap-3 rounded-full border border-white/80 bg-white/85 px-2 py-1.5 shadow-soft lg:flex">
+          <Avatar className="h-9 w-9">
             <AvatarImage src="https://i.pravatar.cc/120?img=44" alt="Juliana Santos" />
             <AvatarFallback>JS</AvatarFallback>
           </Avatar>

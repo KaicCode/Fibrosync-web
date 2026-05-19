@@ -17,7 +17,7 @@ export function AdminDashboardPage() {
   usePageTitle('Administração')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         eyebrow="SaaS overview"
         title="Dashboard administrativo web com leitura de negócio premium"
@@ -37,19 +37,19 @@ export function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 2xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="card-surface p-6">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.08fr)_minmax(18rem,0.92fr)]">
+        <div className="card-surface p-5">
           <p className="section-label">Receita</p>
-          <h2 className="mt-2 text-2xl font-semibold">Crescimento mensal</h2>
-          <div className="mt-6">
+          <h2 className="mt-2 text-xl font-semibold md:text-2xl">Crescimento mensal</h2>
+          <div className="mt-5">
             <RevenueBarChart data={adminRevenue} />
           </div>
         </div>
 
-        <div className="card-surface p-6">
+        <div className="card-surface p-5">
           <p className="section-label">Retenção</p>
-          <h2 className="mt-2 text-2xl font-semibold">Base ativa vs em risco</h2>
-          <div className="mt-6">
+          <h2 className="mt-2 text-xl font-semibold md:text-2xl">Base ativa vs em risco</h2>
+          <div className="mt-5">
             <RingChart data={retentionSegments.map((segment) => ({ ...segment, fill: segment.color }))} />
           </div>
           <div className="mt-2 space-y-3">
@@ -66,14 +66,14 @@ export function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="card-surface p-6">
+      <div className="card-surface p-5">
         <p className="section-label">Atividade recente</p>
-        <h2 className="mt-2 text-2xl font-semibold">Movimentos importantes do produto</h2>
-        <div className="mt-6 space-y-4">
+        <h2 className="mt-2 text-xl font-semibold md:text-2xl">Movimentos importantes do produto</h2>
+        <div className="mt-5 space-y-3">
           {adminActivity.map((item) => (
             <div
               key={`${item.title}-${item.time}`}
-              className="flex items-center justify-between rounded-[1.5rem] border border-white/80 bg-white/84 px-4 py-4 shadow-soft"
+              className="flex items-center justify-between rounded-[1.2rem] border border-white/80 bg-white/84 px-4 py-3.5 shadow-soft"
             >
               <div className="flex items-center gap-4">
                 <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />

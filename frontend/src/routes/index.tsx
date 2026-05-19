@@ -50,8 +50,8 @@ export function AppRouter() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route element={<AuthLayout />}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/landingpage" element={<LandingPage />} />
+          <Route path="/" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
         </Route>
 

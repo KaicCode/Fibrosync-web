@@ -96,11 +96,11 @@ function Figure({
 
 export function BodyMap({ selectedPoints, onTogglePoint }: BodyMapProps) {
   return (
-    <div className="grid gap-6 rounded-[1.8rem] border border-white/80 bg-white/84 p-5 shadow-soft lg:grid-cols-2">
-      <div className="rounded-[1.5rem] bg-brand-50/30 p-3">
+    <div className="grid gap-4 rounded-[1.5rem] border border-white/80 bg-white/84 p-4 shadow-soft lg:grid-cols-2">
+      <div className="rounded-[1.25rem] bg-brand-50/30 p-3">
         <Figure points={frontPoints} selectedPoints={selectedPoints} onTogglePoint={onTogglePoint} />
       </div>
-      <div className="rounded-[1.5rem] bg-brand-50/20 p-3">
+      <div className="rounded-[1.25rem] bg-brand-50/20 p-3">
         <Figure points={backPoints} selectedPoints={selectedPoints} onTogglePoint={onTogglePoint} />
       </div>
     </div>

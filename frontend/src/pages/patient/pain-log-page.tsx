@@ -33,7 +33,7 @@ export function PainLogPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         eyebrow="Registro diário"
         title="Mapeie o seu corpo com precisão gentil"
@@ -41,36 +41,36 @@ export function PainLogPage() {
         actions={<Badge variant="default">Hoje, 24 de Maio</Badge>}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="card-surface p-6">
-          <div className="mb-6 flex items-center justify-between">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(18rem,0.98fr)]">
+        <div className="card-surface p-5">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <p className="section-label">Mapa corporal</p>
-              <h2 className="mt-2 text-2xl font-semibold">Onde a dor está presente?</h2>
+              <h2 className="mt-2 text-xl font-semibold md:text-2xl">Onde a dor está presente?</h2>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-              <HeartPulse className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+              <HeartPulse className="h-4 w-4" />
             </div>
           </div>
           <BodyMap
             selectedPoints={painDraft.selectedPoints}
             onTogglePoint={togglePoint}
           />
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {painDraft.selectedPoints.map((point) => (
               <Badge key={point}>{bodyPointLabels[point as keyof typeof bodyPointLabels]}</Badge>
             ))}
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="card-surface p-6">
-            <div className="mb-6 flex items-center justify-between">
+        <div className="space-y-5">
+          <div className="card-surface p-5">
+            <div className="mb-5 flex items-center justify-between">
               <div>
                 <p className="section-label">Intensidade</p>
-                <h2 className="mt-2 text-2xl font-semibold">Nível atual da dor</h2>
+                <h2 className="mt-2 text-xl font-semibold md:text-2xl">Nível atual da dor</h2>
               </div>
-              <p className="text-3xl font-semibold tracking-[-0.06em] text-brand-700">
+              <p className="text-2xl font-semibold tracking-[-0.06em] text-brand-700 md:text-[1.8rem]">
                 {painDraft.intensity}
               </p>
             </div>
@@ -87,15 +87,15 @@ export function PainLogPage() {
             </div>
           </div>
 
-          <div className="card-surface p-6">
+          <div className="card-surface p-5">
             <p className="section-label">Tipo de dor</p>
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-2.5">
               {painTypes.map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => updatePainDraft({ painType: type })}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
                     painDraft.painType === type
                       ? 'bg-brand-gradient text-white shadow-glow'
                       : 'border border-white/80 bg-white/85 text-muted-foreground shadow-soft hover:bg-brand-50 hover:text-brand-700'
@@ -107,9 +107,9 @@ export function PainLogPage() {
             </div>
           </div>
 
-          <div className="card-surface p-6">
+          <div className="card-surface p-5">
             <p className="section-label">Possíveis gatilhos</p>
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-2.5">
               {painTriggers.map((trigger) => {
                 const active = selectedTriggers.includes(trigger)
 
@@ -118,7 +118,7 @@ export function PainLogPage() {
                     key={trigger}
                     type="button"
                     onClick={() => toggleTrigger(trigger)}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                    className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
                       active
                         ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-200'
                         : 'border border-white/80 bg-white/85 text-muted-foreground shadow-soft hover:bg-brand-50 hover:text-brand-700'
@@ -131,10 +131,10 @@ export function PainLogPage() {
             </div>
           </div>
 
-          <div className="card-surface p-6">
+          <div className="card-surface p-5">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-                <Sparkles className="h-5 w-5" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                <Sparkles className="h-4 w-4" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Observações</p>
@@ -145,7 +145,7 @@ export function PainLogPage() {
               value={painDraft.note}
               onChange={(event) => updatePainDraft({ note: event.target.value })}
             />
-            <Button className="mt-5 w-full">
+            <Button className="mt-4 w-full">
               <Save className="h-4 w-4" />
               Salvar registro
             </Button>

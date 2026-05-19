@@ -25,15 +25,15 @@ export function WorkspaceSidebar({
   const setRole = useAppStore((state) => state.setRole)
 
   return (
-    <div className="flex h-full flex-col gap-6 rounded-[2rem] border border-white/70 bg-white/86 p-5 shadow-panel backdrop-blur-xl">
+    <div className="flex h-full min-h-0 flex-col gap-5 rounded-[1.6rem] border border-white/70 bg-white/86 p-4 shadow-panel backdrop-blur-xl">
       <BrandLogo />
 
-      <div className="rounded-[1.7rem] bg-brand-gradient p-[1px] shadow-glow">
-        <div className="rounded-[1.65rem] bg-white/95 px-4 py-4">
-          <Badge className="mb-3 w-fit" variant="default">
+      <div className="rounded-[1.45rem] bg-brand-gradient p-[1px] shadow-glow">
+        <div className="rounded-[1.4rem] bg-white/95 px-4 py-3.5">
+          <Badge className="mb-2 w-fit" variant="default">
             FibroSync Care OS
           </Badge>
-          <p className="text-base font-semibold tracking-[-0.04em] text-foreground">
+          <p className="text-sm font-semibold tracking-[-0.04em] text-foreground md:text-base">
             {config.label}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -42,7 +42,7 @@ export function WorkspaceSidebar({
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-2">
+      <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
         {config.navigation.map((item) => (
           <NavLink
             key={item.to}
@@ -50,7 +50,7 @@ export function WorkspaceSidebar({
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                'group flex items-center justify-between rounded-[1.25rem] px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-300',
+                'group flex items-center justify-between rounded-[1rem] px-3.5 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-300',
                 isActive
                   ? 'bg-brand-gradient text-white shadow-glow'
                   : 'hover:bg-brand-50/80 hover:text-brand-700',
@@ -62,7 +62,7 @@ export function WorkspaceSidebar({
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(
-                      'flex h-10 w-10 items-center justify-center rounded-2xl transition-all',
+                      'flex h-9 w-9 items-center justify-center rounded-xl transition-all',
                       isActive ? 'bg-white/16' : 'bg-white shadow-soft group-hover:bg-white',
                     )}
                   >
@@ -77,7 +77,7 @@ export function WorkspaceSidebar({
         ))}
       </nav>
 
-      <div className="rounded-[1.6rem] border border-white/80 bg-white/80 p-4 shadow-soft">
+      <div className="rounded-[1.4rem] border border-white/80 bg-white/80 p-3.5 shadow-soft">
         <div className="mb-3 flex items-center gap-2">
           <ArrowRightLeft className="h-4 w-4 text-brand-600" />
           <p className="text-sm font-semibold text-foreground">Alternar contexto</p>

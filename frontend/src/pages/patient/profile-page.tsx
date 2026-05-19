@@ -10,22 +10,22 @@ export function ProfilePage() {
   usePageTitle('Perfil')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         eyebrow="Perfil e progresso"
         title="Acompanhe seu avanço com delicadeza e consistência"
         description="Visualize marcos, metas pessoais e preferências do seu cuidado em uma área organizada e acolhedora."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="card-surface p-6">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center">
-            <Avatar className="h-24 w-24 rounded-[2rem]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(18rem,0.95fr)]">
+        <div className="card-surface p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <Avatar className="h-20 w-20 rounded-[1.5rem]">
               <AvatarImage src="https://i.pravatar.cc/120?img=44" alt="Juliana Santos" />
-              <AvatarFallback className="rounded-[2rem] text-xl">JS</AvatarFallback>
+              <AvatarFallback className="rounded-[1.5rem] text-lg">JS</AvatarFallback>
             </Avatar>
             <div className="space-y-2">
-              <h2 className="text-3xl font-semibold">Juliana Santos</h2>
+              <h2 className="text-2xl font-semibold">Juliana Santos</h2>
               <p className="text-sm text-muted-foreground">Membro desde Jan 2024</p>
               <p className="max-w-xl text-sm leading-6 text-muted-foreground">
                 Construindo uma rotina de autocuidado mais previsível com foco em energia, sono e redução de gatilhos diários.
@@ -33,11 +33,11 @@ export function ProfilePage() {
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             {profileStats.map((item) => (
-              <div key={item.label} className="rounded-[1.5rem] bg-brand-50/55 p-5">
+              <div key={item.label} className="rounded-[1.25rem] bg-brand-50/55 p-4">
                 <p className="section-label">{item.label}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-[-0.06em] text-foreground">
+                <p className="mt-2 text-2xl font-semibold tracking-[-0.06em] text-foreground">
                   {item.value}
                 </p>
               </div>
@@ -45,16 +45,16 @@ export function ProfilePage() {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           <StatCard label="Meta principal" value="Reduzir rigidez matinal" hint="Próximos 21 dias" icon={Target} />
           <StatCard label="Conquista recente" value="12 dias" hint="Sequência de registros" icon={Trophy} />
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <div className="card-surface p-6">
+      <div className="grid gap-5 xl:grid-cols-2">
+        <div className="card-surface p-5">
           <p className="section-label">Meu progresso</p>
-          <div className="mt-5 space-y-5">
+          <div className="mt-4 space-y-4">
             {profileProgress.map((item) => (
               <div key={item.label} className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
@@ -67,16 +67,16 @@ export function ProfilePage() {
           </div>
         </div>
 
-        <div className="card-surface p-6">
+        <div className="card-surface p-5">
           <p className="section-label">Configurações rápidas</p>
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-3">
             {profileSettings.map((setting, index) => (
               <div
                 key={setting}
-                className="flex items-center justify-between rounded-[1.4rem] border border-white/80 bg-white/84 px-4 py-4 shadow-soft"
+                className="flex items-center justify-between rounded-[1.2rem] border border-white/80 bg-white/84 px-4 py-3.5 shadow-soft"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
                     {index % 2 === 0 ? <BellRing className="h-4 w-4" /> : <Settings className="h-4 w-4" />}
                   </div>
                   <p className="text-sm font-medium text-foreground">{setting}</p>

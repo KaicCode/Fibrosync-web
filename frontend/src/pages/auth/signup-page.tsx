@@ -95,14 +95,14 @@ function SignupField({
 }) {
   return (
     <label className="space-y-2.5">
-      <span className="text-sm font-medium text-slate-900 md:text-[1rem]">{label}</span>
+      <span className="text-sm font-medium text-slate-900">{label}</span>
       <div className="relative">
         <Icon className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
         <Input
           type={type}
           value={value}
           onChange={onChange}
-          className="h-14 rounded-[1rem] border-slate-200 bg-white/95 pl-12 pr-12 text-[1rem] text-slate-700 placeholder:text-slate-400"
+          className="h-12 rounded-[0.95rem] border-slate-200 bg-white/95 pl-12 pr-12 text-sm text-slate-700 placeholder:text-slate-400 md:text-base"
           placeholder={placeholder}
         />
         {rightIcon ? (
@@ -262,63 +262,67 @@ export function SignupPage() {
   }
 
   return (
-    <section className="relative min-h-[calc(100vh-3rem)] overflow-hidden py-4">
-      <div className="absolute left-[-12rem] top-8 h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(203,194,255,0.58),rgba(203,194,255,0.18),transparent_72%)]" />
-      <div className="absolute bottom-[-10rem] right-[-10rem] h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(227,219,255,0.56),rgba(227,219,255,0.14),transparent_74%)]" />
+    <section className="relative min-h-[calc(100vh-2.5rem)] overflow-hidden py-2 md:py-4">
+      <div className="absolute left-[-12rem] top-8 h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(203,194,255,0.58),rgba(203,194,255,0.18),transparent_72%)]" />
+      <div className="absolute bottom-[-9rem] right-[-9rem] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(227,219,255,0.56),rgba(227,219,255,0.14),transparent_74%)]" />
 
-      <div className="relative z-10 mx-auto grid max-w-[1540px] gap-8 px-5 md:px-8 xl:grid-cols-[0.78fr_1.22fr] xl:items-stretch">
-        <aside className="flex flex-col justify-between rounded-[2.4rem] border border-white/65 bg-white/28 p-6 backdrop-blur-sm md:p-8 xl:min-h-[calc(100vh-5rem)]">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-6 2xl:grid-cols-[0.82fr_1.18fr] 2xl:items-stretch">
+        <aside className="hidden 2xl:flex 2xl:min-h-[calc(100vh-4.5rem)] 2xl:flex-col 2xl:justify-between rounded-[2rem] border border-white/65 bg-white/28 p-6 backdrop-blur-sm">
           <div>
             <AuthInlineLogo />
 
-            <div className="mt-12 max-w-[27rem] space-y-5">
-              <h2 className="text-[2.65rem] font-semibold leading-[1.08] tracking-[-0.07em] text-slate-950 md:text-[3.4rem]">
+            <div className="mt-10 max-w-[24rem] space-y-4">
+              <h2 className="text-[2.2rem] font-semibold leading-[1.08] tracking-[-0.07em] text-slate-950">
                 Sua jornada de cuidado
                 <br />
                 <span className="bg-[linear-gradient(135deg,#7B4DFF_0%,#4E6DFF_65%,#2799FF_100%)] bg-clip-text text-transparent">
                   começa aqui
                 </span>
               </h2>
-              <p className="max-w-[24rem] text-[1.05rem] leading-8 text-slate-700 md:text-[1.2rem]">
+              <p className="max-w-[22rem] text-base leading-7 text-slate-700">
                 Crie sua conta e tenha uma experiência completa para monitorar sua dor, entender seu corpo e viver melhor.
               </p>
             </div>
 
-            <div className="mt-10 space-y-8">
+            <div className="mt-8 space-y-6">
               {benefits.map((benefit) => (
                 <div key={benefit.title} className="flex items-start gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.1rem] bg-white/88 shadow-[0_18px_38px_rgba(124,96,197,0.1)]">
-                    <benefit.icon className="h-6 w-6 text-brand-500" />
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] bg-white/88 shadow-[0_18px_38px_rgba(124,96,197,0.1)]">
+                    <benefit.icon className="h-5 w-5 text-brand-500" />
                   </div>
-                  <div className="max-w-[20rem]">
-                    <p className="text-[1.1rem] font-semibold tracking-[-0.03em] text-slate-950">
+                  <div className="max-w-[18rem]">
+                    <p className="text-base font-semibold tracking-[-0.03em] text-slate-950">
                       {benefit.title}
                     </p>
-                    <p className="mt-1.5 text-[1rem] leading-7 text-slate-600">{benefit.description}</p>
+                    <p className="mt-1.5 text-sm leading-6 text-slate-600">{benefit.description}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="mt-10 xl:mt-8">
-            <SelfCareIllustration className="mx-auto w-full max-w-[29rem]" />
+          <div className="mt-8">
+            <SelfCareIllustration className="mx-auto w-full max-w-[24rem]" />
           </div>
         </aside>
 
-        <div className="rounded-[2rem] border border-white/80 bg-white/92 px-5 py-7 shadow-[0_34px_100px_rgba(136,115,194,0.12)] backdrop-blur-xl md:px-8 md:py-10 xl:px-10">
-          <div className="mx-auto max-w-[46rem]">
-            <div className="space-y-3">
-              <h1 className="text-[2.7rem] font-semibold tracking-[-0.07em] text-slate-950 md:text-[3.2rem]">
+        <div className="rounded-[1.75rem] border border-white/80 bg-white/92 px-4 py-6 shadow-[0_30px_88px_rgba(136,115,194,0.12)] backdrop-blur-xl md:px-6 md:py-8 xl:px-8">
+          <div className="mx-auto max-w-4xl">
+            <div className="2xl:hidden">
+              <AuthInlineLogo className="mb-6" />
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold tracking-[-0.07em] text-slate-950 md:text-3xl">
                 Criar conta
               </h1>
-              <p className="text-[1rem] leading-7 text-slate-500 md:text-[1.12rem]">
+              <p className="text-sm leading-6 text-slate-500 md:text-base">
                 Preencha os dados abaixo para se cadastrar.
               </p>
             </div>
 
-            <div className="mt-10 space-y-6">
-              <div className="grid gap-5 md:grid-cols-2">
+            <div className="mt-8 space-y-5">
+              <div className="grid gap-4 md:grid-cols-2">
                 <SignupField
                   label="Nome completo"
                   icon={UserRound}
@@ -344,14 +348,14 @@ export function SignupPage() {
               />
 
               <div className="space-y-2.5">
-                <span className="text-sm font-medium text-slate-900 md:text-[1rem]">Senha</span>
+                <span className="text-sm font-medium text-slate-900">Senha</span>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={formValues.password}
                     onChange={handleInputChange('password')}
-                    className="h-14 rounded-[1rem] border-slate-200 bg-white/95 pl-12 pr-12 text-[1rem] text-slate-700 placeholder:text-slate-400"
+                    className="h-12 rounded-[0.95rem] border-slate-200 bg-white/95 pl-12 pr-12 text-sm text-slate-700 placeholder:text-slate-400 md:text-base"
                     placeholder="Crie uma senha"
                   />
                   <button
@@ -367,15 +371,15 @@ export function SignupPage() {
                   {passwordRules.map((rule, index) => (
                     <div
                       key={rule}
-                      className={`h-1.5 rounded-full ${passwordChecks[index] ? 'bg-emerald-400' : 'bg-slate-200'}`}
-                    />
-                  ))}
-                </div>
-                <div className="pt-1">
-                  <p className="text-[0.98rem] text-slate-500">A senha deve conter pelo menos:</p>
-                  <div className="mt-3 space-y-2.5">
+                    className={`h-1.5 rounded-full ${passwordChecks[index] ? 'bg-emerald-400' : 'bg-slate-200'}`}
+                  />
+                ))}
+              </div>
+              <div className="pt-1">
+                  <p className="text-sm text-slate-500">A senha deve conter pelo menos:</p>
+                  <div className="mt-3 space-y-2">
                     {passwordRules.map((rule, index) => (
-                      <div key={rule} className="flex items-center gap-3 text-[0.98rem] text-slate-900">
+                      <div key={rule} className="flex items-center gap-3 text-sm text-slate-900">
                         <span
                           className={`h-4 w-4 rounded-full border ${passwordChecks[index] ? 'border-emerald-500 bg-emerald-50' : 'border-slate-300'}`}
                         />
@@ -387,14 +391,14 @@ export function SignupPage() {
               </div>
 
               <div className="space-y-2.5">
-                <span className="text-sm font-medium text-slate-900 md:text-[1rem]">Confirmar senha</span>
+                <span className="text-sm font-medium text-slate-900">Confirmar senha</span>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                   <Input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={formValues.confirmPassword}
                     onChange={handleInputChange('confirmPassword')}
-                    className="h-14 rounded-[1rem] border-slate-200 bg-white/95 pl-12 pr-12 text-[1rem] text-slate-700 placeholder:text-slate-400"
+                    className="h-12 rounded-[0.95rem] border-slate-200 bg-white/95 pl-12 pr-12 text-sm text-slate-700 placeholder:text-slate-400 md:text-base"
                     placeholder="Confirme sua senha"
                   />
                   <button
@@ -409,13 +413,13 @@ export function SignupPage() {
               </div>
 
               <label className="space-y-2.5">
-                <span className="text-sm font-medium text-slate-900 md:text-[1rem]">Gênero <span className="font-normal text-slate-500">(opcional)</span></span>
+                <span className="text-sm font-medium text-slate-900">Gênero <span className="font-normal text-slate-500">(opcional)</span></span>
                 <div className="relative">
                   <Users className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                   <select
                     value={formValues.gender}
                     onChange={handleInputChange('gender')}
-                    className="h-14 w-full appearance-none rounded-[1rem] border border-slate-200 bg-white/95 pl-12 pr-12 text-[1rem] text-slate-500 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100/60"
+                    className="h-12 w-full appearance-none rounded-[0.95rem] border border-slate-200 bg-white/95 pl-12 pr-12 text-sm text-slate-500 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100/60 md:text-base"
                   >
                     <option value="">Selecione</option>
                     <option value="Feminino">Feminino</option>
@@ -427,7 +431,7 @@ export function SignupPage() {
                 </div>
               </label>
 
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 <SignupField
                   label="Altura (opcional)"
                   icon={Ruler}
@@ -445,13 +449,13 @@ export function SignupPage() {
               </div>
 
               <label className="space-y-2.5">
-                <span className="text-sm font-medium text-slate-900 md:text-[1rem]">País</span>
+                <span className="text-sm font-medium text-slate-900">País</span>
                 <div className="relative">
                   <Globe className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                   <select
                     value={formValues.country}
                     onChange={handleInputChange('country')}
-                    className="h-14 w-full appearance-none rounded-[1rem] border border-slate-200 bg-white/95 pl-12 pr-12 text-[1rem] text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100/60"
+                    className="h-12 w-full appearance-none rounded-[0.95rem] border border-slate-200 bg-white/95 pl-12 pr-12 text-sm text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100/60 md:text-base"
                   >
                     <option>Brasil</option>
                     <option>Portugal</option>
@@ -462,7 +466,7 @@ export function SignupPage() {
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 pt-1 text-[0.98rem] leading-7 text-slate-500">
+              <label className="flex items-start gap-3 pt-1 text-sm leading-6 text-slate-500">
                 <input
                   type="checkbox"
                   checked={formValues.acceptedTerms}
@@ -494,7 +498,7 @@ export function SignupPage() {
               ) : null}
 
               <Button
-                className="h-14 w-full rounded-[1rem] text-[1.15rem] font-semibold"
+                className="h-12 w-full rounded-[0.95rem] text-base font-semibold"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
               >
@@ -503,30 +507,30 @@ export function SignupPage() {
               </Button>
             </div>
 
-            <div className="my-8 flex items-center gap-5">
+            <div className="my-6 flex items-center gap-4">
               <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-[1rem] text-slate-500">ou cadastre-se com</span>
+              <span className="text-sm text-slate-500">ou cadastre-se com</span>
               <div className="h-px flex-1 bg-slate-200" />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Button
                 variant="secondary"
-                className="h-14 rounded-[1rem] border-slate-200 bg-white text-[1rem] font-semibold text-slate-900 shadow-none hover:bg-white"
+                className="h-12 rounded-[0.95rem] border-slate-200 bg-white text-sm font-semibold text-slate-900 shadow-none hover:bg-white"
               >
                 <GoogleIcon />
                 Google
               </Button>
               <Button
                 variant="secondary"
-                className="h-14 rounded-[1rem] border-slate-200 bg-white text-[1rem] font-semibold text-slate-900 shadow-none hover:bg-white"
+                className="h-12 rounded-[0.95rem] border-slate-200 bg-white text-sm font-semibold text-slate-900 shadow-none hover:bg-white"
               >
                 <AppleIcon />
                 Apple
               </Button>
             </div>
 
-            <p className="mt-8 text-center text-[1rem] text-slate-500">
+            <p className="mt-6 text-center text-sm text-slate-500 md:text-base">
               Já tem uma conta?{' '}
               <Link to="/login" className="font-medium text-brand-500 hover:text-brand-600">
                 Fazer login

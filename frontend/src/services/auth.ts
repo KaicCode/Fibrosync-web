@@ -42,6 +42,8 @@ export async function registerUser(payload: RegisterPayload): Promise<AuthSessio
       throw error
     }
 
-    throw new Error('Nao foi possivel conectar ao backend. Verifique se a API esta rodando.')
+    throw new Error('Nao foi possivel conectar ao backend. Verifique se a API esta rodando.', {
+      cause: error,
+    })
   }
 }

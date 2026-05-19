@@ -25,7 +25,7 @@ export function DashboardPage() {
   usePageTitle('Dashboard')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         eyebrow="Olá, Juliana"
         title="Como você está se sentindo hoje?"
@@ -50,36 +50,36 @@ export function DashboardPage() {
         <StatCard label="Sequência" value="12 dias" hint="Registros consistentes" icon={Activity} />
       </div>
 
-      <div className="grid gap-6 2xl:grid-cols-[1.35fr_0.65fr]">
-        <div className="card-surface p-6">
-          <div className="mb-6 flex items-center justify-between">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
+        <div className="card-surface p-5">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <p className="section-label">Nível de dor</p>
-              <h2 className="mt-2 text-2xl font-semibold">Evolução da semana</h2>
+              <h2 className="mt-2 text-xl font-semibold md:text-2xl">Evolução da semana</h2>
             </div>
             <Button variant="secondary" size="sm">
               Ver histórico
             </Button>
           </div>
-          <TrendLineChart data={dashboardTrend} secondaryKey="comparison" height={280} />
+          <TrendLineChart data={dashboardTrend} secondaryKey="comparison" height={250} />
         </div>
 
-        <div className="space-y-6">
-          <div className="card-surface p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-                <Sparkles className="h-5 w-5" />
+        <div className="space-y-5">
+          <div className="card-surface p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                <Sparkles className="h-4 w-4" />
               </div>
               <div>
                 <p className="section-label">Insights da IA</p>
-                <h2 className="mt-1 text-xl font-semibold">Padrões encontrados</h2>
+                <h2 className="mt-1 text-lg font-semibold md:text-xl">Padrões encontrados</h2>
               </div>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {aiInsights.map((insight) => (
                 <div
                   key={insight.title}
-                  className="rounded-[1.35rem] border border-white/80 bg-brand-50/55 p-4"
+                  className="rounded-[1.2rem] border border-white/80 bg-brand-50/55 p-4"
                 >
                   <p className="text-sm font-semibold text-foreground">{insight.title}</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -90,9 +90,9 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <div className="card-surface p-6">
+          <div className="card-surface p-5">
             <p className="section-label">Resumo de hoje</p>
-            <div className="mt-5 space-y-4">
+            <div className="mt-4 space-y-3">
               {dailySummary.map((item) => (
                 <div key={item.label} className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -119,24 +119,24 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <div className="card-surface p-6">
-          <div className="mb-6 flex items-center justify-between">
+      <div className="grid gap-5 xl:grid-cols-2">
+        <div className="card-surface p-5">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <p className="section-label">Sono</p>
-              <h2 className="mt-2 text-2xl font-semibold">Qualidade do descanso</h2>
+              <h2 className="mt-2 text-xl font-semibold md:text-2xl">Qualidade do descanso</h2>
             </div>
             <Badge variant="success">Melhora de 14%</Badge>
           </div>
-          <TrendLineChart data={sleepTrend} color="#5C87FF" height={240} />
+          <TrendLineChart data={sleepTrend} color="#5C87FF" height={220} />
         </div>
 
-        <div className="card-surface p-6">
-          <div className="mb-6">
+        <div className="card-surface p-5">
+          <div className="mb-5">
             <p className="section-label">Principais sintomas</p>
-            <h2 className="mt-2 text-2xl font-semibold">Peso dos sintomas na semana</h2>
+            <h2 className="mt-2 text-xl font-semibold md:text-2xl">Peso dos sintomas na semana</h2>
           </div>
-          <div className="space-y-5">
+          <div className="space-y-4">
             {symptomBreakdown.map((item) => (
               <div key={item.label} className="space-y-2">
                 <div className="flex items-center justify-between gap-3">

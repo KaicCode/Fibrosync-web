@@ -16,7 +16,7 @@ export function MedicalDashboardPage() {
   const highlightedPatient = medicalPatients[0]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         eyebrow="Visão clínica"
         title="Painel médico com evolução clara e objetiva"
@@ -29,15 +29,15 @@ export function MedicalDashboardPage() {
         <StatCard label="Aderência" value={`${highlightedPatient.adherence}%`} hint="Excelente consistência" icon={UsersRound} />
       </div>
 
-      <div className="grid gap-6 2xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="card-surface p-6">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+        <div className="card-surface p-5">
           <p className="section-label">Pacientes</p>
-          <h2 className="mt-2 text-2xl font-semibold">Lista com atualização recente</h2>
-          <div className="mt-6 space-y-4">
+          <h2 className="mt-2 text-xl font-semibold md:text-2xl">Lista com atualização recente</h2>
+          <div className="mt-5 space-y-3">
             {medicalPatients.map((patient) => (
               <div
                 key={patient.name}
-                className="flex items-center gap-4 rounded-[1.5rem] border border-white/80 bg-white/84 px-4 py-4 shadow-soft"
+                className="flex items-center gap-4 rounded-[1.2rem] border border-white/80 bg-white/84 px-4 py-3.5 shadow-soft"
               >
                 <Avatar>
                   <AvatarImage src={patient.avatar} alt={patient.name} />
@@ -56,18 +56,18 @@ export function MedicalDashboardPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="card-surface p-6">
+        <div className="space-y-5">
+          <div className="card-surface p-5">
             <p className="section-label">Evolução da dor</p>
-            <h2 className="mt-2 text-2xl font-semibold">Tendência clínica</h2>
-            <div className="mt-6">
-              <TrendLineChart data={medicalTrend} height={270} />
+            <h2 className="mt-2 text-xl font-semibold md:text-2xl">Tendência clínica</h2>
+            <div className="mt-5">
+              <TrendLineChart data={medicalTrend} height={245} />
             </div>
           </div>
 
-          <div className="card-surface p-6">
+          <div className="card-surface p-5">
             <p className="section-label">Principais sintomas</p>
-            <div className="mt-5 space-y-4">
+            <div className="mt-4 space-y-3">
               {symptomBreakdown.map((item) => (
                 <div key={item.label} className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">

@@ -26,23 +26,23 @@ export function StatCard({
   className,
 }: StatCardProps) {
   return (
-    <div className={cn('card-surface p-5', className)}>
+    <div className={cn('card-surface p-4 md:p-5', className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">{label}</p>
           <div className="space-y-1">
-            <p className="text-3xl font-semibold tracking-[-0.06em] text-foreground">{value}</p>
+            <p className="text-2xl font-semibold tracking-[-0.06em] text-foreground md:text-[1.75rem]">{value}</p>
             {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}
           </div>
         </div>
         {Icon ? (
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
             <Icon className="h-5 w-5" />
           </div>
         ) : null}
       </div>
       {trend ? (
-        <div className="mt-5 flex items-center justify-between gap-2">
+        <div className="mt-4 flex items-center justify-between gap-2">
           <Badge variant={tone === 'success' ? 'success' : tone === 'warning' ? 'warning' : 'default'}>
             <ArrowUpRight className="h-3.5 w-3.5" />
             {trend}
@@ -50,7 +50,7 @@ export function StatCard({
           {footer}
         </div>
       ) : footer ? (
-        <div className="mt-5">{footer}</div>
+        <div className="mt-4">{footer}</div>
       ) : null}
     </div>
   )
