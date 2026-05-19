@@ -13,11 +13,18 @@ datasource db {
 }
 
 model User {
-  id       Int     @id @default(autoincrement())
-  email    String  @unique
-  name     String?
-  password String
-  role     Role    @default(USER)
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  name      String
+  password  String
+  birthDate DateTime?
+  gender    String?
+  height    Decimal?  @db.Decimal(5, 2)
+  weight    Decimal?  @db.Decimal(5, 2)
+  country   String    @default("Brasil")
+  role      Role      @default(USER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 enum Role {

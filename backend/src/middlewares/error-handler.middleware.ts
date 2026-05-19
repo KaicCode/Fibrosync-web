@@ -4,9 +4,13 @@ import Logger from '@utils/logger';
 
 export class AppError extends Error {
   public statusCode: number;
-  public errors: any;
+  public errors: unknown;
 
-  constructor(message: string, statusCode: number = 400, errors: any = null) {
+  constructor(
+    message: string,
+    statusCode: number = 400,
+    errors: unknown = null,
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.errors = errors;
@@ -15,7 +19,7 @@ export class AppError extends Error {
 }
 
 export const errorHandler = (
-  err: any,
+  err: Error | AppError,
   req: Request,
   res: Response,
   _next: NextFunction,

@@ -30,7 +30,7 @@ export const authMiddleware = (
     req.user = decoded;
 
     return next();
-  } catch (error) {
+  } catch {
     throw new AppError('Invalid token', 401);
   }
 };

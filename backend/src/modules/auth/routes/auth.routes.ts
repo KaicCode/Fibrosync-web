@@ -22,6 +22,11 @@ const authController = new AuthController();
  *               email: { type: string }
  *               password: { type: string }
  *               name: { type: string }
+ *               birthDate: { type: string, format: date }
+ *               gender: { type: string }
+ *               height: { type: number }
+ *               weight: { type: number }
+ *               country: { type: string }
  */
 router.post('/register', (req, res, next) => authController.register(req, res, next));
 

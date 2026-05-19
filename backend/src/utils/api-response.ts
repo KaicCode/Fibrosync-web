@@ -1,5 +1,9 @@
 export class ApiResponse {
-  static success(data: any, message: string = 'Success', statusCode: number = 200) {
+  static success<T>(
+    data: T,
+    message: string = 'Success',
+    statusCode: number = 200,
+  ) {
     return {
       success: true,
       message,
@@ -8,7 +12,11 @@ export class ApiResponse {
     };
   }
 
-  static error(message: string = 'Internal Server Error', statusCode: number = 500, errors: any = null) {
+  static error(
+    message: string = 'Internal Server Error',
+    statusCode: number = 500,
+    errors: unknown = null,
+  ) {
     return {
       success: false,
       message,

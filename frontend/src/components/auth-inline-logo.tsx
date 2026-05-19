@@ -1,0 +1,71 @@
+import { cn } from '@/lib/utils'
+
+type AuthInlineLogoProps = {
+  className?: string
+}
+
+export function AuthInlineLogo({ className }: AuthInlineLogoProps) {
+  return (
+    <div className={cn('flex items-center gap-4', className)}>
+      <div className="relative flex h-16 w-16 items-center justify-center">
+        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(123,77,255,0.2),transparent_72%)] blur-xl" />
+        <svg
+          viewBox="0 0 220 220"
+          className="relative h-full w-full drop-shadow-[0_20px_34px_rgba(123,77,255,0.18)]"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="inline-ring" x1="33" y1="168" x2="184" y2="48" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#09C5D5" />
+              <stop offset="0.52" stopColor="#2563EB" />
+              <stop offset="1" stopColor="#D946EF" />
+            </linearGradient>
+            <linearGradient id="inline-brain" x1="67" y1="68" x2="153" y2="154" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#14B8FF" />
+              <stop offset="0.42" stopColor="#3446C9" />
+              <stop offset="1" stopColor="#7E22CE" />
+            </linearGradient>
+          </defs>
+          <circle cx="110" cy="110" r="82" stroke="url(#inline-ring)" strokeWidth="10" />
+          <path
+            d="M175 50C193 63 204 84 204 108C204 135 191 159 171 173"
+            stroke="#B455FF"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray="5 7"
+          />
+          <path
+            d="M42 164C28 150 19 130 19 108C19 82 31 58 50 43"
+            stroke="#80CBFF"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray="5 7"
+          />
+          <circle cx="24" cy="104" r="7" fill="#22D3EE" opacity="0.95" />
+          <circle cx="26" cy="86" r="5.5" fill="#56C4FF" opacity="0.95" />
+          <circle cx="189" cy="46" r="9" fill="#E879F9" opacity="0.95" />
+          <circle cx="200" cy="58" r="6" fill="#D946EF" opacity="0.95" />
+          <path
+            d="M67 92C67 72 83 57 103 57C114 57 124 61 131 67C136 64 142 63 149 63C170 63 186 79 186 100C186 115 178 129 165 136C164 157 147 174 126 174C113 174 101 167 93 157C88 159 83 160 77 160C57 160 41 144 41 124C41 109 49 97 61 91C63 91 65 91 67 92Z"
+            fill="url(#inline-brain)"
+          />
+          <path
+            d="M46 111H76L92 97L108 131L127 76L143 111H175"
+            stroke="white"
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+
+      <h1 className="text-[3.2rem] font-semibold leading-none tracking-[-0.08em]">
+        <span className="text-[#18204B]">Fibro</span>
+        <span className="bg-[linear-gradient(135deg,#5D5BFF_0%,#249BFF_72%,#11B5C9_100%)] bg-clip-text text-transparent">
+          Sync
+        </span>
+      </h1>
+    </div>
+  )
+}
