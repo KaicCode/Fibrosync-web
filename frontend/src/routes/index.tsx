@@ -34,6 +34,9 @@ const CommunityPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('@/pages/patient/profile-page').then((module) => ({ default: module.ProfilePage })),
 )
+const SettingsPage = lazy(() =>
+  import('@/pages/patient/settings-page').then((module) => ({ default: module.SettingsPage })),
+)
 const MedicalDashboardPage = lazy(() =>
   import('@/pages/medical/medical-dashboard-page').then((module) => ({
     default: module.MedicalDashboardPage,
@@ -63,6 +66,7 @@ export function AppRouter() {
           <Route path="/app/calendar" element={<CalendarPage />} />
           <Route path="/app/community" element={<CommunityPage />} />
           <Route path="/app/profile" element={<ProfilePage />} />
+          <Route path="/app/settings" element={<SettingsPage />} />
         </Route>
 
         <Route element={<MedicalLayout />}>

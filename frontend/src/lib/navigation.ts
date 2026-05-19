@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   BarChart3,
   CalendarDays,
+  Cog,
   HeartPulse,
   LayoutDashboard,
   MessageCircleHeart,
@@ -16,43 +17,84 @@ export type WorkspaceVariant = AppRole
 
 export type NavigationItem = {
   label: string
+  description: string
   to: string
   icon: LucideIcon
+  badge?: string
 }
 
 export const patientNavigation: NavigationItem[] = [
-  { label: 'Resumo', to: '/app', icon: LayoutDashboard },
-  { label: 'Registro de dor', to: '/app/pain-log', icon: HeartPulse },
-  { label: 'Relatórios', to: '/app/reports', icon: BarChart3 },
-  { label: 'Assistente IA', to: '/app/assistant', icon: Sparkles },
-  { label: 'Calendário', to: '/app/calendar', icon: CalendarDays },
-  { label: 'Comunidade', to: '/app/community', icon: MessageCircleHeart },
-  { label: 'Perfil', to: '/app/profile', icon: UserRound },
+  { label: 'Resumo', description: 'Visão geral do dia', to: '/app', icon: LayoutDashboard },
+  {
+    label: 'Registro de dor',
+    description: 'Capture sintomas e gatilhos',
+    to: '/app/pain-log',
+    icon: HeartPulse,
+  },
+  {
+    label: 'Relatórios',
+    description: 'Tendências, comparativos e exportações',
+    to: '/app/reports',
+    icon: BarChart3,
+  },
+  {
+    label: 'Assistente IA',
+    description: 'Insights e orientação contextual',
+    to: '/app/assistant',
+    icon: Sparkles,
+    badge: 'Novo',
+  },
+  {
+    label: 'Calendário',
+    description: 'Rotina, lembretes e próximos eventos',
+    to: '/app/calendar',
+    icon: CalendarDays,
+  },
+  {
+    label: 'Comunidade',
+    description: 'Trocas seguras com outras pessoas',
+    to: '/app/community',
+    icon: MessageCircleHeart,
+  },
+  { label: 'Perfil', description: 'Metas, evolução e conquistas', to: '/app/profile', icon: UserRound },
+  {
+    label: 'Configurações',
+    description: 'Preferências, alertas e privacidade',
+    to: '/app/settings',
+    icon: Cog,
+  },
 ]
 
 export const medicalNavigation: NavigationItem[] = [
-  { label: 'Painel médico', to: '/medical', icon: Stethoscope },
+  {
+    label: 'Painel médico',
+    description: 'Acompanhe pacientes, sinais e evolução',
+    to: '/medical',
+    icon: Stethoscope,
+  },
 ]
 
 export const adminNavigation: NavigationItem[] = [
-  { label: 'Visão geral', to: '/admin', icon: ShieldPlus },
+  {
+    label: 'Visão geral',
+    description: 'Métricas, permissões e operação da plataforma',
+    to: '/admin',
+    icon: ShieldPlus,
+  },
 ]
 
 export const workspaceConfig = {
   patient: {
-    label: 'Experiência do paciente',
     shortLabel: 'Paciente',
     navigation: patientNavigation,
     searchPlaceholder: 'Buscar insights, sintomas ou lembretes...',
   },
   medical: {
-    label: 'Painel clínico',
     shortLabel: 'Médico',
     navigation: medicalNavigation,
     searchPlaceholder: 'Buscar pacientes, sintomas ou evolução...',
   },
   admin: {
-    label: 'Administração',
     shortLabel: 'Admin',
     navigation: adminNavigation,
     searchPlaceholder: 'Buscar métricas, usuários ou relatórios...',
@@ -60,7 +102,6 @@ export const workspaceConfig = {
 } satisfies Record<
   WorkspaceVariant,
   {
-    label: string
     shortLabel: string
     navigation: NavigationItem[]
     searchPlaceholder: string
@@ -70,11 +111,31 @@ export const workspaceConfig = {
 export const roleOptions: Array<{
   role: WorkspaceVariant
   label: string
+  description: string
   href: string
+  icon: LucideIcon
 }> = [
-  { role: 'patient', label: 'Paciente', href: '/app' },
-  { role: 'medical', label: 'Médico', href: '/medical' },
-  { role: 'admin', label: 'Admin', href: '/admin' },
+  {
+    role: 'patient',
+    label: 'Paciente',
+    description: 'Jornada pessoal',
+    href: '/app',
+    icon: HeartPulse,
+  },
+  {
+    role: 'medical',
+    label: 'Médico',
+    description: 'Visão clínica',
+    href: '/medical',
+    icon: Stethoscope,
+  },
+  {
+    role: 'admin',
+    label: 'Admin',
+    description: 'Operação e gestão',
+    href: '/admin',
+    icon: ShieldPlus,
+  },
 ]
 
 export function inferRoleFromPath(pathname: string): WorkspaceVariant {
