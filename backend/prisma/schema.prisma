@@ -1,33 +1,351 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  name      String
-  password  String
-  birthDate DateTime?
-  gender    String?
-  height    Decimal?  @db.Decimal(5, 2)
-  weight    Decimal?  @db.Decimal(5, 2)
-  country   String    @default("Brasil")
-  role      Role      @default(USER)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
 enum Role {
   USER
   ADMIN
+}
+
+enum SymptomCategory {
+  PAIN
+  FATIGUE
+  SLEEP
+  COGNITIVE
+  MOOD
+  DIGESTIVE
+  MOBILITY
+  OTHER
+}
+
+enum RiskLevel {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
+enum PredictionSource {
+  RULE_ENGINE
+  AI_MODEL
+  CLINICAL_REVIEW
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  CUSTOM
+}
+
+enum ReportStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum InsightType {
+  DAILY_SUMMARY
+  CRISIS_RISK
+  BEHAVIORAL_PATTERN
+  RECOMMENDATION
+}
+
+enum InsightStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum AiPredictionRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id                  String             @id @default(uuid()) @db.Uuid
+  email               String             @unique @db.VarChar(255)
+  passwordHash        String             @map("password_hash")
+  fullName            String             @map("full_name") @db.VarChar(120)
+  birthDate           DateTime?          @map("birth_date") @db.Date
+  gender              String?            @db.VarChar(50)
+  heightCm            Float?             @map("height_cm")
+  weightKg            Float?             @map("weight_kg")
+  countryCode         String?            @map("country_code") @db.VarChar(2)
+  timezone            String             @default("America/Sao_Paulo") @db.VarChar(100)
+  role                Role               @default(USER)
+  onboardingCompleted Boolean            @default(false) @map("onboarding_completed")
+  lastLoginAt         DateTime?          @map("last_login_at")
+  deletedAt           DateTime?          @map("deleted_at")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  refreshTokens       RefreshToken[]
+  dailyRecords        DailyRecord[]
+  symptomSignals      SymptomSignal[]
+  crisisPredictions   CrisisPrediction[]
+  notifications       Notification[]
+  reports             Report[]
+  aiInsights          AIInsight[]
+  aiPredictions       AiPrediction[]
+  userRiskProfile     UserRiskProfile?
+
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([role])
+  @@map("users")
+}
+
+model RefreshToken {
+  id                String        @id @default(uuid()) @db.Uuid
+  userId            String        @map("user_id") @db.Uuid
+  tokenHash         String        @map("token_hash")
+  expiresAt         DateTime      @map("expires_at")
+  revokedAt         DateTime?     @map("revoked_at")
+  lastUsedAt        DateTime?     @map("last_used_at")
+  ipAddress         String?       @map("ip_address") @db.VarChar(64)
+  userAgent         String?       @map("user_agent") @db.VarChar(512)
+  replacedByTokenId String?       @unique @map("replaced_by_token_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at")
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedByToken   RefreshToken? @relation("RefreshTokenRotation", fields: [replacedByTokenId], references: [id])
+  previousToken     RefreshToken? @relation("RefreshTokenRotation")
+
+  @@index([userId, expiresAt])
+  @@index([userId, revokedAt])
+  @@map("refresh_tokens")
+}
+
+model Symptom {
+  id             String          @id @default(uuid()) @db.Uuid
+  name           String          @unique @db.VarChar(120)
+  slug           String          @unique @db.VarChar(160)
+  category       SymptomCategory
+  description    String?
+  unit           String?         @db.VarChar(32)
+  isActive       Boolean         @default(true) @map("is_active")
+  isCore         Boolean         @default(false) @map("is_core")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  symptomEntries SymptomEntry[]
+
+  @@index([category, isActive])
+  @@map("symptoms")
+}
+
+model SymptomSignal {
+  id                     String   @id @default(uuid()) @db.Uuid
+  userId                 String   @map("user_id") @db.Uuid
+  fatigueLevel           Int      @map("fatigue_level")
+  sleepQuality           Int      @map("sleep_quality")
+  stiffness              Int
+  mood                   Int
+  stress                 Int
+  cognitiveFog           Boolean  @default(false) @map("cognitive_fog")
+  sensitivityLight       Boolean  @default(false) @map("sensitivity_light")
+  sensitivityNoise       Boolean  @default(false) @map("sensitivity_noise")
+  digestiveIssues        Boolean  @default(false) @map("digestive_issues")
+  headache               Boolean  @default(false)
+  anxiety                Boolean  @default(false)
+  depression             Boolean  @default(false)
+  bodyTemperatureFeeling String?  @map("body_temperature_feeling") @db.VarChar(120)
+  notes                  String?
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("symptom_signals")
+}
+
+model DailyRecord {
+  id                   String            @id @default(uuid()) @db.Uuid
+  userId               String            @map("user_id") @db.Uuid
+  recordDate           DateTime          @default(now()) @map("record_date") @db.Date
+  painLevel            Int               @default(0) @map("pain_level")
+  fatigueLevel         Int               @map("fatigue_level")
+  sleepHours           Float?            @map("sleep_hours")
+  sleepQuality         Int?              @map("sleep_quality")
+  stressLevel          Int               @map("stress_level")
+  moodLevel            Int               @map("mood_level")
+  exerciseMinutes      Int?              @map("exercise_minutes")
+  waterIntakeLiters    Float?            @map("water_intake_liters")
+  medicationAdherence  Boolean?          @map("medication_adherence")
+  weatherFeeling       String?           @map("weather_feeling") @db.VarChar(120)
+  flareWarningAccepted Boolean?          @map("flare_warning_accepted")
+  notes                String?
+  metadata             Json?
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symptomEntries       SymptomEntry[]
+  crisisPrediction     CrisisPrediction?
+  aiInsights           AIInsight[]
+  aiPredictions        AiPrediction[]
+
+  @@unique([userId, recordDate])
+  @@index([userId, recordDate])
+  @@map("daily_records")
+}
+
+model SymptomEntry {
+  id              String      @id @default(uuid()) @db.Uuid
+  dailyRecordId   String      @map("daily_record_id") @db.Uuid
+  symptomId       String      @map("symptom_id") @db.Uuid
+  severity        Int
+  durationMinutes Int?        @map("duration_minutes")
+  notes           String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+  dailyRecord     DailyRecord @relation(fields: [dailyRecordId], references: [id], onDelete: Cascade)
+  symptom         Symptom     @relation(fields: [symptomId], references: [id], onDelete: Restrict)
+
+  @@unique([dailyRecordId, symptomId])
+  @@index([symptomId, severity])
+  @@map("symptom_entries")
+}
+
+model CrisisPrediction {
+  id                    String           @id @default(uuid()) @db.Uuid
+  userId                String           @map("user_id") @db.Uuid
+  dailyRecordId         String           @unique @map("daily_record_id") @db.Uuid
+  predictedFor          DateTime         @map("predicted_for") @db.Date
+  probability           Float
+  riskLevel             RiskLevel        @map("risk_level")
+  confidenceScore       Float?           @map("confidence_score")
+  riskFactors           Json             @map("risk_factors")
+  recommendationSummary String?          @map("recommendation_summary")
+  source                PredictionSource @default(RULE_ENGINE)
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyRecord           DailyRecord      @relation(fields: [dailyRecordId], references: [id], onDelete: Cascade)
+  notifications         Notification[]
+
+  @@index([userId, predictedFor])
+  @@index([riskLevel, createdAt])
+  @@map("crisis_predictions")
+}
+
+model Notification {
+  id                 String              @id @default(uuid()) @db.Uuid
+  userId             String              @map("user_id") @db.Uuid
+  crisisPredictionId String?             @map("crisis_prediction_id") @db.Uuid
+  dedupeKey          String?             @unique @map("dedupe_key")
+  type               String              @db.VarChar(64)
+  channel            NotificationChannel @default(IN_APP)
+  status             NotificationStatus  @default(PENDING)
+  title              String
+  message            String
+  payload            Json?
+  scheduledFor       DateTime?           @map("scheduled_for")
+  sentAt             DateTime?           @map("sent_at")
+  readAt             DateTime?           @map("read_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  crisisPrediction   CrisisPrediction?   @relation(fields: [crisisPredictionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, createdAt])
+  @@index([scheduledFor, status])
+  @@map("notifications")
+}
+
+model Report {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  type        ReportType
+  status      ReportStatus @default(PROCESSING)
+  periodStart DateTime     @map("period_start") @db.Date
+  periodEnd   DateTime     @map("period_end") @db.Date
+  summary     Json?
+  fileUrl     String?      @map("file_url")
+  generatedAt DateTime?    @map("generated_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, periodStart, periodEnd])
+  @@index([userId, type, createdAt])
+  @@map("reports")
+}
+
+model AIInsight {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  dailyRecordId  String?       @map("daily_record_id") @db.Uuid
+  type           InsightType
+  status         InsightStatus @default(ACTIVE)
+  title          String
+  content        String
+  relevanceScore Float?        @map("relevance_score")
+  metadata       Json?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyRecord    DailyRecord?  @relation(fields: [dailyRecordId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, createdAt])
+  @@map("ai_insights")
+}
+
+model UserRiskProfile {
+  id                       String   @id @default(uuid()) @db.Uuid
+  userId                   String   @unique @map("user_id") @db.Uuid
+  analysisWindowDays       Int      @map("analysis_window_days")
+  currentPersonalizedScore Int      @map("current_personalized_score")
+  baselineScore            Int      @map("baseline_score")
+  lastCrisisSignalCount    Int      @map("last_crisis_signal_count")
+  summary                  String?
+  triggerPatterns          Json     @map("trigger_patterns")
+  personalizedWeights      Json     @map("personalized_weights")
+  sourceWindowStart        DateTime @map("source_window_start") @db.Date
+  sourceWindowEnd          DateTime @map("source_window_end") @db.Date
+  lastAnalyzedAt           DateTime @map("last_analyzed_at")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([currentPersonalizedScore, updatedAt])
+  @@index([lastAnalyzedAt])
+  @@map("user_risk_profiles")
+}
+
+model AiPrediction {
+  id               String                @id @default(uuid()) @db.Uuid
+  userId           String                @map("user_id") @db.Uuid
+  dailyRecordId    String?               @map("daily_record_id") @db.Uuid
+  provider         String                @db.VarChar(64)
+  model            String                @db.VarChar(120)
+  promptVersion    String                @map("prompt_version") @db.VarChar(32)
+  probabilityScore Int                   @map("probability_score")
+  riskLevel        AiPredictionRiskLevel @map("risk_level")
+  explanation      String
+  suggestedAction  String                @map("suggested_action")
+  inputSnapshot    Json                  @map("input_snapshot")
+  providerResponse Json?                 @map("provider_response")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyRecord      DailyRecord?          @relation(fields: [dailyRecordId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([userId, riskLevel, createdAt])
+  @@map("ai_predictions")
 }

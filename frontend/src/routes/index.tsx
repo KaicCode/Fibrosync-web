@@ -43,8 +43,28 @@ const MedicalDashboardPage = lazy(() =>
   })),
 )
 const AdminDashboardPage = lazy(() =>
-  import('@/pages/admin/admin-dashboard-page').then((module) => ({
+  import('@/pages/admin/dashboard-page').then((module) => ({
     default: module.AdminDashboardPage,
+  })),
+)
+const AdminUsersPage = lazy(() =>
+  import('@/pages/admin/users-page').then((module) => ({
+    default: module.AdminUsersPage,
+  })),
+)
+const AdminReportsPage = lazy(() =>
+  import('@/pages/admin/reports-page').then((module) => ({
+    default: module.AdminReportsPage,
+  })),
+)
+const AdminAnalyticsPage = lazy(() =>
+  import('@/pages/admin/analytics-page').then((module) => ({
+    default: module.AdminAnalyticsPage,
+  })),
+)
+const AdminSettingsPage = lazy(() =>
+  import('@/pages/admin/settings-page').then((module) => ({
+    default: module.AdminSettingsPage,
   })),
 )
 
@@ -75,6 +95,11 @@ export function AppRouter() {
 
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/reports" element={<AdminReportsPage />} />
+          <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+          <Route path="/admin/settings" element={<AdminSettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

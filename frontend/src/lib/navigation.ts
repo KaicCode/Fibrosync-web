@@ -10,6 +10,9 @@ import {
   Sparkles,
   Stethoscope,
   UserRound,
+  Users,
+  FileText,
+  TrendingUp,
 } from 'lucide-react'
 import type { AppRole } from '@/store/app-store'
 
@@ -76,10 +79,34 @@ export const medicalNavigation: NavigationItem[] = [
 
 export const adminNavigation: NavigationItem[] = [
   {
-    label: 'Visão geral',
-    description: 'Métricas, permissões e operação da plataforma',
-    to: '/admin',
-    icon: ShieldPlus,
+    label: 'Dashboard',
+    description: 'Métricas e alertas do sistema',
+    to: '/admin/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    label: 'Usuários',
+    description: 'Gerenciar usuários da plataforma',
+    to: '/admin/users',
+    icon: Users,
+  },
+  {
+    label: 'Relatórios',
+    description: 'Gerar e exportar dados',
+    to: '/admin/reports',
+    icon: FileText,
+  },
+  {
+    label: 'Análiticos',
+    description: 'Padrões, gatilhos e correlações',
+    to: '/admin/analytics',
+    icon: TrendingUp,
+  },
+  {
+    label: 'Configurações',
+    description: 'IA, notificações e limites de risco',
+    to: '/admin/settings',
+    icon: Cog,
   },
 ]
 
