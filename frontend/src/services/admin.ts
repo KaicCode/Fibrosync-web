@@ -25,7 +25,7 @@ async function authenticatedFetch<T>(
   endpoint: string,
   options?: RequestInit,
 ): Promise<T> {
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('accessToken')
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
@@ -158,7 +158,7 @@ export async function getReports(
 }
 
 export async function downloadReport(reportId: string): Promise<Blob> {
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('accessToken')
 
   const response = await fetch(`${API_URL}/admin/reports/${reportId}/download`, {
     headers: {

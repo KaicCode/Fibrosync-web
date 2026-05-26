@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { HeartPulse, Save, Sparkles } from 'lucide-react'
+import { HeartPulse, Save, Sparkles, LoaderCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { BodyMap } from '@/components/body-map'
 import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
@@ -9,13 +10,18 @@ import { Textarea } from '@/components/ui/textarea'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { bodyPointLabels, painTriggers, painTypes } from '@/services/mock-data'
 import { useAppStore } from '@/store/app-store'
+import { useDailyRecords } from '@/hooks/useDailyRecords'
+import { useSymptoms } from '@/hooks/useSymptoms'
 
 export function PainLogPage() {
   usePageTitle('Registro de Dor')
 
+  const navigate = useNavigate()
   const painDraft = useAppStore((state) => state.painDraft)
   const updatePainDraft = useAppStore((state) => state.updatePainDraft)
   const [selectedTriggers, setSelectedTriggers] = useState<string[]>(['Estresse', 'Clima frio'])
+  const { createRecord, isCreating } = useDailyRecords()
+  const { addSymptom } = useSymptoms()
 
   const togglePoint = (point: keyof typeof bodyPointLabels) => {
     const selected = painDraft.selectedPoints.includes(point)
@@ -30,6 +36,39 @@ export function PainLogPage() {
     setSelectedTriggers((current) =>
       current.includes(trigger) ? current.filter((item) => item !== trigger) : [...current, trigger],
     )
+  }
+
+  const handleSave = async () => {
+    try {
+      // 1. Create the daily record
+      const record = await createRecord({
+        date: new Date().toISOString(),
+        painLevel: painDraft.intensity,
+        fatigueLevel: 5, // Default for now
+        sleepQuality: 7, // Default for now
+        mood: 'Neutro', // Default for now
+        notes: painDraft.note,
+        symptoms: painDraft.selectedPoints,
+      })
+
+      // 2. Create symptoms if any
+      if (painDraft.selectedPoints.length > 0) {
+        for (const point of painDraft.selectedPoints) {
+          await addSymptom({
+            name: bodyPointLabels[point as keyof typeof bodyPointLabels] || point,
+            intensity: painDraft.intensity,
+            trigger: selectedTriggers.join(', '),
+            dailyRecordId: record.id
+          })
+        }
+      }
+
+      // Reset and redirect
+      updatePainDraft({ intensity: 0, note: '', selectedPoints: [] })
+      navigate('/patient')
+    } catch (error) {
+      console.error('Failed to save record', error)
+    }
   }
 
   return (
@@ -145,9 +184,9 @@ export function PainLogPage() {
               value={painDraft.note}
               onChange={(event) => updatePainDraft({ note: event.target.value })}
             />
-            <Button className="mt-4 w-full">
-              <Save className="h-4 w-4" />
-              Salvar registro
+            <Button className="mt-4 w-full" onClick={handleSave} disabled={isCreating}>
+              {isCreating ? <LoaderCircle className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              {isCreating ? 'Salvando...' : 'Salvar registro'}
             </Button>
           </div>
         </div>

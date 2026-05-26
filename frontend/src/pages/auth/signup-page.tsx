@@ -22,7 +22,7 @@ import { SelfCareIllustration } from '@/components/self-care-illustration'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePageTitle } from '@/hooks/use-page-title'
-import { registerUser } from '@/services/auth'
+import { useAuth } from '@/hooks/useAuth'
 import { useAppStore } from '@/store/app-store'
 
 const benefits = [
@@ -145,6 +145,7 @@ export function SignupPage() {
   usePageTitle('Criar conta')
 
   const navigate = useNavigate()
+  const { signup, isSigningUp } = useAuth()
   const setAuthSession = useAppStore((state) => state.setAuthSession)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -238,20 +239,19 @@ export function SignupPage() {
     setIsSubmitting(true)
 
     try {
-      const session = await registerUser({
+      const authResponse = await signup({
         name: formValues.name.trim(),
         email: formValues.email.trim(),
         password: formValues.password,
-        birthDate: parsedBirthDate ?? undefined,
+        dateOfBirth: parsedBirthDate ?? undefined,
         gender: formValues.gender || undefined,
-        height: parsedHeight,
-        weight: parsedWeight,
-        country: formValues.country,
       })
 
-      setAuthSession(session)
+      if (authResponse && authResponse.user) {
+         setAuthSession({ user: { ...authResponse.user, country: formValues.country } as any, token: authResponse.access_token })
+      }
       setSuccessMessage('Conta criada com sucesso. Redirecionando...')
-      navigate('/app')
+      navigate('/patient')
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Nao foi possivel concluir o cadastro agora.',
@@ -500,10 +500,10 @@ export function SignupPage() {
               <Button
                 className="h-12 w-full rounded-[0.95rem] text-base font-semibold"
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSigningUp || isSubmitting}
               >
-                {isSubmitting ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
-                {isSubmitting ? 'Criando conta...' : 'Criar conta'}
+                {isSigningUp || isSubmitting ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
+                {isSigningUp || isSubmitting ? 'Criando conta...' : 'Criar conta'}
               </Button>
             </div>
 

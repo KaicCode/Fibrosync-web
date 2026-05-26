@@ -1,16 +1,31 @@
 import { useState } from 'react'
 import { Eye, Fingerprint, LockKeyhole, Mail } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AuthHeroLogo } from '@/components/auth-hero-logo'
 import { AppleIcon, GoogleIcon } from '@/components/provider-icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePageTitle } from '@/hooks/use-page-title'
+import { useAuth } from '@/hooks/useAuth'
 
 export function LoginPage() {
   usePageTitle('Entrar')
 
+  const navigate = useNavigate()
+  const { login, isLoggingIn, loginError } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await login({ email, password })
+      navigate('/patient')
+    } catch (error) {
+      console.error('Login failed:', error)
+    }
+  }
 
   return (
     <section className="relative flex min-h-[calc(100vh-2.5rem)] items-center justify-center overflow-hidden py-2 md:py-3">
@@ -34,11 +49,15 @@ export function LoginPage() {
               </p>
             </div>
 
-            <div className="mt-8 space-y-4">
+            <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
               <label className="block">
                 <div className="relative">
                   <Mail className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-500" />
                   <Input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="h-14 rounded-[1.25rem] border-slate-200 bg-white/92 pl-14 pr-5 text-base text-slate-700 placeholder:text-slate-400"
                     placeholder="E-mail"
                   />
@@ -49,6 +68,9 @@ export function LoginPage() {
                 <div className="relative">
                   <LockKeyhole className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-500" />
                   <Input
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="h-14 rounded-[1.25rem] border-slate-200 bg-white/92 pl-14 pr-14 text-base text-slate-700 placeholder:text-slate-400"
                     placeholder="Senha"
                     type={showPassword ? 'text' : 'password'}
@@ -73,10 +95,16 @@ export function LoginPage() {
                 </button>
               </div>
 
-              <Button className="h-14 w-full rounded-[1.25rem] text-base font-semibold">
-                Entrar
+              {loginError && (
+                <div className="text-red-500 text-sm text-center">
+                  Email ou senha incorretos
+                </div>
+              )}
+
+              <Button disabled={isLoggingIn} type="submit" className="h-14 w-full rounded-[1.25rem] text-base font-semibold">
+                {isLoggingIn ? 'Entrando...' : 'Entrar'}
               </Button>
-            </div>
+            </form>
 
             <div className="my-6 flex items-center gap-4">
               <div className="h-px flex-1 bg-slate-200" />

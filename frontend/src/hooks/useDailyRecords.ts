@@ -1,0 +1,46 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { dailyRecordService } from '../services/daily-record.service';
+import type { CreateDailyRecordDto } from '../services/daily-record.service';
+
+export function useDailyRecords() {
+  const queryClient = useQueryClient();
+
+  const recordsQuery = useQuery({
+    queryKey: ['dailyRecords'],
+    queryFn: dailyRecordService.getDailyRecords,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: CreateDailyRecordDto) => dailyRecordService.createDailyRecord(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dailyRecords'] });
+      // Invalidate prediction as well since a new record might trigger it
+      queryClient.invalidateQueries({ queryKey: ['latestPrediction'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateDailyRecordDto> }) => 
+      dailyRecordService.updateDailyRecord(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dailyRecords'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => dailyRecordService.deleteDailyRecord(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dailyRecords'] });
+    },
+  });
+
+  return {
+    records: recordsQuery.data || [],
+    isLoading: recordsQuery.isLoading,
+    error: recordsQuery.error,
+    createRecord: createMutation.mutateAsync,
+    isCreating: createMutation.isPending,
+    updateRecord: updateMutation.mutateAsync,
+    deleteRecord: deleteMutation.mutateAsync,
+  };
+}
