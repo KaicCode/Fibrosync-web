@@ -29,5 +29,5 @@ export const validationSchema = Joi.object({
     .max(90)
     .default(30),
   AI_PREDICTION_PROMPT_VERSION: Joi.string().default('v1'),
-  OPENAI_API_KEY: Joi.string().optional(),
+  OPENAI_API_KEY: Joi.string().allow('').optional(),
 });

@@ -23,7 +23,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "dev": "nest start --watch"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

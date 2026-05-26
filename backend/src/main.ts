@@ -5,9 +5,7 @@ import { AppModule } from './app.module';
 import { setupSwagger } from './config/swagger.config';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, {
-    cors: true,
-  });
+  const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
   const apiPrefix = configService.get<string>('app.apiPrefix', 'api/v1');
@@ -15,7 +13,7 @@ async function bootstrap(): Promise<void> {
   const frontendUrl = configService.get<string | undefined>('app.frontendUrl');
 
   app.enableCors({
-    origin: frontendUrl ?? true,
+    origin: frontendUrl ?? 'http://localhost:5173',
     credentials: true,
   });
   app.setGlobalPrefix(apiPrefix);

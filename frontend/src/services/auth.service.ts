@@ -6,10 +6,10 @@ export interface LoginDto {
 }
 
 export interface SignupDto {
-  name: string;
+  fullName: string;
   email: string;
   password: string;
-  dateOfBirth?: string;
+  birthDate?: string;
   gender?: string;
 }
 

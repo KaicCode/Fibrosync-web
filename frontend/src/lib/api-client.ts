@@ -35,7 +35,12 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 // Request interceptor - adiciona token na requisição
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('access_token')
+    // Compat: o app salva tokens em accessToken/refreshToken (login) e em
+    // access_token/refresh_token (outros clients). Aqui aceitamos ambos.
+    const token =
+      localStorage.getItem('accessToken') ??
+      localStorage.getItem('access_token')
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -70,10 +75,14 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const refreshToken = localStorage.getItem('refresh_token')
+        const refreshToken =
+          localStorage.getItem('refreshToken') ??
+          localStorage.getItem('refresh_token')
+
         if (!refreshToken) {
           throw new Error('No refresh token available')
         }
+
 
         const response = await axios.post(`${API_URL}/auth/refresh`, {
           refreshToken,
@@ -81,10 +90,14 @@ apiClient.interceptors.response.use(
 
         const { access_token, refresh_token } = response.data.data
 
+        // Salva em ambos os formatos para compatibilidade
+        localStorage.setItem('accessToken', access_token)
+        localStorage.setItem('refreshToken', refresh_token)
         localStorage.setItem('access_token', access_token)
         localStorage.setItem('refresh_token', refresh_token)
 
         apiClient.defaults.headers.common.Authorization = `Bearer ${access_token}`
+
         originalRequest.headers.Authorization = `Bearer ${access_token}`
 
         processQueue(null, access_token)
@@ -94,8 +107,11 @@ apiClient.interceptors.response.use(
         processQueue(err as Error, null)
 
         // Limpar tokens e redirecionar para login
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
+
         useAppStore.getState().clearAuthSession()
 
         window.location.href = '/login'

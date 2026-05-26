@@ -240,10 +240,10 @@ export function SignupPage() {
 
     try {
       const authResponse = await signup({
-        name: formValues.name.trim(),
+        fullName: formValues.name.trim(),
         email: formValues.email.trim(),
         password: formValues.password,
-        dateOfBirth: parsedBirthDate ?? undefined,
+        birthDate: parsedBirthDate ?? undefined,
         gender: formValues.gender || undefined,
       })
 
