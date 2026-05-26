@@ -86,9 +86,7 @@ export class PatternAnalysisService {
           },
         },
         select: patternAnalysisDailyRecordSelect,
-        orderBy: {
-          recordDate: 'asc',
-        },
+        orderBy: [{ recordDate: 'asc' }, { createdAt: 'asc' }],
       }),
       this.prisma.symptomSignal.findMany({
         where: {

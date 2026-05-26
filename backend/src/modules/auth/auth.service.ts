@@ -170,6 +170,8 @@ export class AuthService {
     const tokenPair = await this.generateTokenPair(publicUser);
 
     await this.prisma.$transaction(async (tx) => {
+      await this.persistRefreshToken(tx, publicUser.id, tokenPair, metadata);
+
       await tx.refreshToken.update({
         where: {
           id: storedToken.id,
@@ -180,8 +182,6 @@ export class AuthService {
           replacedByTokenId: tokenPair.refreshTokenId,
         },
       });
-
-      await this.persistRefreshToken(tx, publicUser.id, tokenPair, metadata);
     });
 
     return {

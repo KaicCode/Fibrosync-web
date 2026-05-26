@@ -46,7 +46,13 @@ class ReportMetadataDto {
 
 class ReportOverviewDto {
   @ApiProperty()
+  recordedEntries!: number;
+
+  @ApiProperty()
   recordedDays!: number;
+
+  @ApiProperty()
+  averagePainLevel!: number;
 
   @ApiProperty()
   symptomSignalCount!: number;
@@ -77,7 +83,7 @@ class ReportOverviewDto {
 }
 
 class ReportMetricPointDto {
-  @ApiProperty({ format: 'date' })
+  @ApiProperty({ format: 'date-time' })
   date!: string;
 
   @ApiProperty()
@@ -115,6 +121,28 @@ class ReportSleepEvolutionDto {
 
   @ApiProperty({ type: ReportMetricEvolutionDto })
   quality!: ReportMetricEvolutionDto;
+}
+
+class ReportPainPatternItemDto {
+  @ApiProperty()
+  label!: string;
+
+  @ApiProperty()
+  occurrences!: number;
+
+  @ApiProperty()
+  percentage!: number;
+}
+
+class ReportPainPatternsDto {
+  @ApiProperty({ type: [ReportPainPatternItemDto] })
+  types!: ReportPainPatternItemDto[];
+
+  @ApiProperty({ type: [ReportPainPatternItemDto] })
+  areas!: ReportPainPatternItemDto[];
+
+  @ApiProperty({ type: [ReportPainPatternItemDto] })
+  triggers!: ReportPainPatternItemDto[];
 }
 
 class ReportRecurringTriggerDto {
@@ -285,6 +313,9 @@ export class ReportStructuredDataDto {
   @ApiProperty({ type: ReportOverviewDto })
   overview!: ReportOverviewDto;
 
+  @ApiProperty({ type: ReportMetricEvolutionDto })
+  painEvolution!: ReportMetricEvolutionDto;
+
   @ApiProperty({ type: ReportSleepEvolutionDto })
   sleepEvolution!: ReportSleepEvolutionDto;
 
@@ -293,6 +324,9 @@ export class ReportStructuredDataDto {
 
   @ApiProperty({ type: ReportMetricEvolutionDto })
   moodEvolution!: ReportMetricEvolutionDto;
+
+  @ApiProperty({ type: ReportPainPatternsDto })
+  painPatterns!: ReportPainPatternsDto;
 
   @ApiProperty({ type: [ReportRecurringTriggerDto] })
   recurringTriggers!: ReportRecurringTriggerDto[];

@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   IsBoolean,
   IsArray,
+  IsDateString,
   IsInt,
   IsNumber,
   IsOptional,
@@ -14,7 +15,13 @@ import {
 } from 'class-validator';
 
 export class CreateDailyRecordDto {
+  @ApiPropertyOptional({ format: 'date' })
+  @IsOptional()
+  @IsDateString()
+  recordDate?: string;
+
   @ApiPropertyOptional({ minimum: 0, maximum: 10 })
+  @Type(() => Number)
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -30,6 +37,7 @@ export class CreateDailyRecordDto {
   sleepHours?: number;
 
   @ApiPropertyOptional({ minimum: 0, maximum: 10 })
+  @Type(() => Number)
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -37,18 +45,21 @@ export class CreateDailyRecordDto {
   sleepQuality?: number;
 
   @ApiProperty({ minimum: 0, maximum: 10 })
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   @Max(10)
   fatigueLevel!: number;
 
   @ApiProperty({ minimum: 0, maximum: 10 })
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   @Max(10)
   mood!: number;
 
   @ApiProperty({ minimum: 0, maximum: 10 })
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   @Max(10)
@@ -57,6 +68,7 @@ export class CreateDailyRecordDto {
   @ApiPropertyOptional({
     description: 'Minutes of physical activity during the day.',
   })
+  @Type(() => Number)
   @IsOptional()
   @IsInt()
   @Min(0)

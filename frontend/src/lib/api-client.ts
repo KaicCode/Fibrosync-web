@@ -6,7 +6,7 @@ import type {
 } from 'axios'
 import { useAppStore } from '@/store/app-store'
 
-const API_URL = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:3000/api/v1'
+const API_URL = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:3100/api/v1'
 
 // Criar instância do Axios
 export const apiClient: AxiosInstance = axios.create({

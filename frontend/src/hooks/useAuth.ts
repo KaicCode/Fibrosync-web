@@ -2,6 +2,27 @@ import { useMutation } from '@tanstack/react-query';
 import { useAppStore } from '@/store/app-store';
 import { authService } from '../services/auth.service';
 import type { LoginDto, SignupDto } from '../services/auth.service';
+import type { UserProfile } from '../services/user.service';
+
+function mapUserToSessionUser(user: UserProfile) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.fullName,
+    fullName: user.fullName,
+    birthDate: user.birthDate ?? null,
+    gender: user.gender ?? null,
+    heightCm: user.heightCm ?? null,
+    weightKg: user.weightKg ?? null,
+    countryCode: user.countryCode ?? null,
+    timezone: user.timezone,
+    role: user.role as 'USER' | 'ADMIN',
+    onboardingCompleted: user.onboardingCompleted,
+    lastLoginAt: user.lastLoginAt ?? null,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  } as const
+}
 
 export function useAuth() {
   const setAuthSession = useAppStore((state) => state.setAuthSession);
@@ -20,13 +41,7 @@ export function useAuth() {
       // Store auth session in Zustand store
       setAuthSession({
         token: data.accessToken,
-        user: {
-          id: Number(data.user.id) || 0,
-          email: data.user.email,
-          name: data.user.fullName,
-          country: '',
-          role: data.user.role as 'USER' | 'ADMIN',
-        },
+        user: mapUserToSessionUser(data.user),
       });
     },
   });
@@ -44,13 +59,7 @@ export function useAuth() {
       // Store auth session in Zustand store
       setAuthSession({
         token: data.accessToken,
-        user: {
-          id: Number(data.user.id) || 0,
-          email: data.user.email,
-          name: data.user.fullName,
-          country: '',
-          role: data.user.role as 'USER' | 'ADMIN',
-        },
+        user: mapUserToSessionUser(data.user),
       });
     },
   });

@@ -24,6 +24,11 @@ import { reportResponseSelect, type ReportDetails } from './reports.select';
 
 const reportDailyRecordSelect = {
   recordDate: true,
+  createdAt: true,
+  painLevel: true,
+  painType: true,
+  painAreas: true,
+  painTriggers: true,
   sleepHours: true,
   sleepQuality: true,
   fatigueLevel: true,
@@ -91,6 +96,7 @@ type ReportUserRiskProfileRow = Prisma.UserRiskProfileGetPayload<{
 
 interface ReportDaySnapshot {
   date: Date;
+  painLevel: number | null;
   sleepHours: number | null;
   sleepQuality: number | null;
   fatigueLevel: number | null;
@@ -113,6 +119,7 @@ interface ReportDaySnapshot {
   depression: boolean;
   coldBodyTemperature: boolean;
   signalCount: number;
+  recordCount: number;
 }
 
 interface TriggerPatternSnapshot {
@@ -170,9 +177,7 @@ export class ReportsService {
             },
           },
           select: reportDailyRecordSelect,
-          orderBy: {
-            recordDate: 'asc',
-          },
+          orderBy: [{ recordDate: 'asc' }, { createdAt: 'asc' }],
         }),
         this.prisma.symptomSignal.findMany({
           where: {
@@ -333,6 +338,9 @@ export class ReportsService {
       symptomSignals,
       aiPredictions,
     );
+    const recordedDays = new Set(
+      dailyRecords.map((record) => this.formatDateOnly(record.recordDate)),
+    ).size;
     const activeDays = daySnapshots.length;
 
     return {
@@ -353,7 +361,11 @@ export class ReportsService {
         },
       },
       overview: {
-        recordedDays: dailyRecords.length,
+        recordedEntries: dailyRecords.length,
+        recordedDays,
+        averagePainLevel: this.average(
+          dailyRecords.map((record) => record.painLevel),
+        ),
         symptomSignalCount: symptomSignals.length,
         rulePredictionCount: dailyRecords.filter(
           (record) => record.crisisPrediction !== null,
@@ -382,13 +394,21 @@ export class ReportsService {
             .filter((value): value is number => value !== null),
         ),
       },
+      painEvolution: this.buildMetricEvolution(
+        dailyRecords.map((record) => ({
+          date: this.formatDateTime(record.createdAt),
+          value: record.painLevel,
+        })),
+        false,
+        0.4,
+      ),
       sleepEvolution: {
         hours: this.buildMetricEvolution(
           dailyRecords
             .map((record) =>
               record.sleepHours !== null
                 ? {
-                    date: this.formatDateOnly(record.recordDate),
+                    date: this.formatDateTime(record.createdAt),
                     value: record.sleepHours,
                   }
                 : null,
@@ -404,7 +424,7 @@ export class ReportsService {
             .map((record) =>
               record.sleepQuality !== null
                 ? {
-                    date: this.formatDateOnly(record.recordDate),
+                    date: this.formatDateTime(record.createdAt),
                     value: record.sleepQuality,
                   }
                 : null,
@@ -418,7 +438,7 @@ export class ReportsService {
       },
       fatigueEvolution: this.buildMetricEvolution(
         dailyRecords.map((record) => ({
-          date: this.formatDateOnly(record.recordDate),
+          date: this.formatDateTime(record.createdAt),
           value: record.fatigueLevel,
         })),
         false,
@@ -426,12 +446,13 @@ export class ReportsService {
       ),
       moodEvolution: this.buildMetricEvolution(
         dailyRecords.map((record) => ({
-          date: this.formatDateOnly(record.recordDate),
+          date: this.formatDateTime(record.createdAt),
           value: record.moodLevel,
         })),
         true,
         0.4,
       ),
+      painPatterns: this.buildPainPatterns(dailyRecords),
       recurringTriggers: this.buildRecurringTriggers(daySnapshots),
       crisisProbability: this.buildCrisisProbability(daySnapshots),
       correlations: this.buildCorrelations(daySnapshots),
@@ -451,20 +472,53 @@ export class ReportsService {
       const key = this.formatDateOnly(record.recordDate);
       const day = this.getOrCreateDay(dayMap, key, record.recordDate);
 
-      day.sleepHours = record.sleepHours;
-      day.sleepQuality = record.sleepQuality;
+      day.recordCount += 1;
+      day.painLevel =
+        day.painLevel === null
+          ? record.painLevel
+          : Math.max(day.painLevel, record.painLevel);
+
+      if (record.sleepHours !== null) {
+        day.sleepHours = record.sleepHours;
+      }
+
+      if (record.sleepQuality !== null) {
+        day.sleepQuality = record.sleepQuality;
+      }
+
       day.fatigueLevel = record.fatigueLevel;
       day.moodLevel = record.moodLevel;
       day.stressLevel = record.stressLevel;
-      day.physicalActivity = record.exerciseMinutes;
-      day.hydration = record.waterIntakeLiters;
-      day.medicationTaken = record.medicationAdherence;
-      day.weatherFeeling = record.weatherFeeling;
-      day.ruleBasedProbabilityScore =
+
+      if (record.exerciseMinutes !== null) {
+        day.physicalActivity = record.exerciseMinutes;
+      }
+
+      if (record.waterIntakeLiters !== null) {
+        day.hydration = record.waterIntakeLiters;
+      }
+
+      if (record.medicationAdherence !== null) {
+        day.medicationTaken = record.medicationAdherence;
+      }
+
+      if (record.weatherFeeling) {
+        day.weatherFeeling = record.weatherFeeling;
+      }
+
+      const ruleBasedProbabilityScore =
         record.crisisPrediction !== null
           ? Math.round(record.crisisPrediction.probability * 100)
           : null;
-      day.ruleBasedRiskLevel = record.crisisPrediction?.riskLevel ?? null;
+
+      if (
+        ruleBasedProbabilityScore !== null &&
+        (day.ruleBasedProbabilityScore === null ||
+          ruleBasedProbabilityScore > day.ruleBasedProbabilityScore)
+      ) {
+        day.ruleBasedProbabilityScore = ruleBasedProbabilityScore;
+        day.ruleBasedRiskLevel = record.crisisPrediction?.riskLevel ?? null;
+      }
     }
 
     for (const signal of symptomSignals) {
@@ -687,6 +741,38 @@ export class ReportsService {
       .slice(0, 8);
   }
 
+  private buildPainPatterns(
+    dailyRecords: ReportDailyRecordRow[],
+  ): ReportStructuredDataDto['painPatterns'] {
+    return {
+      types: this.buildPatternDistribution(
+        dailyRecords
+          .map((record) => record.painType)
+          .filter(
+            (value): value is string =>
+              typeof value === 'string' && value.trim().length > 0,
+          ),
+        dailyRecords.length,
+      ),
+      areas: this.buildPatternDistribution(
+        dailyRecords.flatMap((record) =>
+          [...new Set(record.painAreas)].filter(
+            (value) => value.trim().length > 0,
+          ),
+        ),
+        dailyRecords.length,
+      ),
+      triggers: this.buildPatternDistribution(
+        dailyRecords.flatMap((record) =>
+          [...new Set(record.painTriggers)].filter(
+            (value) => value.trim().length > 0,
+          ),
+        ),
+        dailyRecords.length,
+      ),
+    };
+  }
+
   private buildCrisisProbability(
     days: ReportDaySnapshot[],
   ): ReportStructuredDataDto['crisisProbability'] {
@@ -735,6 +821,13 @@ export class ReportsService {
     days: ReportDaySnapshot[],
   ): ReportStructuredDataDto['correlations'] {
     const pairs: CorrelationPairDefinition[] = [
+      {
+        key: 'pain_level_vs_crisis_probability',
+        leftMetric: 'painLevel',
+        rightMetric: 'crisisProbability',
+        left: (day) => day.painLevel,
+        right: (day) => this.resolveCombinedProbability(day),
+      },
       {
         key: 'sleep_hours_vs_crisis_probability',
         leftMetric: 'sleepHours',
@@ -910,6 +1003,7 @@ export class ReportsService {
 
     const created: ReportDaySnapshot = {
       date: normalizeDateOnly(date),
+      painLevel: null,
       sleepHours: null,
       sleepQuality: null,
       fatigueLevel: null,
@@ -932,6 +1026,7 @@ export class ReportsService {
       depression: false,
       coldBodyTemperature: false,
       signalCount: 0,
+      recordCount: 0,
     };
 
     dayMap.set(key, created);
@@ -1117,6 +1212,48 @@ export class ReportsService {
 
   private formatDateOnly(date: Date): string {
     return normalizeDateOnly(date).toISOString().slice(0, 10);
+  }
+
+  private formatDateTime(date: Date): string {
+    return date.toISOString();
+  }
+
+  private buildPatternDistribution(
+    values: string[],
+    totalEntries: number,
+  ): Array<{
+    label: string;
+    occurrences: number;
+    percentage: number;
+  }> {
+    if (values.length === 0 || totalEntries === 0) {
+      return [];
+    }
+
+    const counts = new Map<string, number>();
+
+    for (const value of values) {
+      const normalizedValue = value.trim();
+
+      if (!normalizedValue) {
+        continue;
+      }
+
+      counts.set(normalizedValue, (counts.get(normalizedValue) ?? 0) + 1);
+    }
+
+    return [...counts.entries()]
+      .map(([label, occurrences]) => ({
+        label,
+        occurrences,
+        percentage: this.toFixedNumber((occurrences / totalEntries) * 100),
+      }))
+      .sort(
+        (left, right) =>
+          right.occurrences - left.occurrences ||
+          left.label.localeCompare(right.label),
+      )
+      .slice(0, 6);
   }
 
   private toFixedNumber(value: number | null): number {

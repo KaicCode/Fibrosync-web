@@ -74,6 +74,12 @@ enum InsightStatus {
   ARCHIVED
 }
 
+enum CommunityPostType {
+  FEED
+  QUESTION
+  INSIGHT
+}
+
 enum AiPredictionRiskLevel {
   LOW
   MEDIUM
@@ -106,11 +112,57 @@ model User {
   aiInsights          AIInsight[]
   aiPredictions       AiPrediction[]
   userRiskProfile     UserRiskProfile?
+  communityPosts      CommunityPost[]
+  userSettings        UserSettings?
 
   @@index([createdAt])
   @@index([deletedAt])
   @@index([role])
   @@map("users")
+}
+
+model UserSettings {
+  id                              String   @id @default(uuid()) @db.Uuid
+  userId                          String   @unique @map("user_id") @db.Uuid
+  dailySummaryEnabled             Boolean  @default(true) @map("daily_summary_enabled")
+  dailySummaryTime                String   @default("08:00") @map("daily_summary_time") @db.VarChar(5)
+  endOfDayReminderEnabled         Boolean  @default(true) @map("end_of_day_reminder_enabled")
+  endOfDayReminderTime            String   @default("20:00") @map("end_of_day_reminder_time") @db.VarChar(5)
+  smartSearchEnabled              Boolean  @default(true) @map("smart_search_enabled")
+  calendarInsightsEnabled         Boolean  @default(true) @map("calendar_insights_enabled")
+  inAppNotificationsEnabled       Boolean  @default(true) @map("in_app_notifications_enabled")
+  emailNotificationsEnabled       Boolean  @default(false) @map("email_notifications_enabled")
+  quietHoursEnabled               Boolean  @default(false) @map("quiet_hours_enabled")
+  quietHoursStart                 String?  @map("quiet_hours_start") @db.VarChar(5)
+  quietHoursEnd                   String?  @map("quiet_hours_end") @db.VarChar(5)
+  clinicalDataSharingEnabled      Boolean  @default(false) @map("clinical_data_sharing_enabled")
+  reportExportConfirmationEnabled Boolean  @default(true) @map("report_export_confirmation_enabled")
+  deviceProtectionEnabled         Boolean  @default(true) @map("device_protection_enabled")
+  permissionReviewEnabled         Boolean  @default(true) @map("permission_review_enabled")
+  createdAt                       DateTime @default(now()) @map("created_at")
+  updatedAt                       DateTime @updatedAt @map("updated_at")
+  user                            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
+  @@map("user_settings")
+}
+
+model CommunityPost {
+  id            String            @id @default(uuid()) @db.Uuid
+  userId        String            @map("user_id") @db.Uuid
+  type          CommunityPostType @default(FEED)
+  content       String
+  tags          String[]          @default([])
+  likesCount    Int               @default(0) @map("likes_count")
+  commentsCount Int               @default(0) @map("comments_count")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
+  @@map("community_posts")
 }
 
 model RefreshToken {
@@ -180,6 +232,9 @@ model DailyRecord {
   userId               String            @map("user_id") @db.Uuid
   recordDate           DateTime          @default(now()) @map("record_date") @db.Date
   painLevel            Int               @default(0) @map("pain_level")
+  painType             String?           @map("pain_type") @db.VarChar(120)
+  painAreas            String[]          @default([]) @map("pain_areas")
+  painTriggers         String[]          @default([]) @map("pain_triggers")
   fatigueLevel         Int               @map("fatigue_level")
   sleepHours           Float?            @map("sleep_hours")
   sleepQuality         Int?              @map("sleep_quality")
@@ -200,8 +255,8 @@ model DailyRecord {
   aiInsights           AIInsight[]
   aiPredictions        AiPrediction[]
 
-  @@unique([userId, recordDate])
   @@index([userId, recordDate])
+  @@index([userId, createdAt])
   @@map("daily_records")
 }
 

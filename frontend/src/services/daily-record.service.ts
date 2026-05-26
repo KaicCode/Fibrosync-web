@@ -22,6 +22,7 @@ export interface DailyRecord {
 }
 
 export interface CreateDailyRecordDto {
+  recordDate?: string
   painLevel?: number
   sleepHours?: number
   sleepQuality?: number
@@ -42,9 +43,18 @@ interface DailyRecordListResponse {
   items: DailyRecord[]
 }
 
+export interface DailyRecordFilters {
+  dateFrom?: string
+  dateTo?: string
+  page?: number
+  limit?: number
+}
+
 export const dailyRecordService = {
-  getDailyRecords: async (): Promise<DailyRecord[]> => {
-    const response = await apiCall<DailyRecordListResponse>('get', '/daily-records')
+  getDailyRecords: async (filters?: DailyRecordFilters): Promise<DailyRecord[]> => {
+    const response = await apiCall<DailyRecordListResponse>('get', '/daily-records', undefined, {
+      params: filters,
+    })
     return response.items
   },
 

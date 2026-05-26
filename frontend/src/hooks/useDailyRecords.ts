@@ -1,13 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dailyRecordService } from '../services/daily-record.service';
-import type { CreateDailyRecordDto } from '../services/daily-record.service';
+import type {
+  CreateDailyRecordDto,
+  DailyRecordFilters,
+} from '../services/daily-record.service';
 
-export function useDailyRecords() {
+export function useDailyRecords(filters?: DailyRecordFilters) {
   const queryClient = useQueryClient();
 
   const recordsQuery = useQuery({
-    queryKey: ['dailyRecords'],
-    queryFn: dailyRecordService.getDailyRecords,
+    queryKey: [
+      'dailyRecords',
+      filters?.dateFrom ?? null,
+      filters?.dateTo ?? null,
+      filters?.page ?? 1,
+      filters?.limit ?? null,
+    ],
+    queryFn: () => dailyRecordService.getDailyRecords(filters),
   });
 
   const createMutation = useMutation({

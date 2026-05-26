@@ -4,7 +4,7 @@ export const validationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'test', 'production')
     .default('development'),
-  PORT: Joi.number().port().default(3000),
+  PORT: Joi.number().port().default(3100),
   API_PREFIX: Joi.string().default('api/v1'),
   APP_NAME: Joi.string().default('FibroSync API'),
   APP_VERSION: Joi.string().default('1.0.0'),

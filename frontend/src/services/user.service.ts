@@ -3,12 +3,18 @@ import { api } from './api';
 export interface UserProfile {
   id: string;
   email: string;
-  name: string;
+  fullName: string;
+  birthDate?: string | null;
+  gender?: string | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  countryCode?: string | null;
+  timezone: string;
   role: string;
-  dateOfBirth?: string;
-  gender?: string;
-  phone?: string;
-  address?: string;
+  onboardingCompleted: boolean;
+  lastLoginAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const userService = {

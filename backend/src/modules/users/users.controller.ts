@@ -14,6 +14,7 @@ import { Roles } from '@/common/decorators/roles.decorator';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserQueryDto } from './dto/user-query.dto';
+import { UpdateUserSettingsDto } from './dto/update-user-settings.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth('access-token')
@@ -34,6 +35,21 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ): Promise<unknown> {
     return this.usersService.updateProfile(userId, dto);
+  }
+
+  @Get('me/settings')
+  @ApiOperation({ summary: 'Returns the settings of the authenticated user.' })
+  getMySettings(@CurrentUser('sub') userId: string): Promise<unknown> {
+    return this.usersService.getSettings(userId);
+  }
+
+  @Patch('me/settings')
+  @ApiOperation({ summary: 'Updates the settings of the authenticated user.' })
+  updateMySettings(
+    @CurrentUser('sub') userId: string,
+    @Body() dto: UpdateUserSettingsDto,
+  ): Promise<unknown> {
+    return this.usersService.updateSettings(userId, dto);
   }
 
   @Get()

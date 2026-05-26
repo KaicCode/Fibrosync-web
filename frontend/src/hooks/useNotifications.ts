@@ -1,12 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationService } from '../services/notification.service';
 
-export function useNotifications() {
+export function useNotifications(
+  params?: {
+    limit?: number;
+    page?: number;
+    unreadOnly?: boolean;
+  },
+) {
   const queryClient = useQueryClient();
 
   const notificationsQuery = useQuery({
-    queryKey: ['notifications'],
-    queryFn: notificationService.getNotifications,
+    queryKey: ['notifications', params?.page ?? 1, params?.limit ?? null, params?.unreadOnly ?? false],
+    queryFn: () => notificationService.getNotifications(params),
   });
 
   const markAsReadMutation = useMutation({
@@ -21,7 +27,9 @@ export function useNotifications() {
   return {
     notifications: notificationsQuery.data || [],
     isLoading: notificationsQuery.isLoading,
+    error: notificationsQuery.error,
     unreadCount,
     markAsRead: markAsReadMutation.mutateAsync,
+    isMarkingAsRead: markAsReadMutation.isPending,
   };
 }

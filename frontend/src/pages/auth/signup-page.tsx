@@ -49,6 +49,13 @@ const benefits = [
 
 const passwordRules = ['8 caracteres', '1 letra maiúscula', '1 número', '1 caractere especial']
 
+const countryCodeByLabel: Record<string, string> = {
+  Argentina: 'AR',
+  Brasil: 'BR',
+  Chile: 'CL',
+  Portugal: 'PT',
+}
+
 type SignupFormValues = {
   name: string
   birthDate: string
@@ -228,6 +235,9 @@ export function SignupPage() {
       return
     }
 
+    const normalizedHeightCm =
+      parsedHeight === undefined ? undefined : parsedHeight <= 3 ? parsedHeight * 100 : parsedHeight
+
     const parsedWeight = parseMetricValue(formValues.weight)
     if (parsedWeight === null) {
       setErrorMessage('Peso invalido. Use algo como 65.')
@@ -237,12 +247,16 @@ export function SignupPage() {
     setIsSubmitting(true)
 
     try {
-      const authResponse = await signup({
+      await signup({
         fullName: formValues.name.trim(),
         email: formValues.email.trim(),
         password: formValues.password,
         birthDate: parsedBirthDate ?? undefined,
         gender: formValues.gender || undefined,
+        heightCm: normalizedHeightCm ?? undefined,
+        weightKg: parsedWeight ?? undefined,
+        countryCode: countryCodeByLabel[formValues.country] ?? 'BR',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       })
 
       // Session is stored by the useAuth hook's onSuccess callback

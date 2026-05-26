@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { normalizeDateOnly } from '@/common/utils/date.util';
 import {
@@ -14,16 +10,7 @@ import { CrisisPredictionService } from '@/modules/crisis-prediction/crisis-pred
 import type { CreateDailyRecordDto } from './dto/create-daily-record.dto';
 import type { DailyRecordQueryDto } from './dto/daily-record-query.dto';
 import type { UpdateDailyRecordDto } from './dto/update-daily-record.dto';
-import {
-  type DailyRecordDetails,
-  dailyRecordResponseSelect,
-} from './daily-records.select';
-
-type PainMetadata = {
-  painType?: string;
-  painAreas: string[];
-  painTriggers: string[];
-};
+import { type DailyRecordDetails, dailyRecordResponseSelect } from './daily-records.select';
 
 @Injectable()
 export class DailyRecordsService {
@@ -33,8 +20,9 @@ export class DailyRecordsService {
   ) {}
 
   async create(userId: string, dto: CreateDailyRecordDto): Promise<unknown> {
-    const recordDate = normalizeDateOnly(new Date());
-    await this.ensureNoDuplicateRecord(userId, recordDate);
+    const recordDate = dto.recordDate
+      ? normalizeDateOnly(dto.recordDate)
+      : normalizeDateOnly(new Date());
 
     const record = await this.prisma.dailyRecord.create({
       data: {
@@ -43,6 +31,9 @@ export class DailyRecordsService {
         painLevel:
           dto.painLevel ??
           this.inferPainLevel(dto.fatigueLevel, dto.stressLevel, dto.mood),
+        painType: this.normalizeText(dto.painType),
+        painAreas: this.normalizeStringArray(dto.painAreas),
+        painTriggers: this.normalizeStringArray(dto.painTriggers),
         fatigueLevel: dto.fatigueLevel,
         sleepHours: dto.sleepHours,
         sleepQuality: dto.sleepQuality,
@@ -53,7 +44,6 @@ export class DailyRecordsService {
         medicationAdherence: dto.medicationTaken,
         weatherFeeling: dto.weatherFeeling?.trim(),
         notes: dto.notes?.trim(),
-        metadata: this.resolvePainMetadata(dto),
       },
       select: {
         id: true,
@@ -90,9 +80,7 @@ export class DailyRecordsService {
       this.prisma.dailyRecord.findMany({
         where,
         select: dailyRecordResponseSelect,
-        orderBy: {
-          recordDate: 'desc',
-        },
+        orderBy: [{ recordDate: 'desc' }, { createdAt: 'desc' }],
         skip,
         take: limit,
       }),
@@ -137,7 +125,6 @@ export class DailyRecordsService {
         fatigueLevel: true,
         stressLevel: true,
         moodLevel: true,
-        metadata: true,
       },
     });
 
@@ -154,8 +141,24 @@ export class DailyRecordsService {
         id,
       },
       data: {
+        recordDate:
+          dto.recordDate === undefined
+            ? undefined
+            : normalizeDateOnly(dto.recordDate),
         painLevel:
           dto.painLevel ?? this.inferPainLevel(fatigueLevel, stressLevel, mood),
+        painType:
+          dto.painType === undefined
+            ? undefined
+            : this.normalizeText(dto.painType) ?? null,
+        painAreas:
+          dto.painAreas === undefined
+            ? undefined
+            : this.normalizeStringArray(dto.painAreas),
+        painTriggers:
+          dto.painTriggers === undefined
+            ? undefined
+            : this.normalizeStringArray(dto.painTriggers),
         fatigueLevel: dto.fatigueLevel,
         sleepHours: dto.sleepHours,
         sleepQuality: dto.sleepQuality,
@@ -166,7 +169,6 @@ export class DailyRecordsService {
         medicationAdherence: dto.medicationTaken,
         weatherFeeling: dto.weatherFeeling?.trim(),
         notes: dto.notes?.trim(),
-        metadata: this.resolvePainMetadata(dto, existingRecord.metadata),
       },
     });
 
@@ -188,33 +190,6 @@ export class DailyRecordsService {
     };
   }
 
-  private async ensureNoDuplicateRecord(
-    userId: string,
-    recordDate: Date,
-    excludeId?: string,
-  ): Promise<void> {
-    const existing = await this.prisma.dailyRecord.findFirst({
-      where: {
-        userId,
-        recordDate,
-        id: excludeId
-          ? {
-              not: excludeId,
-            }
-          : undefined,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (existing) {
-      throw new ConflictException(
-        'A daily record for this date already exists.',
-      );
-    }
-  }
-
   private inferPainLevel(
     fatigueLevel: number,
     stressLevel: number,
@@ -224,65 +199,11 @@ export class DailyRecordsService {
     return Math.min(Math.max(inferred, 0), 10);
   }
 
-  private resolvePainMetadata(
-    dto: Pick<CreateDailyRecordDto, 'painType' | 'painAreas' | 'painTriggers'>,
-    existingMetadata?: Prisma.JsonValue | null,
-  ): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
-    const existing = this.parsePainMetadata(existingMetadata);
-
-    const painType =
-      dto.painType === undefined
-        ? existing.painType
-        : this.normalizeText(dto.painType);
-    const painAreas =
-      dto.painAreas === undefined
-        ? existing.painAreas
-        : this.normalizeStringArray(dto.painAreas);
-    const painTriggers =
-      dto.painTriggers === undefined
-        ? existing.painTriggers
-        : this.normalizeStringArray(dto.painTriggers);
-
-    if (!painType && painAreas.length === 0 && painTriggers.length === 0) {
-      return existingMetadata === undefined ? undefined : Prisma.JsonNull;
-    }
-
-    return {
-      painType,
-      painAreas,
-      painTriggers,
-    } satisfies PainMetadata;
-  }
-
-  private parsePainMetadata(metadata?: Prisma.JsonValue | null): PainMetadata {
-    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
-      return {
-        painAreas: [],
-        painTriggers: [],
-      };
-    }
-
-    const source = metadata as Record<string, unknown>;
-
-    return {
-      painType:
-        typeof source.painType === 'string' ? source.painType : undefined,
-      painAreas: this.readStringArray(source.painAreas),
-      painTriggers: this.readStringArray(source.painTriggers),
-    };
-  }
-
-  private readStringArray(value: unknown): string[] {
-    if (!Array.isArray(value)) {
+  private normalizeStringArray(values?: string[]): string[] {
+    if (!values || values.length === 0) {
       return [];
     }
 
-    return this.normalizeStringArray(
-      value.filter((item): item is string => typeof item === 'string'),
-    );
-  }
-
-  private normalizeStringArray(values: string[]): string[] {
     return Array.from(
       new Set(
         values
@@ -299,7 +220,7 @@ export class DailyRecordsService {
 
   private mapRecord(record: DailyRecordDetails): {
     id: string;
-    recordDate: Date;
+    recordDate: string;
     painLevel: number;
     sleepHours: number | null;
     sleepQuality: number | null;
@@ -317,11 +238,9 @@ export class DailyRecordsService {
     createdAt: Date;
     updatedAt: Date;
   } {
-    const painMetadata = this.parsePainMetadata(record.metadata);
-
     return {
       id: record.id,
-      recordDate: record.recordDate,
+      recordDate: this.formatDateOnly(record.recordDate),
       painLevel: record.painLevel,
       sleepHours: record.sleepHours,
       sleepQuality: record.sleepQuality,
@@ -333,11 +252,15 @@ export class DailyRecordsService {
       hydration: record.waterIntakeLiters,
       weatherFeeling: record.weatherFeeling,
       notes: record.notes,
-      painType: painMetadata.painType ?? null,
-      painAreas: painMetadata.painAreas,
-      painTriggers: painMetadata.painTriggers,
+      painType: record.painType,
+      painAreas: record.painAreas,
+      painTriggers: record.painTriggers,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };
+  }
+
+  private formatDateOnly(date: Date): string {
+    return normalizeDateOnly(date).toISOString().slice(0, 10);
   }
 }

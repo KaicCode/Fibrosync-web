@@ -1,32 +1,56 @@
 import { useState } from 'react'
-import { HeartPulse, Save, Sparkles, LoaderCircle } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { CalendarDays, HeartPulse, Save, Sparkles, LoaderCircle } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { BodyMap } from '@/components/body-map'
 import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
 import { usePageTitle } from '@/hooks/use-page-title'
-import { ApiError } from '@/lib/api-client'
 import { bodyPointLabels, painTriggers, painTypes } from '@/services/mock-data'
 import { useAppStore } from '@/store/app-store'
 import { useDailyRecords } from '@/hooks/useDailyRecords'
+
+function pad(value: number): string {
+  return value.toString().padStart(2, '0')
+}
+
+function formatDateKey(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function parseDateKey(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function resolveInitialRecordDate(value: string | null): string {
+  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value) && formatDateKey(parseDateKey(value)) === value) {
+    return value
+  }
+
+  return formatDateKey(new Date())
+}
 
 export function PainLogPage() {
   usePageTitle('Registro de Dor')
 
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const painDraft = useAppStore((state) => state.painDraft)
   const updatePainDraft = useAppStore((state) => state.updatePainDraft)
   const resetPainDraft = useAppStore((state) => state.resetPainDraft)
   const [selectedTriggers, setSelectedTriggers] = useState<string[]>([])
+  const [recordDate, setRecordDate] = useState(() => resolveInitialRecordDate(searchParams.get('date')))
   const { createRecord, isCreating } = useDailyRecords()
 
-  const todayLabel = new Intl.DateTimeFormat('pt-BR', {
+  const selectedDateLabel = new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: 'long',
-  }).format(new Date())
+    year: 'numeric',
+  }).format(parseDateKey(recordDate))
 
   const togglePoint = (point: keyof typeof bodyPointLabels) => {
     const selected = painDraft.selectedPoints.includes(point)
@@ -49,6 +73,7 @@ export function PainLogPage() {
 
     try {
       await createRecord({
+        recordDate,
         painLevel,
         fatigueLevel: painLevel,
         stressLevel: painLevel,
@@ -65,13 +90,8 @@ export function PainLogPage() {
       resetPainDraft()
       setSelectedTriggers([])
       window.alert('Registro de dor salvo com sucesso.')
-      navigate('/app')
+      navigate(`/app/calendar?date=${recordDate}`)
     } catch (error) {
-      if (error instanceof ApiError && error.statusCode === 409) {
-        window.alert('Já existe um registro para hoje.')
-        return
-      }
-
       if (error instanceof Error) {
         window.alert(`Erro ao salvar: ${error.message}`)
       } else {
@@ -86,7 +106,7 @@ export function PainLogPage() {
         eyebrow="Registro diário"
         title="Mapeie o seu corpo com precisão gentil"
         description="Selecione áreas de dor, intensidade e gatilhos percebidos para construir um histórico mais inteligente."
-        actions={<Badge variant="default">Hoje, {todayLabel}</Badge>}
+        actions={<Badge variant="default">{selectedDateLabel}</Badge>}
       />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(18rem,0.98fr)]">
@@ -112,6 +132,26 @@ export function PainLogPage() {
         </div>
 
         <div className="space-y-5">
+          <div className="card-surface p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                <CalendarDays className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Data do registro</p>
+                <p className="text-sm text-muted-foreground">
+                  Salve a dor no dia correto para ela aparecer no calendario.
+                </p>
+              </div>
+            </div>
+            <Input
+              type="date"
+              value={recordDate}
+              max={formatDateKey(new Date())}
+              onChange={(event) => setRecordDate(event.target.value)}
+            />
+          </div>
+
           <div className="card-surface p-5">
             <div className="mb-5 flex items-center justify-between">
               <div>

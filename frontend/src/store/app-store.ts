@@ -4,16 +4,21 @@ import { persist } from 'zustand/middleware'
 export type AppRole = 'patient' | 'medical' | 'admin'
 
 export type AuthUser = {
-  id: number
+  id: string
   email: string
   name: string
+  fullName?: string
   birthDate?: string | null
   gender?: string | null
-  height?: string | null
-  weight?: string | null
-  country: string
+  heightCm?: number | null
+  weightKg?: number | null
+  countryCode?: string | null
+  timezone?: string | null
   role: 'USER' | 'ADMIN'
+  onboardingCompleted?: boolean
+  lastLoginAt?: string | null
   createdAt?: string
+  updatedAt?: string
 }
 
 export type AuthSession = {

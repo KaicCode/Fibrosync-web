@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -36,9 +35,6 @@ export class DailyRecordsController {
   @Post()
   @ApiOperation({ summary: 'Creates a daily patient record.' })
   @ApiCreatedResponse({ type: DailyRecordResponseDto })
-  @ApiConflictResponse({
-    description: 'A daily record for this date already exists.',
-  })
   create(
     @CurrentUser('sub') userId: string,
     @Body() dto: CreateDailyRecordDto,

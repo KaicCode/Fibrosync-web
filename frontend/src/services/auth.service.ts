@@ -1,4 +1,5 @@
 import { apiCall } from '@/lib/api-client';
+import type { UserProfile } from './user.service';
 
 export interface LoginDto {
   email: string;
@@ -11,6 +12,10 @@ export interface SignupDto {
   password: string;
   birthDate?: string;
   gender?: string;
+  heightCm?: number;
+  weightKg?: number;
+  countryCode?: string;
+  timezone?: string;
 }
 
 export interface AuthResponse {
@@ -19,12 +24,7 @@ export interface AuthResponse {
   tokenType: string;
   accessTokenTtl: string;
   refreshTokenTtl: string;
-  user: {
-    id: string;
-    email: string;
-    fullName: string;
-    role: string;
-  };
+  user: UserProfile;
 }
 
 export const authService = {

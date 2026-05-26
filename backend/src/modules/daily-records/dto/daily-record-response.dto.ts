@@ -4,8 +4,8 @@ export class DailyRecordResponseDto {
   @ApiProperty()
   id!: string;
 
-  @ApiProperty({ format: 'date-time' })
-  recordDate!: Date;
+  @ApiProperty({ format: 'date' })
+  recordDate!: string;
 
   @ApiProperty()
   painLevel!: number;

@@ -15,6 +15,7 @@ import { ResponseTransformInterceptor } from './common/interceptors/response-tra
 import { DatabaseModule } from './database/database.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CommunityPostsModule } from './modules/community-posts/community-posts.module';
 import { CrisisPredictionModule } from './modules/crisis-prediction/crisis-prediction.module';
 import { DailyRecordsModule } from './modules/daily-records/daily-records.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -34,6 +35,7 @@ import { UsersModule } from './modules/users/users.module';
     DatabaseModule,
     AuthModule,
     UsersModule,
+    CommunityPostsModule,
     SymptomsModule,
     DailyRecordsModule,
     CrisisPredictionModule,

@@ -24,13 +24,13 @@ export class UpdateProfileDto {
   @ApiPropertyOptional({ format: 'date' })
   @IsOptional()
   @IsDateString()
-  birthDate?: string;
+  birthDate?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(50)
-  gender?: string;
+  gender?: string | null;
 
   @ApiPropertyOptional()
   @Type(() => Number)
@@ -38,7 +38,7 @@ export class UpdateProfileDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Max(300)
-  heightCm?: number;
+  heightCm?: number | null;
 
   @ApiPropertyOptional()
   @Type(() => Number)
@@ -46,13 +46,13 @@ export class UpdateProfileDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Max(500)
-  weightKg?: number;
+  weightKg?: number | null;
 
   @ApiPropertyOptional({ minLength: 2, maxLength: 2 })
   @IsOptional()
   @IsString()
   @Length(2, 2)
-  countryCode?: string;
+  countryCode?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

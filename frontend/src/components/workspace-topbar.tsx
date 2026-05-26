@@ -3,7 +3,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useUser } from '@/hooks/useUser'
 import { workspaceConfig, type WorkspaceVariant } from '@/lib/navigation'
+import {
+  resolveCountryLabel,
+  resolveUserAvatar,
+  resolveUserDisplayName,
+  resolveUserInitials,
+} from '@/lib/user-profile'
+import { useAppStore } from '@/store/app-store'
 
 type WorkspaceTopbarProps = {
   variant: WorkspaceVariant
@@ -15,6 +23,17 @@ export function WorkspaceTopbar({
   onOpenSidebar,
 }: WorkspaceTopbarProps) {
   const config = workspaceConfig[variant]
+  const authSession = useAppStore((state) => state.authSession)
+  const { user } = useUser()
+  const currentUser = user ?? authSession?.user ?? null
+  const displayName = resolveUserDisplayName(currentUser)
+  const userSubtitle = currentUser
+    ? currentUser.countryCode
+      ? `${resolveCountryLabel(currentUser.countryCode)}`
+      : currentUser.role === 'ADMIN'
+        ? 'Administrador'
+        : 'Paciente'
+    : 'Paciente'
 
   return (
     <header className="sticky top-0 z-20 pt-1">
@@ -61,12 +80,12 @@ export function WorkspaceTopbar({
           </Button>
           <div className="hidden items-center gap-3 rounded-full border border-white/80 bg-white/88 px-2 py-1.5 shadow-soft lg:flex">
             <Avatar className="h-9 w-9">
-              <AvatarImage src="https://i.pravatar.cc/120?img=44" alt="Juliana Santos" />
-              <AvatarFallback>JS</AvatarFallback>
+              <AvatarImage src={resolveUserAvatar(currentUser)} alt={displayName} />
+              <AvatarFallback>{resolveUserInitials(currentUser)}</AvatarFallback>
             </Avatar>
             <div className="pr-2">
-              <p className="text-sm font-semibold text-foreground">Juliana Santos</p>
-              <p className="text-xs text-muted-foreground">Plano Premium Care</p>
+              <p className="text-sm font-semibold text-foreground">{displayName}</p>
+              <p className="text-xs text-muted-foreground">{userSubtitle}</p>
             </div>
           </div>
         </div>

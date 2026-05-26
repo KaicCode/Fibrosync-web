@@ -213,9 +213,7 @@ export class AiService {
             },
           },
           select: dailyRecordPredictionContextSelect,
-          orderBy: {
-            recordDate: 'desc',
-          },
+          orderBy: [{ recordDate: 'desc' }, { createdAt: 'desc' }],
         }),
         this.prisma.symptomSignal.findMany({
           where: {
@@ -665,9 +663,7 @@ export class AiService {
           },
         },
       },
-      orderBy: {
-        recordDate: 'desc',
-      },
+      orderBy: [{ recordDate: 'desc' }, { createdAt: 'desc' }],
       take: 7,
     });
 
