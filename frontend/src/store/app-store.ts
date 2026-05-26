@@ -42,10 +42,10 @@ type AppStore = {
 }
 
 const initialPainDraft: PainDraft = {
-  intensity: 6,
-  painType: 'Pontadas',
-  note: 'A dor aumentou no fim da tarde depois de ficar muito tempo sentada.',
-  selectedPoints: ['ombros', 'lombar', 'quadril'],
+  intensity: 0,
+  painType: '',
+  note: '',
+  selectedPoints: [],
 }
 
 export const useAppStore = create<AppStore>()(

@@ -1,8 +1,12 @@
 import axios from 'axios'
-import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
+import type {
+  AxiosInstance,
+  AxiosRequestConfig,
+  InternalAxiosRequestConfig,
+} from 'axios'
 import { useAppStore } from '@/store/app-store'
 
-const API_URL = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:3000/api'
+const API_URL = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:3000/api/v1'
 
 // Criar instância do Axios
 export const apiClient: AxiosInstance = axios.create({
@@ -56,13 +60,19 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config
 
     // Se é erro 401 e ainda não tentou refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/refresh')
+    ) {
       if (isRefreshing) {
         // Se já está fazendo refresh, aguardar na fila
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         })
           .then((token) => {
+            originalRequest.headers = originalRequest.headers ?? {}
             originalRequest.headers.Authorization = `Bearer ${token}`
             return apiClient(originalRequest)
           })
@@ -83,24 +93,35 @@ apiClient.interceptors.response.use(
           throw new Error('No refresh token available')
         }
 
+        const response = await axios.post<
+          ApiResponse<{
+            accessToken: string
+            refreshToken: string
+          }>
+        >(
+          `${API_URL}/auth/refresh`,
+          undefined,
+          {
+            headers: {
+              Authorization: `Bearer ${refreshToken}`,
+            },
+          },
+        )
 
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
-          refreshToken,
-        })
-
-        const { access_token, refresh_token } = response.data.data
+        const { accessToken, refreshToken: nextRefreshToken } = response.data.data
 
         // Salva em ambos os formatos para compatibilidade
-        localStorage.setItem('accessToken', access_token)
-        localStorage.setItem('refreshToken', refresh_token)
-        localStorage.setItem('access_token', access_token)
-        localStorage.setItem('refresh_token', refresh_token)
+        localStorage.setItem('accessToken', accessToken)
+        localStorage.setItem('refreshToken', nextRefreshToken)
+        localStorage.setItem('access_token', accessToken)
+        localStorage.setItem('refresh_token', nextRefreshToken)
 
-        apiClient.defaults.headers.common.Authorization = `Bearer ${access_token}`
+        apiClient.defaults.headers.common.Authorization = `Bearer ${accessToken}`
 
-        originalRequest.headers.Authorization = `Bearer ${access_token}`
+        originalRequest.headers = originalRequest.headers ?? {}
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`
 
-        processQueue(null, access_token)
+        processQueue(null, accessToken)
 
         return apiClient(originalRequest)
       } catch (err) {
@@ -114,7 +135,7 @@ apiClient.interceptors.response.use(
 
         useAppStore.getState().clearAuthSession()
 
-        window.location.href = '/login'
+        window.location.href = '/'
 
         return Promise.reject(err)
       }
@@ -127,30 +148,65 @@ apiClient.interceptors.response.use(
 // Tipo para respostas da API
 export type ApiResponse<T> = {
   success: boolean
-  message: string
   data: T
-  statusCode: number
+  error?: string
+  message?: string
+  details?: unknown
+  timestamp?: string
+  path?: string
+}
+
+export class ApiError extends Error {
+  statusCode?: number
+  details?: unknown
+
+  constructor(message: string, statusCode?: number, details?: unknown) {
+    super(message)
+    this.name = 'ApiError'
+    this.statusCode = statusCode
+    this.details = details
+  }
 }
 
 // Helper para requisições
 export const apiCall = async <T,>(
   method: 'get' | 'post' | 'put' | 'patch' | 'delete',
   endpoint: string,
-  data?: any,
-  config?: any,
+  data?: unknown,
+  config?: AxiosRequestConfig,
 ): Promise<T> => {
   try {
-    const response = await apiClient[method]<ApiResponse<T>>(endpoint, data, config)
+    const requestConfig: AxiosRequestConfig = {
+      method,
+      url: endpoint,
+      ...config,
+    }
+
+    if (data !== undefined) {
+      requestConfig.data = data
+    }
+
+    const response = await apiClient.request<ApiResponse<T>>(requestConfig)
 
     if (!response.data.success) {
-      throw new Error(response.data.message || 'API Error')
+      throw new ApiError(
+        response.data.error || response.data.message || 'API Error',
+      )
     }
 
     return response.data.data
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      const message = error.response?.data?.message || error.message
-      throw new Error(message)
+      const message =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message
+
+      throw new ApiError(
+        message,
+        error.response?.status,
+        error.response?.data?.details,
+      )
     }
     throw error
   }

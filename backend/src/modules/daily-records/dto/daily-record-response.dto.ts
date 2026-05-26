@@ -7,6 +7,9 @@ export class DailyRecordResponseDto {
   @ApiProperty({ format: 'date-time' })
   recordDate!: Date;
 
+  @ApiProperty()
+  painLevel!: number;
+
   @ApiPropertyOptional()
   sleepHours?: number | null;
 
@@ -36,6 +39,15 @@ export class DailyRecordResponseDto {
 
   @ApiPropertyOptional()
   notes?: string | null;
+
+  @ApiPropertyOptional()
+  painType?: string | null;
+
+  @ApiPropertyOptional({ type: [String] })
+  painAreas?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  painTriggers?: string[];
 
   @ApiProperty({ format: 'date-time' })
   createdAt!: Date;

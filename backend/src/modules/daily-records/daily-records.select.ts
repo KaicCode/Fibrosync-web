@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 export const dailyRecordResponseSelect = {
   id: true,
   recordDate: true,
+  painLevel: true,
   sleepHours: true,
   sleepQuality: true,
   fatigueLevel: true,
@@ -13,6 +14,7 @@ export const dailyRecordResponseSelect = {
   waterIntakeLiters: true,
   weatherFeeling: true,
   notes: true,
+  metadata: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.DailyRecordSelect;

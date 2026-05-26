@@ -21,7 +21,7 @@ export function LoginPage() {
     e.preventDefault()
     try {
       await login({ email, password })
-      navigate('/patient')
+      navigate('/app')
     } catch (error) {
       console.error('Login failed:', error)
     }

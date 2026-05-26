@@ -1,4 +1,4 @@
-import { api } from './api';
+import { apiCall } from '@/lib/api-client';
 
 export interface LoginDto {
   email: string;
@@ -14,33 +14,36 @@ export interface SignupDto {
 }
 
 export interface AuthResponse {
-  access_token: string;
-  refresh_token: string;
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  accessTokenTtl: string;
+  refreshTokenTtl: string;
   user: {
     id: string;
     email: string;
-    name: string;
+    fullName: string;
     role: string;
   };
 }
 
 export const authService = {
   login: async (data: LoginDto): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/login', data);
-    return response.data;
+    return apiCall<AuthResponse>('post', '/auth/login', data);
   },
 
   signup: async (data: SignupDto): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/signup', data);
-    return response.data;
+    return apiCall<AuthResponse>('post', '/auth/signup', data);
   },
 
   logout: async (): Promise<void> => {
     try {
-      await api.post('/auth/logout');
+      await apiCall<void>('post', '/auth/logout');
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
     }
   },
 };

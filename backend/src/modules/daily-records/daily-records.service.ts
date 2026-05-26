@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { normalizeDateOnly } from '@/common/utils/date.util';
 import {
   buildPaginationMeta,
@@ -18,6 +18,12 @@ import {
   type DailyRecordDetails,
   dailyRecordResponseSelect,
 } from './daily-records.select';
+
+type PainMetadata = {
+  painType?: string;
+  painAreas: string[];
+  painTriggers: string[];
+};
 
 @Injectable()
 export class DailyRecordsService {
@@ -34,11 +40,9 @@ export class DailyRecordsService {
       data: {
         userId,
         recordDate,
-        painLevel: this.inferPainLevel(
-          dto.fatigueLevel,
-          dto.stressLevel,
-          dto.mood,
-        ),
+        painLevel:
+          dto.painLevel ??
+          this.inferPainLevel(dto.fatigueLevel, dto.stressLevel, dto.mood),
         fatigueLevel: dto.fatigueLevel,
         sleepHours: dto.sleepHours,
         sleepQuality: dto.sleepQuality,
@@ -49,6 +53,7 @@ export class DailyRecordsService {
         medicationAdherence: dto.medicationTaken,
         weatherFeeling: dto.weatherFeeling?.trim(),
         notes: dto.notes?.trim(),
+        metadata: this.resolvePainMetadata(dto),
       },
       select: {
         id: true,
@@ -128,9 +133,11 @@ export class DailyRecordsService {
       },
       select: {
         id: true,
+        painLevel: true,
         fatigueLevel: true,
         stressLevel: true,
         moodLevel: true,
+        metadata: true,
       },
     });
 
@@ -147,7 +154,8 @@ export class DailyRecordsService {
         id,
       },
       data: {
-        painLevel: this.inferPainLevel(fatigueLevel, stressLevel, mood),
+        painLevel:
+          dto.painLevel ?? this.inferPainLevel(fatigueLevel, stressLevel, mood),
         fatigueLevel: dto.fatigueLevel,
         sleepHours: dto.sleepHours,
         sleepQuality: dto.sleepQuality,
@@ -158,6 +166,7 @@ export class DailyRecordsService {
         medicationAdherence: dto.medicationTaken,
         weatherFeeling: dto.weatherFeeling?.trim(),
         notes: dto.notes?.trim(),
+        metadata: this.resolvePainMetadata(dto, existingRecord.metadata),
       },
     });
 
@@ -215,9 +224,83 @@ export class DailyRecordsService {
     return Math.min(Math.max(inferred, 0), 10);
   }
 
+  private resolvePainMetadata(
+    dto: Pick<CreateDailyRecordDto, 'painType' | 'painAreas' | 'painTriggers'>,
+    existingMetadata?: Prisma.JsonValue | null,
+  ): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
+    const existing = this.parsePainMetadata(existingMetadata);
+
+    const painType =
+      dto.painType === undefined
+        ? existing.painType
+        : this.normalizeText(dto.painType);
+    const painAreas =
+      dto.painAreas === undefined
+        ? existing.painAreas
+        : this.normalizeStringArray(dto.painAreas);
+    const painTriggers =
+      dto.painTriggers === undefined
+        ? existing.painTriggers
+        : this.normalizeStringArray(dto.painTriggers);
+
+    if (!painType && painAreas.length === 0 && painTriggers.length === 0) {
+      return existingMetadata === undefined ? undefined : Prisma.JsonNull;
+    }
+
+    return {
+      painType,
+      painAreas,
+      painTriggers,
+    } satisfies PainMetadata;
+  }
+
+  private parsePainMetadata(metadata?: Prisma.JsonValue | null): PainMetadata {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return {
+        painAreas: [],
+        painTriggers: [],
+      };
+    }
+
+    const source = metadata as Record<string, unknown>;
+
+    return {
+      painType:
+        typeof source.painType === 'string' ? source.painType : undefined,
+      painAreas: this.readStringArray(source.painAreas),
+      painTriggers: this.readStringArray(source.painTriggers),
+    };
+  }
+
+  private readStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return this.normalizeStringArray(
+      value.filter((item): item is string => typeof item === 'string'),
+    );
+  }
+
+  private normalizeStringArray(values: string[]): string[] {
+    return Array.from(
+      new Set(
+        values
+          .map((value) => this.normalizeText(value))
+          .filter((value): value is string => Boolean(value)),
+      ),
+    );
+  }
+
+  private normalizeText(value?: string): string | undefined {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : undefined;
+  }
+
   private mapRecord(record: DailyRecordDetails): {
     id: string;
     recordDate: Date;
+    painLevel: number;
     sleepHours: number | null;
     sleepQuality: number | null;
     fatigueLevel: number;
@@ -228,12 +311,18 @@ export class DailyRecordsService {
     hydration: number | null;
     weatherFeeling: string | null;
     notes: string | null;
+    painType: string | null;
+    painAreas: string[];
+    painTriggers: string[];
     createdAt: Date;
     updatedAt: Date;
   } {
+    const painMetadata = this.parsePainMetadata(record.metadata);
+
     return {
       id: record.id,
       recordDate: record.recordDate,
+      painLevel: record.painLevel,
       sleepHours: record.sleepHours,
       sleepQuality: record.sleepQuality,
       fatigueLevel: record.fatigueLevel,
@@ -244,6 +333,9 @@ export class DailyRecordsService {
       hydration: record.waterIntakeLiters,
       weatherFeeling: record.weatherFeeling,
       notes: record.notes,
+      painType: painMetadata.painType ?? null,
+      painAreas: painMetadata.painAreas,
+      painTriggers: painMetadata.painTriggers,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     };

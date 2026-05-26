@@ -1,45 +1,62 @@
-import { api } from './api';
+import { apiCall } from '@/lib/api-client'
 
 export interface DailyRecord {
-  id: string;
-  userId: string;
-  date: string;
-  painLevel: number;
-  fatigueLevel: number;
-  sleepQuality: number;
-  mood: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  recordDate: string
+  painLevel: number
+  sleepHours?: number | null
+  sleepQuality?: number | null
+  fatigueLevel: number
+  mood: number
+  stressLevel: number
+  physicalActivity?: number | null
+  medicationTaken?: boolean | null
+  hydration?: number | null
+  weatherFeeling?: string | null
+  notes?: string | null
+  painType?: string | null
+  painAreas: string[]
+  painTriggers: string[]
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CreateDailyRecordDto {
-  date: string;
-  painLevel: number;
-  fatigueLevel: number;
-  sleepQuality: number;
-  mood: string;
-  notes?: string;
-  symptoms?: string[];
+  painLevel?: number
+  sleepHours?: number
+  sleepQuality?: number
+  fatigueLevel: number
+  mood: number
+  stressLevel: number
+  physicalActivity?: number
+  hydration?: number
+  medicationTaken?: boolean
+  weatherFeeling?: string
+  notes?: string
+  painType?: string
+  painAreas?: string[]
+  painTriggers?: string[]
+}
+
+interface DailyRecordListResponse {
+  items: DailyRecord[]
 }
 
 export const dailyRecordService = {
   getDailyRecords: async (): Promise<DailyRecord[]> => {
-    const response = await api.get<DailyRecord[]>('/daily-records');
-    return response.data;
+    const response = await apiCall<DailyRecordListResponse>('get', '/daily-records')
+    return response.items
   },
 
   createDailyRecord: async (data: CreateDailyRecordDto): Promise<DailyRecord> => {
-    const response = await api.post<DailyRecord>('/daily-records', data);
-    return response.data;
+    return apiCall<DailyRecord>('post', '/daily-records', data)
   },
 
   updateDailyRecord: async (id: string, data: Partial<CreateDailyRecordDto>): Promise<DailyRecord> => {
-    const response = await api.patch<DailyRecord>(`/daily-records/${id}`, data);
-    return response.data;
+    return apiCall<DailyRecord>('patch', `/daily-records/${id}`, data)
   },
 
   deleteDailyRecord: async (id: string): Promise<void> => {
-    await api.delete(`/daily-records/${id}`);
+    await apiCall<void>('delete', `/daily-records/${id}`)
   },
-};
+}

@@ -31,32 +31,32 @@ export function DashboardPage() {
   const isLoading = isLoadingRecords || isLoadingLatest || isLoadingSymptoms
 
   // Compute stats from records
-  const latestRecord = records?.length ? records[records.length - 1] : null
+  const latestRecord = Array.isArray(records) && records.length ? records[0] : null
   const painLevel = latestRecord?.painLevel || 0
   const sleepQuality = latestRecord?.sleepQuality || 0
-  const mood = latestRecord?.mood || 'Sem dados'
-  const streak = records?.length || 0
+  const mood = latestRecord ? `${latestRecord.mood}/10` : 'Sem dados'
+  const streak = Array.isArray(records) ? records.length : 0
 
   // Format chart data
   const dashboardTrend = useMemo(() => {
-    if (!records) return []
-    return records.slice(-7).map((r) => ({
-      label: new Date(r.date).toLocaleDateString('pt-BR', { weekday: 'short' }),
+    if (!records || !Array.isArray(records)) return []
+    return records.slice(0, 7).reverse().map((r) => ({
+      label: new Date(r.recordDate).toLocaleDateString('pt-BR', { weekday: 'short' }),
       value: r.painLevel,
       comparison: r.fatigueLevel,
     }))
   }, [records])
 
   const sleepTrend = useMemo(() => {
-    if (!records) return []
-    return records.slice(-7).map((r) => ({
-      label: new Date(r.date).toLocaleDateString('pt-BR', { weekday: 'short' }),
-      value: r.sleepQuality,
+    if (!records || !Array.isArray(records)) return []
+    return records.slice(0, 7).reverse().map((r) => ({
+      label: new Date(r.recordDate).toLocaleDateString('pt-BR', { weekday: 'short' }),
+      value: r.sleepQuality ?? 0,
     }))
   }, [records])
 
   const topSymptoms = useMemo(() => {
-    if (!symptoms) return []
+    if (!symptoms || !Array.isArray(symptoms)) return []
     return symptoms.slice(0, 4).map((s) => ({
       label: s.name,
       value: s.intensity * 10, // Assuming 0-10 mapped to percentage 0-100
@@ -79,7 +79,7 @@ export function DashboardPage() {
         description="Acompanhe dor, sono, humor e sinais sutis do seu corpo com uma visão clara e delicada."
         actions={
           <Button asChild>
-            <Link to="/patient/pain-log">Novo registro</Link>
+            <Link to="/app/pain-log">Novo registro</Link>
           </Button>
         }
       />

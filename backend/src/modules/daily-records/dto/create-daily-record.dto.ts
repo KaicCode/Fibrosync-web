@@ -1,7 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsBoolean,
+  IsArray,
   IsInt,
   IsNumber,
   IsOptional,
@@ -12,6 +14,13 @@ import {
 } from 'class-validator';
 
 export class CreateDailyRecordDto {
+  @ApiPropertyOptional({ minimum: 0, maximum: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  painLevel?: number;
+
   @ApiPropertyOptional()
   @Type(() => Number)
   @IsOptional()
@@ -80,4 +89,26 @@ export class CreateDailyRecordDto {
   @IsString()
   @MaxLength(1000)
   notes?: string;
+
+  @ApiPropertyOptional({ maxLength: 120 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  painType?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(24)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  painAreas?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(24)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  painTriggers?: string[];
 }

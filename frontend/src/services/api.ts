@@ -12,7 +12,9 @@ export const api = axios.create({
 // Interceptor to add access token to requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
+    const token =
+      localStorage.getItem('accessToken') ??
+      localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,17 +28,31 @@ api.interceptors.request.use(
 // Interceptor to handle token refresh
 api.interceptors.response.use(
   (response) => {
+    // If the response contains the { success: true, data: ... } envelope, unwrap it
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      if (response.data.success) {
+        response.data = response.data.data;
+      } else {
+        return Promise.reject(new Error(response.data.message || 'API Error'));
+      }
+    }
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
 
     // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/refresh')
+    ) {
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
+        const refreshToken =
+          localStorage.getItem('refreshToken') ??
+          localStorage.getItem('refresh_token');
         
         if (!refreshToken) {
           // No refresh token, trigger logout event or simply throw
@@ -44,21 +60,25 @@ api.interceptors.response.use(
         }
 
         // Try to refresh token
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
+        const response = await axios.post(`${API_URL}/auth/refresh`, undefined, {
+          headers: {
+            Authorization: `Bearer ${refreshToken}`,
+          },
         });
 
-        const { access_token, refresh_token } = response.data;
+        const { accessToken, refreshToken: nextRefreshToken } = response.data.data;
 
         // Save new tokens
-        localStorage.setItem('accessToken', access_token);
-        if (refresh_token) {
-          localStorage.setItem('refreshToken', refresh_token);
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('access_token', accessToken);
+        if (nextRefreshToken) {
+          localStorage.setItem('refreshToken', nextRefreshToken);
+          localStorage.setItem('refresh_token', nextRefreshToken);
         }
 
         // Update authorization header
-        api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
         // Retry original request
         return api(originalRequest);
@@ -66,7 +86,9 @@ api.interceptors.response.use(
         // Refresh failed, clear tokens and redirect to login
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/';
         return Promise.reject(refreshError);
       }
     }

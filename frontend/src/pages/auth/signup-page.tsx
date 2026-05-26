@@ -23,7 +23,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useAuth } from '@/hooks/useAuth'
-import { useAppStore } from '@/store/app-store'
 
 const benefits = [
   {
@@ -146,7 +145,6 @@ export function SignupPage() {
 
   const navigate = useNavigate()
   const { signup, isSigningUp } = useAuth()
-  const setAuthSession = useAppStore((state) => state.setAuthSession)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [formValues, setFormValues] = useState<SignupFormValues>(initialFormValues)
@@ -247,11 +245,9 @@ export function SignupPage() {
         gender: formValues.gender || undefined,
       })
 
-      if (authResponse && authResponse.user) {
-         setAuthSession({ user: { ...authResponse.user, country: formValues.country } as any, token: authResponse.access_token })
-      }
+      // Session is stored by the useAuth hook's onSuccess callback
       setSuccessMessage('Conta criada com sucesso. Redirecionando...')
-      navigate('/patient')
+      navigate('/app')
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Nao foi possivel concluir o cadastro agora.',

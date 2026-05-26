@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
 import { usePageTitle } from '@/hooks/use-page-title'
+import { ApiError } from '@/lib/api-client'
 import { bodyPointLabels, painTriggers, painTypes } from '@/services/mock-data'
 import { useAppStore } from '@/store/app-store'
 import { useDailyRecords } from '@/hooks/useDailyRecords'
-import { useSymptoms } from '@/hooks/useSymptoms'
 
 export function PainLogPage() {
   usePageTitle('Registro de Dor')
@@ -19,9 +19,14 @@ export function PainLogPage() {
   const navigate = useNavigate()
   const painDraft = useAppStore((state) => state.painDraft)
   const updatePainDraft = useAppStore((state) => state.updatePainDraft)
-  const [selectedTriggers, setSelectedTriggers] = useState<string[]>(['Estresse', 'Clima frio'])
+  const resetPainDraft = useAppStore((state) => state.resetPainDraft)
+  const [selectedTriggers, setSelectedTriggers] = useState<string[]>([])
   const { createRecord, isCreating } = useDailyRecords()
-  const { addSymptom } = useSymptoms()
+
+  const todayLabel = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+  }).format(new Date())
 
   const togglePoint = (point: keyof typeof bodyPointLabels) => {
     const selected = painDraft.selectedPoints.includes(point)
@@ -39,35 +44,39 @@ export function PainLogPage() {
   }
 
   const handleSave = async () => {
+    const painLevel = Math.min(Math.max(painDraft.intensity, 0), 10)
+    const mood = Math.max(0, 10 - painLevel)
+
     try {
-      // 1. Create the daily record
-      const record = await createRecord({
-        date: new Date().toISOString(),
-        painLevel: painDraft.intensity,
-        fatigueLevel: 5, // Default for now
-        sleepQuality: 7, // Default for now
-        mood: 'Neutro', // Default for now
-        notes: painDraft.note,
-        symptoms: painDraft.selectedPoints,
+      await createRecord({
+        painLevel,
+        fatigueLevel: painLevel,
+        stressLevel: painLevel,
+        mood,
+        sleepQuality: 0,
+        notes: painDraft.note.trim() || undefined,
+        painType: painDraft.painType || undefined,
+        painAreas: painDraft.selectedPoints.map(
+          (point) => bodyPointLabels[point as keyof typeof bodyPointLabels] ?? point,
+        ),
+        painTriggers: selectedTriggers,
       })
 
-      // 2. Create symptoms if any
-      if (painDraft.selectedPoints.length > 0) {
-        for (const point of painDraft.selectedPoints) {
-          await addSymptom({
-            name: bodyPointLabels[point as keyof typeof bodyPointLabels] || point,
-            intensity: painDraft.intensity,
-            trigger: selectedTriggers.join(', '),
-            dailyRecordId: record.id
-          })
-        }
+      resetPainDraft()
+      setSelectedTriggers([])
+      window.alert('Registro de dor salvo com sucesso.')
+      navigate('/app')
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 409) {
+        window.alert('Já existe um registro para hoje.')
+        return
       }
 
-      // Reset and redirect
-      updatePainDraft({ intensity: 0, note: '', selectedPoints: [] })
-      navigate('/patient')
-    } catch (error) {
-      console.error('Failed to save record', error)
+      if (error instanceof Error) {
+        window.alert(`Erro ao salvar: ${error.message}`)
+      } else {
+        window.alert('Erro desconhecido ao salvar o registro.')
+      }
     }
   }
 
@@ -77,7 +86,7 @@ export function PainLogPage() {
         eyebrow="Registro diário"
         title="Mapeie o seu corpo com precisão gentil"
         description="Selecione áreas de dor, intensidade e gatilhos percebidos para construir um histórico mais inteligente."
-        actions={<Badge variant="default">Hoje, 24 de Maio</Badge>}
+        actions={<Badge variant="default">Hoje, {todayLabel}</Badge>}
       />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.02fr)_minmax(18rem,0.98fr)]">
