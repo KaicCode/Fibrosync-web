@@ -22,6 +22,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ReportsModule } from './modules/reports/reports.module';
 import { SymptomsModule } from './modules/symptoms/symptoms.module';
 import { UsersModule } from './modules/users/users.module';
+import { WeatherModule } from './modules/weather/weather.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { UsersModule } from './modules/users/users.module';
     CommunityPostsModule,
     SymptomsModule,
     DailyRecordsModule,
+    WeatherModule,
     CrisisPredictionModule,
     NotificationsModule,
     ReportsModule,

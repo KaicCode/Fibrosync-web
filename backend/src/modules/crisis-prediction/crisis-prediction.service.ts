@@ -12,6 +12,11 @@ import {
 } from '@/common/utils/pagination.util';
 import { PrismaService } from '@/database/prisma.service';
 import { NotificationsService } from '@/modules/notifications/notifications.service';
+import { WeatherService } from '@/modules/weather/weather.service';
+import {
+  parseWeatherSnapshotFromMetadata,
+  type WeatherSnapshot,
+} from '@/modules/weather/weather.types';
 
 interface RiskFactor {
   key: string;
@@ -25,6 +30,7 @@ export class CrisisPredictionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly weatherService: WeatherService,
   ) {}
 
   async upsertForDailyRecord(
@@ -55,7 +61,14 @@ export class CrisisPredictionService {
       confidenceScore,
       factors,
       recommendationSummary,
-    } = this.calculateRisk(record);
+    } = this.calculateRisk(
+      record,
+      parseWeatherSnapshotFromMetadata(record.metadata) ??
+        (await this.weatherService.findLatestSnapshotForUserDate(
+          userId,
+          record.recordDate,
+        )),
+    );
 
     const prediction = await this.prisma.crisisPrediction.upsert({
       where: {
@@ -183,6 +196,7 @@ export class CrisisPredictionService {
     record: DailyRecord & {
       symptomEntries: Array<{ severity: number; symptom: { name: string } }>;
     },
+    weatherSnapshot: WeatherSnapshot | null,
   ): {
     probability: number;
     riskLevel: RiskLevel;
@@ -248,6 +262,7 @@ export class CrisisPredictionService {
         value: Number(record.waterIntakeLiters ?? 0),
         contribution: hydrationPenalty,
       },
+      ...this.buildWeatherFactors(weatherSnapshot),
     ];
 
     const score = Math.min(
@@ -263,6 +278,7 @@ export class CrisisPredictionService {
       record.medicationAdherence,
       record.notes,
       record.symptomEntries.length > 0 ? 1 : null,
+      weatherSnapshot ? 1 : null,
     ].filter((value) => value !== null && value !== undefined).length;
     const confidenceScore = Number(
       Math.min(0.7 + filledSignals * 0.04, 0.98).toFixed(4),
@@ -277,7 +293,7 @@ export class CrisisPredictionService {
       riskLevel = RiskLevel.MODERATE;
     }
 
-    const recommendationSummary =
+    const baseRecommendation =
       riskLevel === RiskLevel.CRITICAL
         ? 'Critical flare risk detected. Consider reducing workload, prioritizing rest and contacting your care team.'
         : riskLevel === RiskLevel.HIGH
@@ -285,6 +301,11 @@ export class CrisisPredictionService {
           : riskLevel === RiskLevel.MODERATE
             ? 'Moderate flare risk detected. Keep a stable routine and watch pain, stress and sleep closely.'
             : 'Low flare risk detected. Maintain the current care routine and continue tracking consistently.';
+    const weatherRecommendation =
+      this.buildWeatherRecommendation(weatherSnapshot);
+    const recommendationSummary = weatherRecommendation
+      ? `${baseRecommendation} ${weatherRecommendation}`
+      : baseRecommendation;
 
     return {
       probability,
@@ -293,5 +314,91 @@ export class CrisisPredictionService {
       factors,
       recommendationSummary,
     };
+  }
+
+  private buildWeatherFactors(
+    weatherSnapshot: WeatherSnapshot | null,
+  ): RiskFactor[] {
+    if (!weatherSnapshot) {
+      return [];
+    }
+
+    const coldAndHumid =
+      weatherSnapshot.temperature < 20 && weatherSnapshot.humidity > 70;
+
+    return [
+      {
+        key: 'temperature',
+        label: 'Temperature stress',
+        value: weatherSnapshot.temperature,
+        contribution:
+          weatherSnapshot.temperature < 20
+            ? 4
+            : weatherSnapshot.temperature > 32
+              ? 2
+              : 0,
+      },
+      {
+        key: 'humidity',
+        label: 'Humidity load',
+        value: weatherSnapshot.humidity,
+        contribution: coldAndHumid ? 6 : weatherSnapshot.humidity > 70 ? 3 : 0,
+      },
+      {
+        key: 'pressure',
+        label: 'Pressure drop',
+        value: weatherSnapshot.pressure,
+        contribution: weatherSnapshot.pressure < 1000 ? 8 : 0,
+      },
+      {
+        key: 'apparent-temperature',
+        label: 'Apparent temperature stress',
+        value: weatherSnapshot.apparentTemperature,
+        contribution:
+          weatherSnapshot.apparentTemperature < 18 ||
+          weatherSnapshot.apparentTemperature > 32
+            ? 4
+            : 0,
+      },
+      {
+        key: 'precipitation',
+        label: 'Rain and precipitation',
+        value: weatherSnapshot.precipitation,
+        contribution:
+          weatherSnapshot.precipitation >= 5
+            ? 4
+            : weatherSnapshot.precipitation > 0
+              ? 2
+              : 0,
+      },
+    ];
+  }
+
+  private buildWeatherRecommendation(
+    weatherSnapshot: WeatherSnapshot | null,
+  ): string | null {
+    if (!weatherSnapshot) {
+      return null;
+    }
+
+    const notes: string[] = [];
+
+    if (weatherSnapshot.temperature < 20 && weatherSnapshot.humidity > 70) {
+      notes.push(
+        'Cold temperatures with high humidity may intensify stiffness.',
+      );
+    }
+
+    if (weatherSnapshot.pressure < 1000) {
+      notes.push(
+        'Lower atmospheric pressure may increase symptom sensitivity.',
+      );
+    }
+
+    if (weatherSnapshot.precipitation > 0) {
+      notes.push('Rain may contribute to fatigue or heavier body sensation.');
+    }
+
+    return notes.length > 0 ? `Weather note: ${notes.join(' ')}` : null;
   }
 }

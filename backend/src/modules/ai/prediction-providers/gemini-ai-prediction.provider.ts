@@ -122,7 +122,7 @@ export class GeminiAiPredictionProvider implements AiPredictionProvider {
       'Analyze only the provided tracking context. Do not claim you trained on user history or learned a custom model.',
       'A pseudo-learning risk profile may be included in the context; treat it as a summary of repeated individual patterns, not as a trained model.',
       'Do not rely on explicit self-reported pain to make the prediction.',
-      'Use indirect signals such as sleep disruption, fatigue, mood changes, stress, physical activity, hydration, medication adherence, weather perception, body-temperature perception, cognitive fog, sensory sensitivity, digestive issues, headache, anxiety, depression, and repeating cycles.',
+      'Use indirect signals such as sleep disruption, fatigue, mood changes, stress, physical activity, hydration, medication adherence, weather perception, actual weather metrics like temperature, humidity, apparent temperature, precipitation and atmospheric pressure, body-temperature perception, cognitive fog, sensory sensitivity, digestive issues, headache, anxiety, depression, and repeating cycles.',
       'Estimate the risk of a flare in the next 24 to 72 hours.',
       'Keep explanation and suggested action concise, specific, and grounded in the supplied data.',
       'Do not return markdown.',

@@ -1,4 +1,5 @@
 import type { RiskLevel } from '@prisma/client';
+import type { WeatherSnapshot } from '@/modules/weather/weather.types';
 import type { UserRiskProfileSnapshot } from './user-risk-profile.type';
 
 export interface AiPredictionDailyRecordSnapshot {
@@ -12,6 +13,7 @@ export interface AiPredictionDailyRecordSnapshot {
   physicalActivity: number | null;
   hydration: number | null;
   weatherFeeling: string | null;
+  weatherSnapshot: WeatherSnapshot | null;
   medicationTaken: boolean | null;
   notes: string | null;
   createdAt: string;
@@ -46,10 +48,16 @@ export interface AiPredictionSummary {
   averageStressLevel: number | null;
   averagePhysicalActivity: number | null;
   averageHydration: number | null;
+  averageTemperature: number | null;
+  averageHumidity: number | null;
+  averagePressure: number | null;
+  averageApparentTemperature: number | null;
   medicationTakenRate: number | null;
   lowSleepDays: number;
   highFatigueDays: number;
   highStressDays: number;
+  rainyDays: number;
+  lowPressureDays: number;
   indirectSymptomCounts: Record<string, number>;
   dominantWeatherFeelings: string[];
   dominantTemperatureFeelings: string[];

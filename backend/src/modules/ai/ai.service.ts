@@ -8,6 +8,7 @@ import {
 } from '@/common/utils/pagination.util';
 import { PrismaService } from '@/database/prisma.service';
 import { NotificationsService } from '@/modules/notifications/notifications.service';
+import { parseWeatherSnapshotFromMetadata } from '@/modules/weather/weather.types';
 import {
   aiPredictionResponseSelect,
   type AiPredictionDetails,
@@ -39,6 +40,7 @@ const dailyRecordPredictionContextSelect = {
   waterIntakeLiters: true,
   medicationAdherence: true,
   weatherFeeling: true,
+  metadata: true,
   notes: true,
   createdAt: true,
 } satisfies Prisma.DailyRecordSelect;
@@ -288,6 +290,7 @@ export class AiService {
       physicalActivity: record.exerciseMinutes,
       hydration: record.waterIntakeLiters,
       weatherFeeling: record.weatherFeeling,
+      weatherSnapshot: parseWeatherSnapshotFromMetadata(record.metadata),
       medicationTaken: record.medicationAdherence,
       notes: record.notes,
       createdAt: record.createdAt.toISOString(),
@@ -344,6 +347,18 @@ export class AiService {
     const hydration = dailyRecords
       .map((record) => record.hydration)
       .filter((value): value is number => value !== null);
+    const temperatures = dailyRecords
+      .map((record) => record.weatherSnapshot?.temperature ?? null)
+      .filter((value): value is number => value !== null);
+    const humidityLevels = dailyRecords
+      .map((record) => record.weatherSnapshot?.humidity ?? null)
+      .filter((value): value is number => value !== null);
+    const pressures = dailyRecords
+      .map((record) => record.weatherSnapshot?.pressure ?? null)
+      .filter((value): value is number => value !== null);
+    const apparentTemperatures = dailyRecords
+      .map((record) => record.weatherSnapshot?.apparentTemperature ?? null)
+      .filter((value): value is number => value !== null);
     const medicationFlags = dailyRecords
       .map((record) => record.medicationTaken)
       .filter((value): value is boolean => value !== null);
@@ -362,6 +377,10 @@ export class AiService {
       ),
       averagePhysicalActivity: this.average(physicalActivity),
       averageHydration: this.average(hydration),
+      averageTemperature: this.average(temperatures),
+      averageHumidity: this.average(humidityLevels),
+      averagePressure: this.average(pressures),
+      averageApparentTemperature: this.average(apparentTemperatures),
       medicationTakenRate:
         medicationFlags.length > 0
           ? Number(
@@ -379,6 +398,14 @@ export class AiService {
         .length,
       highStressDays: dailyRecords.filter((record) => record.stressLevel >= 7)
         .length,
+      rainyDays: dailyRecords.filter(
+        (record) => (record.weatherSnapshot?.precipitation ?? 0) > 0,
+      ).length,
+      lowPressureDays: dailyRecords.filter(
+        (record) =>
+          record.weatherSnapshot !== null &&
+          record.weatherSnapshot.pressure < 1000,
+      ).length,
       indirectSymptomCounts: {
         cognitiveFog: symptomSignals.filter((signal) => signal.cognitiveFog)
           .length,
@@ -418,6 +445,8 @@ export class AiService {
     let stressThenLowMood = 0;
     let lowHydrationThenFatigue = 0;
     let skippedMedicationThenStressOrFatigue = 0;
+    let coldHumidDays = 0;
+    let lowPressureDays = 0;
 
     for (let index = 0; index < ascendingRecords.length - 1; index += 1) {
       const current = ascendingRecords[index]!;
@@ -443,6 +472,21 @@ export class AiService {
         if (next.stressLevel >= 7 || next.fatigueLevel >= 7) {
           skippedMedicationThenStressOrFatigue += 1;
         }
+      }
+
+      if (
+        current.weatherSnapshot !== null &&
+        current.weatherSnapshot.temperature < 20 &&
+        current.weatherSnapshot.humidity > 70
+      ) {
+        coldHumidDays += 1;
+      }
+
+      if (
+        current.weatherSnapshot !== null &&
+        current.weatherSnapshot.pressure < 1000
+      ) {
+        lowPressureDays += 1;
       }
     }
 
@@ -487,6 +531,22 @@ export class AiService {
       cycles.push(
         `Days without medication adherence were followed by higher stress or fatigue in ${skippedMedicationThenStressOrFatigue} transition${this.pluralSuffix(
           skippedMedicationThenStressOrFatigue,
+        )}.`,
+      );
+    }
+
+    if (coldHumidDays > 0) {
+      cycles.push(
+        `Cold and humid weather was present on ${coldHumidDays} recent day${this.pluralSuffix(
+          coldHumidDays,
+        )}.`,
+      );
+    }
+
+    if (lowPressureDays > 0) {
+      cycles.push(
+        `Lower atmospheric pressure appeared on ${lowPressureDays} recent day${this.pluralSuffix(
+          lowPressureDays,
         )}.`,
       );
     }

@@ -1,16 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dailyRecordService } from '../services/daily-record.service';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { dailyRecordService } from "../services/daily-record.service";
 import type {
   CreateDailyRecordDto,
   DailyRecordFilters,
-} from '../services/daily-record.service';
+} from "../services/daily-record.service";
 
 export function useDailyRecords(filters?: DailyRecordFilters) {
   const queryClient = useQueryClient();
 
   const recordsQuery = useQuery({
     queryKey: [
-      'dailyRecords',
+      "dailyRecords",
       filters?.dateFrom ?? null,
       filters?.dateTo ?? null,
       filters?.page ?? 1,
@@ -20,26 +20,36 @@ export function useDailyRecords(filters?: DailyRecordFilters) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateDailyRecordDto) => dailyRecordService.createDailyRecord(data),
+    mutationFn: (data: CreateDailyRecordDto) =>
+      dailyRecordService.createDailyRecord(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dailyRecords'] });
-      // Invalidate prediction as well since a new record might trigger it
-      queryClient.invalidateQueries({ queryKey: ['latestPrediction'] });
+      queryClient.invalidateQueries({ queryKey: ["dailyRecords"] });
+      queryClient.invalidateQueries({ queryKey: ["latestPrediction"] });
+      queryClient.invalidateQueries({ queryKey: ["predictionHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["report"] });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateDailyRecordDto> }) => 
-      dailyRecordService.updateDailyRecord(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<CreateDailyRecordDto>;
+    }) => dailyRecordService.updateDailyRecord(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dailyRecords'] });
+      queryClient.invalidateQueries({ queryKey: ["dailyRecords"] });
+      queryClient.invalidateQueries({ queryKey: ["latestPrediction"] });
+      queryClient.invalidateQueries({ queryKey: ["predictionHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["report"] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => dailyRecordService.deleteDailyRecord(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dailyRecords'] });
+      queryClient.invalidateQueries({ queryKey: ["dailyRecords"] });
     },
   });
 

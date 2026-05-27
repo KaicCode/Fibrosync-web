@@ -12,7 +12,9 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { WeatherSnapshotDto } from '@/modules/weather/weather.types';
 
 export class CreateDailyRecordDto {
   @ApiPropertyOptional({ format: 'date' })
@@ -95,6 +97,23 @@ export class CreateDailyRecordDto {
   @IsString()
   @MaxLength(120)
   weatherFeeling?: string;
+
+  @ApiPropertyOptional({
+    description: 'Perceived impact of the weather on the user during the day.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  weatherImpact?: string;
+
+  @ApiPropertyOptional({
+    type: WeatherSnapshotDto,
+    description: 'Automatic weather snapshot stored for the daily record.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WeatherSnapshotDto)
+  weatherSnapshot?: WeatherSnapshotDto;
 
   @ApiPropertyOptional()
   @IsOptional()

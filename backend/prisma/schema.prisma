@@ -114,6 +114,7 @@ model User {
   userRiskProfile     UserRiskProfile?
   communityPosts      CommunityPost[]
   userSettings        UserSettings?
+  weatherRecords      WeatherRecord[]
 
   @@index([createdAt])
   @@index([deletedAt])
@@ -258,6 +259,24 @@ model DailyRecord {
   @@index([userId, recordDate])
   @@index([userId, createdAt])
   @@map("daily_records")
+}
+
+model WeatherRecord {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  temperature         Float
+  humidity            Float
+  apparentTemperature Float    @map("apparent_temperature")
+  precipitation       Float
+  pressure            Float
+  windSpeed           Float    @map("wind_speed")
+  weatherCode         Int      @map("weather_code")
+  createdAt           DateTime @default(now()) @map("created_at")
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("weather_records")
 }
 
 model SymptomEntry {

@@ -18,7 +18,6 @@ import {
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthInlineLogo } from '@/components/auth-inline-logo'
 import { AppleIcon, GoogleIcon } from '@/components/provider-icons'
-import { SelfCareIllustration } from '@/components/self-care-illustration'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePageTitle } from '@/hooks/use-page-title'
@@ -277,7 +276,7 @@ export function SignupPage() {
       <div className="absolute bottom-[-9rem] right-[-9rem] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(227,219,255,0.56),rgba(227,219,255,0.14),transparent_74%)]" />
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-6 2xl:grid-cols-[0.82fr_1.18fr] 2xl:items-stretch">
-        <aside className="hidden 2xl:flex 2xl:min-h-[calc(100vh-4.5rem)] 2xl:flex-col 2xl:justify-between rounded-[2rem] border border-white/65 bg-white/28 p-6 backdrop-blur-sm">
+        <aside className="hidden 2xl:flex 2xl:min-h-[calc(100vh-4.5rem)] 2xl:flex-col rounded-[2rem] border border-white/65 bg-white/28 p-6 backdrop-blur-sm">
           <div>
             <AuthInlineLogo />
 
@@ -309,10 +308,6 @@ export function SignupPage() {
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="mt-8">
-            <SelfCareIllustration className="mx-auto w-full max-w-[24rem]" />
           </div>
         </aside>
 

@@ -16,6 +16,7 @@ export const dailyRecordResponseSelect = {
   medicationAdherence: true,
   waterIntakeLiters: true,
   weatherFeeling: true,
+  metadata: true,
   notes: true,
   createdAt: true,
   updatedAt: true,

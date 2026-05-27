@@ -7,22 +7,41 @@ import {
 } from '@/common/utils/pagination.util';
 import { PrismaService } from '@/database/prisma.service';
 import { CrisisPredictionService } from '@/modules/crisis-prediction/crisis-prediction.service';
+import { WeatherService } from '@/modules/weather/weather.service';
+import {
+  buildWeatherMetadata,
+  normalizeWeatherSnapshot,
+  parseWeatherSnapshotFromMetadata,
+  type WeatherSnapshot,
+} from '@/modules/weather/weather.types';
 import type { CreateDailyRecordDto } from './dto/create-daily-record.dto';
 import type { DailyRecordQueryDto } from './dto/daily-record-query.dto';
 import type { UpdateDailyRecordDto } from './dto/update-daily-record.dto';
-import { type DailyRecordDetails, dailyRecordResponseSelect } from './daily-records.select';
+import {
+  type DailyRecordDetails,
+  dailyRecordResponseSelect,
+} from './daily-records.select';
 
 @Injectable()
 export class DailyRecordsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crisisPredictionService: CrisisPredictionService,
+    private readonly weatherService: WeatherService,
   ) {}
 
   async create(userId: string, dto: CreateDailyRecordDto): Promise<unknown> {
     const recordDate = dto.recordDate
       ? normalizeDateOnly(dto.recordDate)
       : normalizeDateOnly(new Date());
+    const weatherSnapshot = await this.resolveWeatherSnapshot(
+      userId,
+      recordDate,
+      dto.weatherSnapshot,
+    );
+    const weatherImpact = this.normalizeText(
+      dto.weatherImpact ?? dto.weatherFeeling,
+    );
 
     const record = await this.prisma.dailyRecord.create({
       data: {
@@ -42,7 +61,8 @@ export class DailyRecordsService {
         exerciseMinutes: dto.physicalActivity,
         waterIntakeLiters: dto.hydration,
         medicationAdherence: dto.medicationTaken,
-        weatherFeeling: dto.weatherFeeling?.trim(),
+        weatherFeeling: weatherImpact,
+        metadata: buildWeatherMetadata(undefined, weatherSnapshot),
         notes: dto.notes?.trim(),
       },
       select: {
@@ -121,10 +141,12 @@ export class DailyRecordsService {
       },
       select: {
         id: true,
+        recordDate: true,
         painLevel: true,
         fatigueLevel: true,
         stressLevel: true,
         moodLevel: true,
+        metadata: true,
       },
     });
 
@@ -135,22 +157,32 @@ export class DailyRecordsService {
     const fatigueLevel = dto.fatigueLevel ?? existingRecord.fatigueLevel;
     const stressLevel = dto.stressLevel ?? existingRecord.stressLevel;
     const mood = dto.mood ?? existingRecord.moodLevel;
+    const recordDate =
+      dto.recordDate === undefined
+        ? existingRecord.recordDate
+        : normalizeDateOnly(dto.recordDate);
+    const weatherSnapshot = await this.resolveWeatherSnapshot(
+      userId,
+      recordDate,
+      dto.weatherSnapshot,
+      existingRecord.metadata,
+    );
+    const weatherImpact = this.normalizeText(
+      dto.weatherImpact ?? dto.weatherFeeling,
+    );
 
     await this.prisma.dailyRecord.update({
       where: {
         id,
       },
       data: {
-        recordDate:
-          dto.recordDate === undefined
-            ? undefined
-            : normalizeDateOnly(dto.recordDate),
+        recordDate: dto.recordDate === undefined ? undefined : recordDate,
         painLevel:
           dto.painLevel ?? this.inferPainLevel(fatigueLevel, stressLevel, mood),
         painType:
           dto.painType === undefined
             ? undefined
-            : this.normalizeText(dto.painType) ?? null,
+            : (this.normalizeText(dto.painType) ?? null),
         painAreas:
           dto.painAreas === undefined
             ? undefined
@@ -167,7 +199,14 @@ export class DailyRecordsService {
         exerciseMinutes: dto.physicalActivity,
         waterIntakeLiters: dto.hydration,
         medicationAdherence: dto.medicationTaken,
-        weatherFeeling: dto.weatherFeeling?.trim(),
+        weatherFeeling:
+          dto.weatherImpact === undefined && dto.weatherFeeling === undefined
+            ? undefined
+            : (weatherImpact ?? null),
+        metadata: buildWeatherMetadata(
+          existingRecord.metadata,
+          weatherSnapshot,
+        ),
         notes: dto.notes?.trim(),
       },
     });
@@ -218,6 +257,33 @@ export class DailyRecordsService {
     return trimmed ? trimmed : undefined;
   }
 
+  private async resolveWeatherSnapshot(
+    userId: string,
+    recordDate: Date,
+    explicitSnapshot?: unknown,
+    metadata?: Prisma.JsonValue | null,
+  ): Promise<WeatherSnapshot | null> {
+    const providedSnapshot =
+      explicitSnapshot === undefined
+        ? null
+        : normalizeWeatherSnapshot(explicitSnapshot);
+
+    if (providedSnapshot) {
+      return providedSnapshot;
+    }
+
+    const storedInMetadata = parseWeatherSnapshotFromMetadata(metadata);
+
+    if (storedInMetadata) {
+      return storedInMetadata;
+    }
+
+    return this.weatherService.findLatestSnapshotForUserDate(
+      userId,
+      recordDate,
+    );
+  }
+
   private mapRecord(record: DailyRecordDetails): {
     id: string;
     recordDate: string;
@@ -231,6 +297,8 @@ export class DailyRecordsService {
     medicationTaken: boolean | null;
     hydration: number | null;
     weatherFeeling: string | null;
+    weatherImpact: string | null;
+    weatherSnapshot: WeatherSnapshot | null;
     notes: string | null;
     painType: string | null;
     painAreas: string[];
@@ -251,6 +319,8 @@ export class DailyRecordsService {
       medicationTaken: record.medicationAdherence,
       hydration: record.waterIntakeLiters,
       weatherFeeling: record.weatherFeeling,
+      weatherImpact: record.weatherFeeling,
+      weatherSnapshot: parseWeatherSnapshotFromMetadata(record.metadata),
       notes: record.notes,
       painType: record.painType,
       painAreas: record.painAreas,

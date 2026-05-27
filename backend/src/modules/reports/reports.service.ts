@@ -12,6 +12,7 @@ import {
   resolvePagination,
 } from '@/common/utils/pagination.util';
 import { PrismaService } from '@/database/prisma.service';
+import { parseWeatherSnapshotFromMetadata } from '@/modules/weather/weather.types';
 import type { GenerateReportDto } from './dto/generate-report.dto';
 import type { ReportListResponseDto } from './dto/report-list-response.dto';
 import type {
@@ -38,6 +39,7 @@ const reportDailyRecordSelect = {
   waterIntakeLiters: true,
   medicationAdherence: true,
   weatherFeeling: true,
+  metadata: true,
   crisisPrediction: {
     select: {
       probability: true,
@@ -106,6 +108,12 @@ interface ReportDaySnapshot {
   hydration: number | null;
   medicationTaken: boolean | null;
   weatherFeeling: string | null;
+  temperature: number | null;
+  humidity: number | null;
+  apparentTemperature: number | null;
+  precipitation: number | null;
+  pressure: number | null;
+  windSpeed: number | null;
   ruleBasedProbabilityScore: number | null;
   ruleBasedRiskLevel: RiskLevel | null;
   aiProbabilityScore: number | null;
@@ -506,6 +514,17 @@ export class ReportsService {
         day.weatherFeeling = record.weatherFeeling;
       }
 
+      const weatherSnapshot = parseWeatherSnapshotFromMetadata(record.metadata);
+
+      if (weatherSnapshot) {
+        day.temperature = weatherSnapshot.temperature;
+        day.humidity = weatherSnapshot.humidity;
+        day.apparentTemperature = weatherSnapshot.apparentTemperature;
+        day.precipitation = weatherSnapshot.precipitation;
+        day.pressure = weatherSnapshot.pressure;
+        day.windSpeed = weatherSnapshot.windSpeed;
+      }
+
       const ruleBasedProbabilityScore =
         record.crisisPrediction !== null
           ? Math.round(record.crisisPrediction.probability * 100)
@@ -655,6 +674,34 @@ export class ReportsService {
         source: 'daily_record',
         matcher: (day) =>
           this.isColdFeeling(day.weatherFeeling) || day.coldBodyTemperature,
+      },
+      {
+        key: 'high_humidity',
+        label: 'Alta umidade',
+        source: 'weather',
+        matcher: (day) => day.humidity !== null && day.humidity >= 70,
+      },
+      {
+        key: 'low_pressure',
+        label: 'Pressao atmosferica baixa',
+        source: 'weather',
+        matcher: (day) => day.pressure !== null && day.pressure < 1000,
+      },
+      {
+        key: 'rain',
+        label: 'Chuva ou precipitacao',
+        source: 'weather',
+        matcher: (day) => day.precipitation !== null && day.precipitation > 0,
+      },
+      {
+        key: 'cold_humid_combo',
+        label: 'Frio com umidade alta',
+        source: 'weather',
+        matcher: (day) =>
+          day.temperature !== null &&
+          day.humidity !== null &&
+          day.temperature < 20 &&
+          day.humidity > 70,
       },
       {
         key: 'low_activity',
@@ -870,6 +917,34 @@ export class ReportsService {
         left: (day) => day.physicalActivity,
         right: (day) => this.resolveCombinedProbability(day),
       },
+      {
+        key: 'humidity_vs_symptom_load',
+        leftMetric: 'humidity',
+        rightMetric: 'symptomLoad',
+        left: (day) => day.humidity,
+        right: (day) => day.signalCount,
+      },
+      {
+        key: 'apparent_temperature_vs_fatigue',
+        leftMetric: 'apparentTemperature',
+        rightMetric: 'fatigueLevel',
+        left: (day) => day.apparentTemperature,
+        right: (day) => day.fatigueLevel,
+      },
+      {
+        key: 'pressure_vs_crisis_probability',
+        leftMetric: 'pressure',
+        rightMetric: 'crisisProbability',
+        left: (day) => day.pressure,
+        right: (day) => this.resolveCombinedProbability(day),
+      },
+      {
+        key: 'precipitation_vs_crisis_probability',
+        leftMetric: 'precipitation',
+        rightMetric: 'crisisProbability',
+        left: (day) => day.precipitation,
+        right: (day) => this.resolveCombinedProbability(day),
+      },
     ];
 
     return pairs
@@ -1013,6 +1088,12 @@ export class ReportsService {
       hydration: null,
       medicationTaken: null,
       weatherFeeling: null,
+      temperature: null,
+      humidity: null,
+      apparentTemperature: null,
+      precipitation: null,
+      pressure: null,
+      windSpeed: null,
       ruleBasedProbabilityScore: null,
       ruleBasedRiskLevel: null,
       aiProbabilityScore: null,

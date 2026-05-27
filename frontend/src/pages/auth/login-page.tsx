@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Eye, Fingerprint, LockKeyhole, Mail } from 'lucide-react'
+import { Eye, LockKeyhole, Mail } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthHeroLogo } from '@/components/auth-hero-logo'
 import { AppleIcon, GoogleIcon } from '@/components/provider-icons'
@@ -127,20 +127,6 @@ export function LoginPage() {
                 <AppleIcon />
                 Apple
               </Button>
-            </div>
-
-            <div className="mt-6 flex flex-col items-center gap-3">
-              <button
-                type="button"
-                className="group flex flex-col items-center gap-3 rounded-[1.5rem] px-4 py-3 transition hover:bg-brand-50/60"
-              >
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[radial-gradient(circle,rgba(123,77,255,0.12),transparent_68%)] text-brand-500">
-                  <Fingerprint className="h-12 w-12 stroke-[1.6]" />
-                </div>
-                <span className="text-sm font-medium text-slate-500 md:text-base">
-                  Entrar com biometria
-                </span>
-              </button>
             </div>
 
             <div className="mt-6 border-t border-slate-200 pt-6 text-center">

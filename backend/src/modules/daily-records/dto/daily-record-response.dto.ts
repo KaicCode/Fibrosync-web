@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { WeatherSnapshotDto } from '@/modules/weather/weather.types';
 
 export class DailyRecordResponseDto {
   @ApiProperty()
@@ -36,6 +37,12 @@ export class DailyRecordResponseDto {
 
   @ApiPropertyOptional()
   weatherFeeling?: string | null;
+
+  @ApiPropertyOptional()
+  weatherImpact?: string | null;
+
+  @ApiPropertyOptional({ type: WeatherSnapshotDto, nullable: true })
+  weatherSnapshot?: WeatherSnapshotDto | null;
 
   @ApiPropertyOptional()
   notes?: string | null;
