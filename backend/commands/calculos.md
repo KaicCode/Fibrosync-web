@@ -1,42 +1,36 @@
-# Prisma, Registros e Cálculos do Sistema
+# Cálculos Atuais do Projeto
 
-Este arquivo agora serve como um README funcional de como os dados clínicos estão sendo salvos e de como o sistema calcula dashboard, risco, clima, relatórios e padrões.
+Atualizado com base no código real do projeto em 28/05/2026.
 
-> Atualização importante: o fluxo principal foi refatorado. As derivações artificiais `fatigueLevel = painLevel`, `stressLevel = painLevel`, `mood = 10 - painLevel` e `sleepQuality = 0` não fazem mais parte do formulário principal.
-
-Os pontos abaixo refletem o comportamento real do código atual, principalmente nestes arquivos:
+Este arquivo documenta o que o sistema realmente calcula hoje em:
 
 - `frontend/src/pages/patient/pain-log-page.tsx`
+- `frontend/src/features/clinical/record-analytics.ts`
 - `frontend/src/pages/patient/dashboard-page.tsx`
+- `frontend/src/hooks/useWeather.ts`
 - `backend/src/modules/daily-records/daily-records.service.ts`
+- `backend/src/common/utils/data-reliability.util.ts`
 - `backend/src/modules/weather/weather.service.ts`
 - `backend/src/modules/crisis-prediction/crisis-prediction.service.ts`
 - `backend/src/modules/reports/reports.service.ts`
 - `backend/src/modules/ai/pattern-analysis.service.ts`
 - `backend/src/modules/ai/pattern-score.engine.ts`
-- `backend/prisma/schema.prisma`
 
-## 1. Estrutura de dados que alimenta os cálculos
+O objetivo aqui e registrar o comportamento atual do sistema, inclusive detalhes que podem parecer estranhos, mas que sao exatamente o que o codigo faz hoje.
 
-| Modelo Prisma | Papel atual no sistema |
-| --- | --- |
-| `DailyRecord` | Registro principal de dor e contexto do dia. Alimenta dashboard, risco e relatórios. |
-| `WeatherRecord` | Histórico de clima salvo por usuário. Serve de apoio para dashboard, registro e fallback. |
-| `SymptomSignal` | Sinais complementares independentes ligados ao `DailyRecord`, como névoa cognitiva, cefaleia, sensibilidade etc. |
-| `Symptom` | Catálogo de sintomas. |
-| `SymptomEntry` | Relação entre `DailyRecord` e `Symptom`, com severidade e duração. Agora é criado junto com o fluxo principal. |
-| `CrisisPrediction` | Predição por motor de regras, gerada a cada criação/edição de `DailyRecord`. |
-| `AiPrediction` | Predição gerada por IA, separada do motor de regras. |
-| `UserRiskProfile` | Perfil personalizado com pesos, padrões e score de risco com base no histórico. |
-| `Report` | Snapshot consolidado do relatório semanal, mensal ou trimestral. |
+## 1. O que mudou de verdade
 
-## 2. Como o registro de dor é salvo hoje
+As regras abaixo nao valem mais no fluxo principal do app:
 
-### 2.1. O que o usuário preenche no formulário atual
+```ts
+fatigueLevel = painLevel
+stressLevel = painLevel
+mood = 10 - painLevel
+sleepQuality = 0
+```
 
-No fluxo atual de `frontend/src/pages/patient/pain-log-page.tsx`, o usuário informa:
+Hoje o formulario principal envia:
 
-- `recordDate`
 - `painLevel`
 - `fatigueLevel`
 - `stressLevel`
@@ -46,251 +40,241 @@ No fluxo atual de `frontend/src/pages/patient/pain-log-page.tsx`, o usuário inf
 - `hydration`
 - `physicalActivityMinutes`
 - `medicationTaken`
-- tipo de dor
-- áreas do corpo em mapa frontal e traseiro independentes
-- gatilhos selecionados
-- observações
-- impacto percebido do clima
-- clima automático do dia atual, quando o GPS está disponível
+- `painType`
+- `painTriggers`
+- `frontPainAreas`
+- `backPainAreas`
+- `weatherImpact`
+- `notes`
 - `symptomSignal`
-  - `stiffness`
-  - `cognitiveFog`
-  - `headache`
-  - `digestiveIssues`
-  - `anxiety`
-  - `depression`
-  - `sensitivityLight`
-  - `sensitivityNoise`
-  - `bodyTemperatureFeeling`
-  - `notes`
 
-### 2.2. O que não é mais derivado automaticamente
+Tambem mudou:
 
-O frontend principal agora envia cada variável clínica de forma independente.
+- `symptomEntries` agora entram no fluxo principal porque o backend os gera a partir de `symptomSignal`
+- o dashboard nao usa mais uma primeira pagina fixa de 20 registros; ele busca tudo dentro da janela selecionada
+- o relatorio trabalha com agregacao por dia, combinando `DailyRecord`, `SymptomSignal`, `CrisisPrediction`, `AiPrediction` e `UserRiskProfile`
 
-Não existe mais este comportamento no fluxo principal:
+## 2. Como o registro clinico e salvo
 
-```ts
-fatigueLevel = painLevel
-stressLevel = painLevel
-mood = 10 - painLevel
-sleepQuality = 0
-```
+### 2.1. Campos obrigatorios e normalizacao
 
-Essas fórmulas antigas ficaram apenas como referência histórica em trechos mais antigos deste documento.
+No `DailyRecordsService`, o backend resolve o payload assim:
 
-### 2.3. Áreas, tipos e gatilhos disponíveis no fluxo atual
+| Campo | Regra atual |
+| --- | --- |
+| `recordDate` | Vai para `normalizeDateOnly()`, ficando como data UTC sem horario. |
+| `painLevel` | Usa o valor enviado; se faltar, tenta inferir pelo fallback antigo. |
+| `fatigueLevel` | Obrigatorio, arredondado e limitado entre `0` e `10`. |
+| `stressLevel` | Obrigatorio, arredondado e limitado entre `0` e `10`. |
+| `moodLevel` | Obrigatorio, aceita `moodLevel` ou `mood`, arredondado e limitado entre `0` e `10`. |
+| `sleepQuality` | Obrigatorio, arredondado e limitado entre `0` e `10`. |
+| `sleepHours` | Opcional, mantido com ate 2 casas decimais. |
+| `hydration` | Opcional, arredondado para inteiro e limitado ao minimo `0`. |
+| `physicalActivityMinutes` | Opcional, arredondado para inteiro e limitado ao minimo `0`. |
+| `medicationTaken` | Opcional, salvo como `boolean` ou `null`. |
+| `weatherImpact` / `weatherFeeling` | Ambos convergem para `weatherFeeling`. |
+| `notes` / `painType` | Passam por `trim()` e colapso de espacos. |
+| `painAreas` / `painTriggers` | Removem vazios e duplicados via `normalizeText()`. |
 
-No frontend atual:
+`normalizeText()` e usado para deduplicacao com:
 
-- `painType` usa um conjunto guiado de opções clínicas, mas a API continua aceitando string
-- `painTriggers` usa opções guiadas e continua aceitando string
-- `painAreas` agora usa as 19 áreas do ACR 2010 em dois estados separados:
-  - `frontPainAreas`
-  - `backPainAreas`
+- lowercase
+- remocao de acentos
+- colapso de espacos
 
-Áreas frontais:
+### 2.2. Areas corporais
 
-- `Mandibula esquerda`
-- `Mandibula direita`
-- `Ombro esquerdo`
-- `Ombro direito`
-- `Braco superior esquerdo`
-- `Braco superior direito`
-- `Braco inferior esquerdo`
-- `Braco inferior direito`
-- `Quadril esquerdo`
-- `Quadril direito`
-- `Coxa esquerda`
-- `Coxa direita`
-- `Joelho esquerdo`
-- `Joelho direito`
-- `Torax`
-- `Abdomen`
+O frontend atual usa 19 areas clinicas, separadas em:
 
-Áreas traseiras:
+- `frontPainAreas`: 16 areas
+- `backPainAreas`: 3 areas
 
-- `Cervical`
-- `Costas superiores`
-- `Costas inferiores`
+As listas particionadas sao salvas em `metadata.frontPainAreas` e `metadata.backPainAreas`.
 
-### 2.4. Normalização feita no backend ao salvar `DailyRecord`
+O campo `painAreas` final do `DailyRecord` e a combinacao normalizada das duas listas.
 
-No `DailyRecordsService`:
+### 2.3. Fallback de `painLevel`
 
-- `recordDate` é normalizado para data UTC sem horário
-- textos passam por limpeza visual com `trim()` e colapso de espaços
-- comparações e deduplicação usam `normalizeText(value)`
-  - lowercase
-  - remoção de acentos
-  - colapso de espaços
-- `painAreas` e `painTriggers`
-  - removem vazios
-  - removem duplicados por versão normalizada
-- `weatherImpact` e `weatherFeeling` acabam salvos em `weatherFeeling`
-- `symptomEntries` podem ser montados automaticamente a partir de `symptomSignal`
-
-### 2.5. Inferência de dor no backend
-
-Se `painLevel` não vier no payload, o backend infere assim:
+Se `painLevel` nao vier no payload, o backend ainda usa este fallback defensivo:
 
 ```ts
-painLevel = round((fatigueLevel + stressLevel + (10 - mood)) / 3)
+painLevel = round((fatigueLevel + stressLevel + (10 - moodLevel)) / 3)
 painLevel = clamp(0, 10)
 ```
 
-Hoje isso existe apenas como compatibilidade defensiva. O frontend principal envia `painLevel` explicitamente.
+No fluxo principal atual, isso quase nao deveria acontecer, porque o frontend envia `painLevel` explicitamente.
 
-### 2.6. Como o clima entra no `DailyRecord`
+### 2.4. `symptomSignal` e `symptomEntries`
 
-Prioridade de resolução do `weatherSnapshot`:
+O backend monta `symptomSignal` com base em:
+
+- payload novo
+- valor ja salvo no registro, no caso de update
+- niveis centrais do proprio registro:
+  - `fatigueLevel`
+  - `sleepQuality`
+  - `moodLevel`
+  - `stressLevel`
+
+Regra de severidade por sintoma (`resolveSymptomLevel()`):
+
+```ts
+if (level numerico valido) {
+  return clamp(level, 0, 10) > 0 ? clamp(level, 0, 10) : null
+}
+
+if (flag booleano === true) {
+  return 5
+}
+
+return null
+```
+
+Ou seja:
+
+- se vier nivel, ele prevalece
+- se vier apenas `true`, o backend assume nivel `5`
+- se o nivel for `0`, o sintoma fica inativo
+
+Os sintomas que podem gerar `symptomEntries` automaticamente sao:
+
+- `Fibro fog`
+- `Cefaleia`
+- `Alteracoes digestivas`
+- `Ansiedade`
+- `Humor depressivo`
+- `Sensibilidade a luz`
+- `Sensibilidade a ruido`
+- `Rigidez corporal`
+
+Regras do merge final:
+
+1. o backend gera entradas automaticas a partir do `symptomSignal`
+2. depois mistura as entradas explicitas de `dto.symptomEntries`
+3. entradas explicitas com mesmo sintoma sobrescrevem as automaticas
+4. se nada vier no payload e o registro antigo tiver entradas, ele reaproveita as antigas
+5. no fim, remove entradas com severidade `<= 0` e ordena por severidade decrescente
+
+Toda severidade de `symptomEntry` fica em `0..10` apos arredondamento.
+
+### 2.5. Clima no `DailyRecord`
+
+A resolucao de `weatherSnapshot` segue esta prioridade:
 
 1. `dto.weatherSnapshot`
-2. snapshot já salvo em `metadata` no update
-3. último `WeatherRecord` do mesmo usuário na mesma data
+2. `metadata.weatherSnapshot` ja salvo no registro
+3. ultimo `WeatherRecord` do usuario na mesma data
 
-O snapshot:
+Quando existe snapshot:
 
-- é salvo em `metadata.weatherSnapshot`
-- e também pode gerar um `WeatherRecord` dentro da mesma transação do registro
+- ele vai para `metadata.weatherSnapshot`
+- ele pode gerar um `WeatherRecord`
 
-### 2.7. O que acontece depois de salvar um `DailyRecord`
+No `persistWeatherSnapshot()` do `DailyRecordsService`, o backend nao grava um novo `WeatherRecord` se o ultimo registro salvo tiver exatamente os mesmos valores de:
 
-Após criar ou atualizar um registro:
+- temperatura
+- umidade
+- sensacao termica
+- precipitacao
+- pressao
+- vento
+- `weatherCode`
 
-- o backend persiste:
-  - `DailyRecord`
-  - `SymptomSignal` ligado ao registro
-  - `SymptomEntry`
-  - `WeatherRecord`, quando há snapshot disponível
-- o backend faz `upsert` da `CrisisPrediction`
-- o frontend invalida cache de:
-  - `dailyRecords`
-  - `latestPrediction`
-  - `latestAiPrediction`
-  - `predictionHistory`
-  - `report`
+### 2.6. `derivedSignals`
 
-## 3. Como o dashboard do paciente é calculado
-
-### 3.1. Fonte de dados do dashboard
-
-O dashboard do paciente usa `useDailyRecords()` sem passar `limit`.
-
-Na prática, a API retorna:
-
-- `page = 1`
-- `limit = 20`
-- ordenação por `recordDate desc`, depois `createdAt desc`
-
-Então o dashboard trabalha, no máximo, com os 20 registros mais recentes da primeira página.
-
-### 3.2. Janelas internas usadas pelo dashboard
-
-Depois que os registros chegam:
+Hoje o backend salva:
 
 ```ts
-latestRecord = recordList[0] ?? null
-trendWindow = recordList.slice(0, 7)
-patternWindow = recordList.slice(0, 12)
-recentEntries = recordList.slice(0, 4)
+derivedSignals: false
 ```
 
-## 4. Fórmulas exatas de cada bloco do dashboard
+Entao o fluxo principal atual ja nao marca sinais clinicos como derivados artificialmente.
 
-### 4.1. Dor atual
+## 3. Score de confiabilidade do dado
 
-Usa:
+O score de confiabilidade vem de `calculateDataReliability()` e vai para:
+
+- `DailyRecordResponse`
+- dashboard
+- predicao de crise
+- relatorios
+
+### 3.1. Pontos somados
+
+| Sinal | Pontos |
+| --- | ---: |
+| `painLevel` presente | `+9` |
+| `fatigueLevel` presente | `+9` |
+| `stressLevel` presente | `+9` |
+| `moodLevel` presente | `+9` |
+| `sleepQuality` presente | `+8` |
+| `sleepHours` presente | `+12` |
+| `hydration` presente | `+6` |
+| `physicalActivity` presente | `+5` |
+| `medicationTaken` presente | `+4` |
+| `weatherFeeling` com texto | `+4` |
+| `painType` com texto | `+4` |
+| `painAreas` com ao menos um item | `+6` |
+| `painTriggers` com ao menos um item | `+4` |
+| `notes` com texto | `+4` |
+| `symptomSignalPresent` ou `symptomEntryCount > 0` | `+12` |
+
+### 3.2. Consistencia temporal
+
+Tambem soma:
+
+- `+8` se `createdAt` estiver ate `1.1` dias de distancia de `recordDate`
+- `+4` se estiver ate `3.1` dias
+- `+0` acima disso
+
+### 3.3. Penalidade
+
+Se `derivedSignals === true`, aplica:
 
 ```ts
-currentPainLevel = latestRecord?.painLevel ?? 0
+-18 pontos
 ```
 
-Classificação visual:
-
-- `>= 8`: `Muito alta`
-- `>= 6`: `Alta`
-- `>= 3`: `Moderada`
-- `< 3`: `Controlada`
-
-### 4.2. Média recente
-
-Usa os últimos 7 registros de `trendWindow`:
+### 3.4. Score final e rotulo
 
 ```ts
-recentPainAverage =
-  average(trendWindow.map((record) => record.painLevel))
+score = clamp(round(soma_total), 0, 100)
 ```
 
-Regras:
+Rotulos:
 
-- se não houver registros, retorna `0`
-- arredonda para 1 casa decimal
+- `<= 40`: `Baixa confiabilidade`
+- `<= 70`: `Confiabilidade moderada`
+- `> 70`: `Alta confiabilidade`
 
-### 4.3. Registros hoje
+## 4. Clima atual e mensagens de impacto
 
-Conta quantos registros têm `createdAt` no mesmo dia do relógio do navegador:
+### 4.1. Cache e fallback do backend
+
+No `WeatherService`:
+
+- cache em memoria: `30 minutos`
+- se houver cache valido, usa cache e persiste para o usuario
+- se a chamada live falhar, a ordem de fallback e:
+  1. cache valido
+  2. ultimo clima salvo do usuario
+  3. fallback seguro:
 
 ```ts
-recordsToday = recordList.filter((record) =>
-  isSameCalendarDay(record.createdAt, new Date())
-).length
+{
+  temperature: 24,
+  humidity: 55,
+  apparentTemperature: 24,
+  precipitation: 0,
+  pressure: 1013,
+  windSpeed: 8,
+  weatherCode: 1
+}
 ```
 
-Importante:
+### 4.2. Regra de risco climatico elevado
 
-- usa `createdAt`
-- não usa `recordDate`
-
-Então um registro antigo cadastrado hoje conta como "registro hoje" se o `createdAt` for de hoje.
-
-### 4.4. Pico recente
-
-Procura o maior `painLevel` dentro dos últimos 7 registros:
-
-```ts
-peakPainRecord = trendWindow.reduce((highest, record) => {
-  if (!highest || record.painLevel > highest.painLevel) {
-    return record
-  }
-  return highest
-}, null)
-```
-
-O card mostra:
-
-- valor: `peakPainRecord.painLevel`
-- horário: `peakPainRecord.createdAt` formatado como hora e minuto
-
-Se houver empate, o reduce mantém o primeiro pico encontrado nessa janela.
-
-### 4.5. Evolução das últimas ocorrências
-
-O gráfico usa `trendWindow`, mas invertido para ficar do mais antigo para o mais recente:
-
-```ts
-dashboardTrend = trendWindow
-  .slice()
-  .reverse()
-  .map((record) => ({
-    label: formatEntryDateTime(record.createdAt),
-    value: record.painLevel,
-    comparison: record.stressLevel,
-  }))
-```
-
-No gráfico:
-
-- linha principal: `painLevel`
-- linha secundária: `stressLevel`
-
-Como o formulário atual seta `stressLevel = painLevel`, a tendência visual de dor e estresse tende a sair muito parecida no fluxo principal.
-
-### 4.6. Como o tempo pode afetar hoje
-
-O bloco usa geolocalização + `GET /weather/current`.
-
-#### Regra de risco climático elevado
+Frontend e backend usam a mesma ideia de risco climatico elevado:
 
 ```ts
 isWeatherRiskElevated =
@@ -299,9 +283,9 @@ isWeatherRiskElevated =
   precipitation > 0
 ```
 
-#### Mensagem de impacto climático
+### 4.3. Mensagem do hook `useWeather`
 
-A mensagem segue esta ordem:
+Prioridade atual de mensagem no frontend:
 
 1. `temperature < 20 && humidity > 70`
    `Frio e umidade alta podem aumentar rigidez e dor hoje.`
@@ -316,741 +300,630 @@ A mensagem segue esta ordem:
 6. fallback
    `Clima relativamente estável para acompanhar sintomas com mais clareza.`
 
-#### Origem do clima
+## 5. Dashboard do paciente
 
-O bloco ainda informa a origem:
+### 5.1. Fonte de dados
 
-- `live`
-- `cache`
-- `database-fallback`
-- `safe-fallback`
-
-### 4.7. Resumo real da última dor
-
-Esse bloco não faz cálculo estatístico. Ele mostra o `latestRecord`:
-
-- `painType`
-- `createdAt`
-- `painLevel`
-- `notes`
-- `painAreas`
-- `painTriggers`
-
-Fallbacks:
-
-- sem tipo: `Tipo de dor não informado`
-- sem nota: `Sem observações adicionadas neste registro.`
-- sem áreas: `Nenhuma área informada`
-- sem gatilhos: `Nenhum gatilho informado`
-
-### 4.8. Contexto atual
-
-Esse bloco mostra diretamente:
-
-- dor: `latestRecord.painLevel`
-- humor: `latestRecord.mood`
-- qualidade do sono: `latestRecord.sleepQuality`
-- ocorrências de hoje: `recordsToday`
-
-Observação importante:
-
-- no formulário atual, `sleepQuality` é enviado como `0`
-- então esse campo pode parecer "real", mas no fluxo principal ele está vindo de um valor fixo
-
-#### Insight rápido
-
-O bloco mostra dois tipos de insight:
-
-1. alerta climático, se `isWeatherRiskElevated`
-2. `latestPrediction.explanation`
-
-Hoje `latestPrediction` vem do endpoint `/crisis-predictions/latest`, ou seja:
-
-- a tela chama isso de "painel de IA"
-- mas o texto mostrado aqui vem da `CrisisPrediction.recommendationSummary`
-- na prática é o motor de regras, não a tabela `AiPrediction`
-
-### 4.9. Últimas dores registradas
-
-Usa os 4 primeiros registros:
-
-- título: `painType`
-- data/hora: `createdAt`
-- badge: `painLevel`
-- subtítulo: `painAreas.join(", ")`
-- até 3 gatilhos por card
-
-### 4.10. Áreas e gatilhos mais citados
-
-Esse bloco usa `patternWindow`, ou seja, os últimos 12 registros.
-
-#### Função de frequência usada no dashboard
+O dashboard atual usa:
 
 ```ts
-buildFrequency(values):
-  1. trim em cada valor
-  2. ignora vazios
-  3. conta ocorrências exatas
-  4. maxCount = maior contagem encontrada
-  5. percentage = round((count / maxCount) * 100)
+useDailyRecords({
+  dateFrom,
+  dateTo,
+  includeAll: true
+})
 ```
 
-Importante:
+O recorte pode ser de:
 
-- a porcentagem aqui é relativa ao item mais frequente
-- não é porcentagem sobre total de registros
+- `7 dias`
+- `30 dias`
+- `90 dias`
 
-#### Áreas mais afetadas
+`dateFrom` e `dateTo` sao calculados por `resolveDateWindow()` usando a data local do navegador.
 
-```ts
-topPainAreas =
-  buildFrequency(patternWindow.flatMap((record) => record.painAreas)).slice(0, 4)
-```
+### 5.2. Agregacao diaria real
 
-#### Gatilhos mais percebidos
+Toda a logica do dashboard passa por `buildDailyAggregates(records)`.
 
-```ts
-topPainTriggers =
-  buildFrequency(patternWindow.flatMap((record) => record.painTriggers)).slice(0, 4)
-```
+Passos:
 
-#### Tipos de dor recorrentes
+1. agrupa registros por dia
+2. ordena os registros do dia por `createdAt` crescente
+3. define `latestRecord` como o ultimo do dia
+4. calcula as medias por dia
 
-```ts
-topPainTypes =
-  buildFrequency(
-    patternWindow
-      .map((record) => record.painType)
-      .filter(Boolean)
-  ).slice(0, 3)
-```
+Para cada dia agregado:
 
-## 5. Como o clima é organizado no backend
+| Campo agregado | Formula atual |
+| --- | --- |
+| `painAverage` | media de `painLevel` |
+| `painPeak` | `max(painLevel)` |
+| `stressAverage` | media de `stressLevel` |
+| `fatigueAverage` | media de `fatigueLevel` |
+| `moodAverage` | media de `moodLevel` |
+| `sleepHoursAverage` | media dos valores nao nulos |
+| `sleepQualityAverage` | media dos valores nao nulos |
+| `hydrationAverage` | media dos valores nao nulos |
+| `reliabilityAverage` | media dos `dataReliabilityScore` nao nulos |
+| `symptomLoadAverage` | media diaria de carga de sintomas |
 
-### 5.1. Fonte externa
+Carga de sintomas por registro:
 
-O backend usa Open-Meteo em `backend/src/modules/weather/weather.service.ts`.
-
-Campos buscados:
-
-- `temperature_2m`
-- `relative_humidity_2m`
-- `apparent_temperature`
-- `precipitation`
-- `surface_pressure`
-- `wind_speed_10m`
-- `weather_code`
-
-### 5.2. Cache
-
-Há cache em memória por coordenada com TTL de 30 minutos:
-
-```ts
-WEATHER_CACHE_TTL_MS = 30 * 60 * 1000
-cacheKey = `${lat.toFixed(3)}:${lon.toFixed(3)}`
-```
-
-### 5.3. Persistência
-
-Ao obter clima:
-
-- o sistema tenta persistir em `weather_records`
-- evita duplicar se o último registro for recente e idêntico
-
-### 5.4. Fallbacks
-
-Se a chamada ao provedor falhar, a ordem é:
-
-1. cache em memória
-2. último `WeatherRecord` salvo do usuário
-3. fallback seguro:
-
-```ts
-temperature = 24
-humidity = 55
-apparentTemperature = 24
-precipitation = 0
-pressure = 1013
-windSpeed = 8
-weatherCode = 1
-source = "safe-fallback"
-```
-
-## 6. Como os sintomas estão organizados hoje
-
-### 7.1. Catálogo de sintomas
-
-O seed cria sintomas padrão em `symptoms`:
-
-- Dor generalizada
-- Fadiga extrema
-- Sono não reparador
-- Fibro fog
-- Rigidez matinal
-- Ansiedade
-- Sensibilidade gastrointestinal
-
-### 7.2. `symptom_signals`
-
-`SymptomSignal` é um registro separado do `DailyRecord`.
-
-Ele guarda:
-
-- numéricos:
-  - `fatigueLevel`
-  - `sleepQuality`
+- se existir `symptomSignal`, usa a media dos niveis positivos de:
   - `stiffness`
-  - `mood`
-  - `stress`
-- booleanos:
-  - `cognitiveFog`
-  - `sensitivityLight`
-  - `sensitivityNoise`
-  - `digestiveIssues`
-  - `headache`
-  - `anxiety`
-  - `depression`
-- texto:
-  - `bodyTemperatureFeeling`
-  - `notes`
+  - `cognitiveFogLevel`
+  - `headacheLevel`
+  - `digestiveIssuesLevel`
+  - `anxietyLevel`
+  - `depressionLevel`
+  - `sensitivityLightLevel`
+  - `sensitivityNoiseLevel`
+- se nao existir `symptomSignal`, usa a media de `symptomEntries[].severity`
+- se nao houver nada, retorna `null`
 
-### 7.3. `symptom_entries`
+### 5.3. Cards principais
 
-`SymptomEntry` foi modelado para conectar um `DailyRecord` a sintomas do catálogo com:
-
-- `symptomId`
-- `severity`
-- `durationMinutes`
-- `notes`
-
-### 7.4. Situação atual do fluxo principal
-
-Hoje o formulário principal de dor:
-
-- não envia `symptomEntries`
-- não cria itens na tabela `symptom_entries`
-
-Consequência prática:
-
-- `painAreas`, `painTriggers` e `painType` são os principais sinais do registro atual de dor
-- `symptomEntries` só impactam o sistema se forem preenchidos por outro fluxo ou integração
-
-## 8. Cálculo do risco de crise por motor de regras
-
-Toda criação ou edição de `DailyRecord` dispara `upsertForDailyRecord()`.
-
-### 8.1. Fatores usados
-
-O score soma contribuições até o teto de 100.
-
-#### Dor
+`Dor mais recente`
 
 ```ts
-(painLevel / 10) * 25
+latestRecord = latestDay?.latestRecord ?? null
+value = latestRecord?.painLevel ?? 0
 ```
 
-#### Fadiga
+Classificacao visual:
+
+- `>= 8`: `Dor muito alta`
+- `>= 6`: `Dor alta`
+- `>= 3`: `Dor moderada`
+- `< 3`: `Dor controlada`
+
+`Media recente`
 
 ```ts
-(fatigueLevel / 10) * 20
+averagePain =
+  soma(day.painAverage) / quantidade_de_dias_agregados
 ```
 
-#### Estresse
+`Pico recente`
 
 ```ts
-(stressLevel / 10) * 15
+peakDay = dia com maior painPeak
 ```
 
-#### Déficit de sono
-
-Se `sleepHours` existir:
+`Confiabilidade`
 
 ```ts
-max(0, ((7 - sleepHours) / 7) * 15)
+averageReliability =
+  media(day.reliabilityAverage dos dias com valor)
 ```
 
-Se não existir:
+Tons do card:
+
+- `>= 71`: `success`
+- `>= 41`: `default`
+- `< 41`: `warning`
+
+Observacao importante:
+
+- o valor exibido no card e a media do periodo
+- o texto auxiliar usa `latestRecord.dataReliabilityLabel`, nao o rotulo da media
+
+### 5.4. Grafico de evolucao
+
+O grafico principal usa:
+
+- linha principal: `day.painAverage`
+- linha secundaria: `day.stressAverage`
+
+### 5.5. Rankings de areas e gatilhos
+
+O ranking do dashboard usa `buildFrequency()`.
+
+Essa funcao:
+
+1. conta quantas vezes cada item apareceu
+2. acha o maior `count`
+3. calcula:
 
 ```ts
-5
+percentage = round((count / maxCount) * 100)
 ```
 
-#### Instabilidade de humor
+Isso significa que o percentual do dashboard nao e percentual sobre todos os registros, e sim percentual relativo ao item mais frequente.
+
+### 5.6. Cobertura do periodo
 
 ```ts
-((10 - moodLevel) / 10) * 10
+coverage = min((aggregates.length / rangeDays) * 100, 100)
 ```
 
-#### Carga de sintomas
+Ou seja, e a proporcao de dias agregados com dados dentro da janela escolhida.
 
-Se houver `symptomEntries`:
+### 5.7. Carga de sintomas recente
+
+O card final da tela mostra:
 
 ```ts
-averageSymptomSeverity =
-  sum(symptomEntries.severity) / symptomEntries.length
-
-(averageSymptomSeverity / 10) * 15
+latestDay?.symptomLoadAverage ?? 0
 ```
 
-Se não houver `symptomEntries`:
+Ele nao mostra a media do periodo inteiro; mostra apenas a carga media do ultimo dia agregado da janela.
+
+## 6. Motor clinico de risco de crise
+
+O motor principal esta em `CrisisPredictionService`.
+
+Cada `DailyRecord` gera ou atualiza uma `CrisisPrediction` com `predictedFor = recordDate + 1 dia`.
+
+### 6.1. Carga de sintomas
+
+Primeiro o motor resolve `symptomBurden`.
+
+Se existir `symptomSignal`, usa:
 
 ```ts
-0
+average([
+  stiffness,
+  cognitiveFogLevel,
+  sensitivityLightLevel,
+  sensitivityNoiseLevel,
+  digestiveIssuesLevel,
+  headacheLevel,
+  anxietyLevel,
+  depressionLevel
+])
 ```
 
-#### Déficit de hidratação
-
-Se `waterIntakeLiters` existir:
+Se nao existir `symptomSignal`, usa:
 
 ```ts
-max(0, ((2 - waterIntakeLiters) / 2) * 5)
+average(symptomEntries[].severity)
 ```
 
-Se não existir:
+Se nao houver nenhum dos dois, usa `0`.
+
+### 6.2. Contribuicoes de cada fator
+
+| Fator | Formula |
+| --- | --- |
+| Dor | `(painLevel / 10) * 25` |
+| Fadiga | `(fatigueLevel / 10) * 20` |
+| Estresse | `(stressLevel / 10) * 15` |
+| Sintomas | `(symptomBurden / 10) * 15` |
+| Clima | `0..10` por regra fixa |
+| Hidratacao | `0..5` por regra fixa |
+| Sono | `0..20` por qualidade + penalidade de horas |
+| Humor | `0..10` por penalidade + tendencia |
+
+#### Sono
 
 ```ts
-2
+sleepQualityContribution = ((10 - sleepQuality) / 10) * 12
+
+sleepPenalty =
+  sleepHours < 5 ? 15 :
+  sleepHours < 7 ? 8 :
+  0
+
+sleepContribution = min(sleepQualityContribution + sleepPenalty, 20)
 ```
 
-#### Fatores climáticos
-
-- temperatura `< 20`: `+4`
-- temperatura `> 32`: `+2`
-- umidade `> 70`:
-  - se também estiver frio: `+6`
-  - senão: `+3`
-- pressão `< 1000`: `+8`
-- sensação térmica `< 18` ou `> 32`: `+4`
-- precipitação:
-  - `>= 5`: `+4`
-  - `> 0`: `+2`
-
-### 8.2. Score, probabilidade e faixa de risco
+#### Humor
 
 ```ts
-score = min(sum(contributions), 100)
-probability = score / 100
+moodPenalty =
+  moodLevel <= 3 ? 10 :
+  moodLevel <= 5 ? 5 :
+  0
+
+moodTrendContribution = ((10 - moodLevel) / 10) * 4
+
+moodContribution = clamp(moodPenalty + moodTrendContribution, 0, 10)
 ```
 
-Faixas:
-
-- `< 0.35`: `LOW`
-- `>= 0.35`: `MODERATE`
-- `>= 0.6`: `HIGH`
-- `>= 0.8`: `CRITICAL`
-
-### 8.3. Confidence score
-
-Conta quantos sinais extras existem:
-
-- `sleepHours`
-- `sleepQuality`
-- `exerciseMinutes`
-- `waterIntakeLiters`
-- `medicationAdherence`
-- `notes`
-- presença de `symptomEntries`
-- presença de `weatherSnapshot`
-
-Depois:
+#### Hidratacao
 
 ```ts
-confidenceScore = min(0.7 + filledSignals * 0.04, 0.98)
+if hydration < 1   => 5
+if hydration < 1.5 => 4
+if hydration < 2   => 2
+else               => 0
 ```
 
-### 8.4. Recomendação textual
-
-O texto final é:
+#### Clima
 
 ```ts
-recommendationSummary = baseRecommendation + weatherRecommendation
+contribution = 0
+
+if temperature < 18 || apparentTemperature < 17 => +3
+else if temperature > 32 || apparentTemperature > 34 => +2
+
+if humidity >= 75 => +2
+if pressure < 1000 => +3
+
+if precipitation > 0 {
+  precipitation >= 5 ? +2 : +1
+}
+
+weatherContribution = min(contribution, 10)
 ```
 
-Onde:
-
-- `baseRecommendation` depende da faixa `LOW`, `MODERATE`, `HIGH`, `CRITICAL`
-- `weatherRecommendation` adiciona observações se houver:
-  - frio + umidade alta
-  - pressão baixa
-  - chuva
-
-## 9. Como os relatórios são calculados
-
-### 9.1. Geração
-
-O frontend chama:
-
-```http
-GET /reports/generate?period=weekly|monthly|quarterly
-```
-
-O backend gera ou atualiza um `Report` via `upsert`.
-
-### 9.2. Janela de tempo
-
-- `weekly`: 7 dias
-- `monthly`: 30 dias
-- `quarterly`: 90 dias
-
-A janela sempre termina em `today` normalizado para data UTC.
-
-### 9.3. Fontes consultadas
-
-Na geração do relatório entram:
-
-- `daily_records`
-- `symptom_signals`
-- `ai_predictions`
-- `user_risk_profile`
-
-### 9.4. Como os dias consolidados são montados
-
-O relatório cria `daySnapshots`, um por dia.
-
-Se houver vários `DailyRecord` no mesmo dia:
-
-- `recordCount += 1`
-- `painLevel` do dia vira o maior valor do dia
-- `sleepHours` fica com o último valor não nulo do dia
-- `sleepQuality` fica com o último valor não nulo do dia
-- `fatigueLevel`, `moodLevel`, `stressLevel` ficam com o último registro do dia
-- `physicalActivity`, `hydration`, `medicationTaken` ficam com o último valor não nulo do dia
-- `weatherFeeling` fica com o último texto não vazio
-- `weatherSnapshot` vem do último snapshot disponível em `metadata`
-- `ruleBasedProbabilityScore` fica com a maior predição do dia
-
-Se houver `SymptomSignal` no dia:
-
-- booleans viram `OR`
-- `signalCount += 1`
-- `coldBodyTemperature` vira `true` se `bodyTemperatureFeeling` contiver algo como:
-  - `frio`
-  - `friagem`
-  - `cold`
-  - `cold front`
-  - `gelado`
-
-Se houver `AiPrediction` no dia:
-
-- `aiProbabilityScore` fica com a maior probabilidade daquele dia
-
-### 9.5. Overview do relatório
-
-#### `recordedEntries`
+### 6.3. Score, probabilidade e nivel de risco
 
 ```ts
-dailyRecords.length
+maximumScore = 120
+score = min(sum(contributions), 120)
+probability = Number((score / 120).toFixed(4))
 ```
 
-#### `recordedDays`
+Nivel de risco:
 
-Quantidade de dias únicos em `dailyRecords.recordDate`.
+- `probability >= 0.85`: `CRITICAL`
+- `probability >= 0.65`: `HIGH`
+- `probability >= 0.4`: `MODERATE`
+- abaixo disso: `LOW`
 
-#### `averagePainLevel`
-
-Média simples de `dailyRecords.painLevel`.
-
-#### `symptomSignalCount`
+No frontend, o percentual exibido vem de:
 
 ```ts
-symptomSignals.length
+probabilityScore = Math.round(probability * 100)
 ```
 
-#### `rulePredictionCount`
+### 6.4. Confidence score
 
-Quantidade de `DailyRecord` que possuem `crisisPrediction`.
-
-#### `aiPredictionCount`
+O motor usa a confiabilidade do dado para gerar `confidenceScore`:
 
 ```ts
-aiPredictions.length
+confidenceScore =
+  clamp(dataReliabilityScore / 100, 0.45, 0.98)
 ```
 
-#### `dataCoverageRate`
+Com arredondamento para 4 casas.
 
-```ts
-(activeDays / expectedDays) * 100
-```
+### 6.5. Recomendacoes textuais
 
-Onde `activeDays = daySnapshots.length`.
+Base por risco:
 
-Importante: `activeDays` conta qualquer dia que tenha registro, sinal de sintoma ou predição, não apenas `DailyRecord`.
+- `CRITICAL`: reduzir carga do dia, priorizar descanso e considerar equipe de cuidado
+- `HIGH`: reforcar autocuidado, hidratacao e pausas
+- `MODERATE`: observar dor, estresse e sono
+- `LOW`: manter rotina e continuar registrando
 
-#### Médias complementares
+Notas extras de clima:
 
-O relatório também calcula:
+- `temperature < 20 && humidity > 70`
+- `pressure < 1000`
+- `precipitation > 0`
 
-- `averageSleepHours`
-- `averageFatigueLevel`
-- `averageMoodLevel`
-- `averageStressLevel`
-- `averageProbabilityScore`
+Essas observacoes sao concatenadas ao resumo final.
 
-Essa última usa a média da probabilidade combinada por dia.
+## 7. Relatorios
 
-### 9.6. Evolução de dor, sono, fadiga e humor
+### 7.1. Janela de dados
 
-Todos esses blocos usam a mesma lógica base `buildMetricEvolution()`.
+`ReportsService.resolveWindow()` trabalha sempre ate o dia atual:
 
-#### Métricas calculadas
+- semanal: `7 dias`
+- mensal: `30 dias`
+- trimestral: `90 dias`
 
-- `average`
-- `min`
-- `max`
-- `latest`
-- `change`
-- `trend`
-- `series`
+### 7.2. Fontes usadas
 
-#### Como `change` é calculado
+O relatorio cruza:
+
+- `DailyRecord`
+- `SymptomSignal`
+- `AiPrediction`
+- `UserRiskProfile`
+
+### 7.3. Agregacao por dia
+
+`buildDaySnapshots()` cria um objeto por dia.
+
+Regras principais:
+
+- `painLevel`: maior `painLevel` do dia
+- `sleepHours`: ultimo valor nao nulo do dia
+- `sleepQuality`: ultimo valor nao nulo do dia
+- `fatigueLevel`: ultimo valor do dia
+- `moodLevel`: ultimo valor do dia
+- `stressLevel`: ultimo valor do dia
+- `physicalActivity`: ultimo valor nao nulo do dia
+- `hydration`: ultimo valor nao nulo do dia
+- `medicationTaken`: ultimo valor nao nulo do dia
+- `weatherFeeling`: ultimo texto nao vazio do dia
+- `derivedSignalsPresent`: OR entre os registros do dia
+- `dataReliabilityScore`: media progressiva dos scores dos registros do dia
+- `ruleBasedProbabilityScore`: maior `Math.round(probability * 100)` do dia
+- `aiProbabilityScore`: maior `probabilityScore` de IA do dia
+- `combinedProbabilityScore`: `max(ruleBasedProbabilityScore, aiProbabilityScore)`
+
+Para `SymptomSignal` do relatorio:
+
+- `symptomLoad`: maior carga de sintomas do dia
+- flags como `cognitiveFog`, `headache`, `anxiety` etc. usam OR
+- `coldBodyTemperature` vira `true` se `bodyTemperatureFeeling` indicar frio
+
+### 7.4. Overview do relatorio
+
+Principais campos:
+
+| Campo | Formula |
+| --- | --- |
+| `recordedEntries` | quantidade de `DailyRecord` na janela |
+| `recordedDays` | dias distintos com `DailyRecord` |
+| `averagePainLevel` | media de `day.painLevel` |
+| `dataCoverageRate` | `(activeDays / expectedDays) * 100` |
+| `averageSleepHours` | media de `day.sleepHours` |
+| `averageFatigueLevel` | media de `day.fatigueLevel` |
+| `averageMoodLevel` | media de `day.moodLevel` |
+| `averageStressLevel` | media de `day.stressLevel` |
+| `averageProbabilityScore` | media de `combinedProbabilityScore` |
+| `averageDataReliabilityScore` | media de `day.dataReliabilityScore` |
+| `derivedRecordRate` | percentual de registros com `derivedSignals = true` |
+
+Observacao importante:
+
+- `activeDays` e `daySnapshots.length`
+- isso pode incluir dias com sinais ou IA, mesmo sem `DailyRecord`
+
+### 7.5. Evolucao de metricas
+
+`buildMetricEvolution()` faz:
 
 ```ts
 midpoint = ceil(points.length / 2)
-firstHalf = values.slice(0, midpoint)
-secondHalf = values.slice(midpoint)
+firstHalf = primeira metade
+secondHalf = segunda metade
 
 baseline = average(firstHalf)
-comparisonBase = secondHalf.length > 0 ? average(secondHalf) : baseline
-change = comparisonBase - baseline
+comparisonBase = average(secondHalf) ou baseline
+delta = comparisonBase - baseline
 ```
 
-#### Como `trend` é definido
+Trend:
 
-Se:
+- `stable` se `abs(delta) < stableThreshold`
+- se `higherIsBetter === true`:
+  - `delta > 0` => `improving`
+  - `delta < 0` => `worsening`
+- se `higherIsBetter === false`:
+  - `delta < 0` => `improving`
+  - `delta > 0` => `worsening`
 
-```ts
-abs(change) < stableThreshold
-```
+Thresholds usados hoje:
 
-então:
+- dor: `0.4`
+- horas de sono: `0.35`
+- qualidade do sono: `0.4`
+- fadiga: `0.4`
+- humor: `0.4`
 
-- `stable`
+### 7.6. Padroes de dor
 
-Senão:
+`buildPainPatterns()` gera distribuicoes de:
 
-- se `higherIsBetter = true`
-  - `change > 0`: `improving`
-  - `change < 0`: `worsening`
-- se `higherIsBetter = false`
-  - `change < 0`: `improving`
-  - `change > 0`: `worsening`
+- `painType`
+- `painAreas`
+- `painTriggers`
 
-#### Configuração por bloco
-
-| Bloco | higherIsBetter | stableThreshold |
-| --- | --- | --- |
-| `painEvolution` | `false` | `0.4` |
-| `sleepEvolution.hours` | `true` | `0.35` |
-| `sleepEvolution.quality` | `true` | `0.4` |
-| `fatigueEvolution` | `false` | `0.4` |
-| `moodEvolution` | `true` | `0.4` |
-
-#### Observação importante
-
-Essas séries usam cada `DailyRecord` individualmente com `createdAt`, não um ponto único por dia.
-
-### 9.7. Padrões de dor no relatório
-
-O bloco `painPatterns` calcula:
-
-- `types`
-- `areas`
-- `triggers`
-
-#### Regra de distribuição
-
-No relatório, a porcentagem é:
+Percentual no relatorio:
 
 ```ts
 percentage = (occurrences / totalEntries) * 100
 ```
 
-Ou seja:
+Aqui `totalEntries` e a quantidade de `DailyRecord` da janela.
 
-- diferente do dashboard
-- aqui a base é total de registros
+Detalhe importante:
 
-#### Detalhes
+- em `painAreas` e `painTriggers`, cada registro remove duplicados internos com `new Set()` antes de contar
+- o relatorio retorna no maximo `6` itens por distribuicao
 
-- `types`: usa `painType` não vazio
-- `areas`: remove duplicados dentro de cada registro antes de contar
-- `triggers`: remove duplicados dentro de cada registro antes de contar
-- retorna top 6 por volume
+### 7.7. Gatilhos recorrentes
 
-### 9.8. Gatilhos recorrentes do relatório
-
-Primeiro o sistema define:
+Um dia entra como `highRiskDay` quando:
 
 ```ts
-highRiskDays = dias com combinedProbabilityScore >= 70
+combinedProbabilityScore >= 70
 ```
 
-Depois avalia condições como:
+Os gatilhos avaliados hoje sao:
 
-- sono abaixo de 5h
-- qualidade do sono baixa
-- fadiga alta
-- estresse alto
-- humor reduzido
-- baixa hidratação
-- sensação de frio
-- alta umidade
-- pressão baixa
+- sono abaixo de `5h`
+- qualidade do sono `<= 4`
+- fadiga `>= 7`
+- estresse `>= 7`
+- humor `<= 4`
+- hidratacao `< 1.5`
+- sensacao de frio
+- umidade `>= 70`
+- pressao `< 1000`
 - chuva
 - frio com umidade alta
-- atividade física muito baixa
-- medicação não registrada
-- névoa cognitiva
+- atividade fisica `< 15`
+- medicacao nao tomada
+- nevoa cognitiva
 - cefaleia
-- alterações digestivas
+- alteracoes digestivas
 - ansiedade
 - humor depressivo
 
 Para cada gatilho:
 
-- `occurrences`: quantas vezes apareceu em todos os dias ativos
-- `occurrenceRate`: `occurrences / activeDays * 100`
-- `highRiskOccurrences`: quantas vezes apareceu nos dias de risco >= 70
-- `highRiskRate`: `highRiskOccurrences / highRiskDays.length * 100`
-
-Filtros:
-
-- mantém se `occurrences >= 2`
-- ou se `highRiskOccurrences > 0`
-
-Ordenação:
-
-1. `highRiskOccurrences desc`
-2. `occurrenceRate desc`
-3. `occurrences desc`
-
-Retorna top 8.
-
-### 9.9. Probabilidade de crise no relatório
-
-#### Probabilidade combinada
-
 ```ts
-combinedProbabilityScore =
-  max(ruleBasedProbabilityScore, aiProbabilityScore)
+occurrenceRate = (occurrences / activeDays) * 100
+highRiskRate =
+  highRiskDays.length > 0
+    ? (highRiskOccurrences / highRiskDays.length) * 100
+    : 0
 ```
 
-#### Fonte dominante do dia
+So entram no resultado final gatilhos com:
 
-```ts
-highestSource =
-  aiProbabilityScore === combinedProbabilityScore
-    ? "ai_prediction"
-    : "rule_engine"
-```
+- `occurrences >= 2`, ou
+- `highRiskOccurrences > 0`
 
-Se não houver score algum, fica `null`.
+O relatorio devolve no maximo `8`.
 
-#### Métricas finais
+### 7.8. Probabilidade de crise no relatorio
 
-- `averageProbabilityScore`
-- `maxProbabilityScore`
-- `highRiskDays`: score `>= 70`
-- `urgentRiskDays`: score `>= 90`
-- `latestProbabilityScore`
-- `latestRiskSource`
-- `dailySeries`
+Serie diaria:
 
-### 9.10. Correlações do relatório
+- `ruleBasedProbabilityScore`
+- `aiProbabilityScore`
+- `combinedProbabilityScore = max(rule, ai)`
 
-O relatório tenta calcular correlação de Pearson para pares como:
+`highestSource`:
 
-- dor x probabilidade de crise
-- sono x probabilidade de crise
-- fadiga x probabilidade de crise
-- estresse x probabilidade de crise
-- humor x probabilidade de crise
-- hidratação x probabilidade de crise
-- atividade física x probabilidade de crise
+- `ai_prediction` se a IA for a maior daquele dia
+- senao `rule_engine`
+
+Resumo:
+
+- `averageProbabilityScore`: media dos combinados
+- `maxProbabilityScore`: maior score combinado
+- `highRiskDays`: quantidade de scores `>= 70`
+- `urgentRiskDays`: quantidade de scores `>= 90`
+- `latestProbabilityScore`: ultimo score combinado nao nulo
+
+### 7.9. Correlacoes
+
+O relatorio usa correlacao de Pearson em pares como:
+
+- dor x risco de crise
+- sono x risco de crise
+- fadiga x risco de crise
+- estresse x risco de crise
+- humor x risco de crise
+- hidratacao x risco de crise
+- atividade x risco de crise
 - umidade x carga de sintomas
-- sensação térmica x fadiga
-- pressão x probabilidade de crise
-- precipitação x probabilidade de crise
+- sensacao termica x fadiga
+- pressao x risco de crise
+- chuva x risco de crise
 
-#### Regras
+Regras:
 
-- só calcula se houver ao menos 4 amostras válidas
-- usa coeficiente de Pearson
+- precisa de pelo menos `4` amostras validas
+- se o coeficiente for `null`, o par e descartado
+- direcao:
+  - `> 0.15`: `positive`
+  - `< -0.15`: `negative`
+  - caso contrario: `none`
+- forca:
+  - `>= 0.7`: `strong`
+  - `>= 0.4`: `moderate`
+  - abaixo disso: `weak`
 
-#### Classificação da direção
+O relatorio devolve no maximo `6` correlacoes.
 
-- `> 0.15`: `positive`
-- `< -0.15`: `negative`
-- entre isso: `none`
+## 8. Perfil personalizado de risco
 
-#### Força
+O perfil personalizado usa:
 
-- `>= 0.7`: `strong`
-- `>= 0.4`: `moderate`
-- abaixo disso: `weak`
+- `PatternAnalysisService`
+- `PatternScoreEngine`
 
-Ordenação final:
+### 8.1. Janela de analise
 
-- maior valor absoluto do coeficiente
-- top 6
+`lookbackDays`:
 
-## 10. Perfil personalizado de risco
+- usa `ai.patternAnalysisLookbackDays` do config, se existir
+- fallback para `30`
+- depois aplica:
 
-Esse perfil entra no relatório em `personalizedRiskProfile` e também serve de contexto para IA.
+```ts
+lookbackDays = clamp(round(valor), 14, 90)
+```
 
-### 10.1. Janela
+### 8.2. Como os dias sao montados
 
-Por padrão:
+Cada `PatternAnalysisDay` combina:
 
-- `AI_PATTERN_ANALYSIS_LOOKBACK_DAYS = 30`
-- mínimo `14`
-- máximo `90`
+- `DailyRecord`
+- `SymptomSignal`
 
-### 10.2. Como o sistema marca dias precursores
+Do `DailyRecord`:
 
-Um dia vira `isPrecursorDay = true` se:
+- `sleepHours`
+- `sleepQuality`
+- `fatigueLevel`
+- `mood`
+- `stressLevel`
+- `physicalActivity`
+- `hydration`
+- `medicationTaken`
+- `weatherFeeling`
+- `riskProbability`
+- `riskLevel`
 
-- `riskLevel` da `CrisisPrediction` for `HIGH` ou `CRITICAL`
-- ou `probability >= 0.6`
+Do `SymptomSignal`:
 
-### 10.3. Features analisadas
+- `fatigueLevel`: pega o maior valor do dia
+- `sleepQuality`: pega o menor valor do dia
+- `stiffness`: pega o maior valor do dia
+- `mood`: pega o menor valor do dia
+- `stressLevel`: pega o maior valor do dia
+- flags booleanas usam OR
+- `bodyTemperatureFeeling` e acumulado como lista sem duplicatas
 
-- sono abaixo de 5h
-- qualidade do sono ruim
-- fadiga alta
-- estresse alto
-- humor baixo
-- sensibilidade a frio
-- baixa hidratação
-- baixa atividade física
-- medicação não tomada
-- rigidez alta
-- névoa cognitiva
-- sensibilidade à luz/ruído
-- questões digestivas
-- cefaleia
-- ansiedade
-- depressão
+### 8.3. O que e um dia precursor
 
-### 10.4. Pesos padrão
+Um dia vira `isPrecursorDay = true` quando:
 
-Exemplos:
+- `riskLevel === HIGH`, ou
+- `riskLevel === CRITICAL`, ou
+- `probability >= 0.6` no score bruto do motor, ainda em escala `0..1`
 
-- `sleepUnder5h = 18`
-- `highStress = 16`
-- `highFatigue = 15`
-- `lowHydration = 12`
-- `coldWeather = 10`
-- `cognitiveFog = 8`
+### 8.4. Features avaliadas
 
-### 10.5. Fórmula do peso personalizado
+Features atuais e pesos padrao:
+
+- `sleepUnder5h`: `18`
+- `poorSleepQuality`: `9`
+- `highFatigue`: `15`
+- `highStress`: `16`
+- `lowMood`: `11`
+- `coldWeather`: `10`
+- `lowHydration`: `12`
+- `lowPhysicalActivity`: `6`
+- `skippedMedication`: `8`
+- `highStiffness`: `10`
+- `cognitiveFog`: `8`
+- `sensorySensitivity`: `7`
+- `digestiveIssues`: `6`
+- `headache`: `5`
+- `anxiety`: `7`
+- `depression`: `7`
+
+Ativacao das features:
+
+- `sleepUnder5h`: `sleepHours < 5`
+- `poorSleepQuality`: `sleepQuality <= 4`
+- `highFatigue`: `fatigueLevel >= 7`
+- `highStress`: `stressLevel >= 7`
+- `lowMood`: `mood <= 4`
+- `coldWeather`: texto de frio em `weatherFeeling` ou `bodyTemperatureFeelings`
+- `lowHydration`: `hydration < 1.5`
+- `lowPhysicalActivity`: `physicalActivity < 20`
+- `skippedMedication`: `medicationTaken === false`
+- `highStiffness`: `stiffness >= 7`
+- `cognitiveFog`: flag booleana
+- `sensorySensitivity`: luz ou ruido sensivel
+- `digestiveIssues`: flag booleana
+- `headache`: flag booleana
+- `anxiety`: flag booleana
+- `depression`: flag booleana
+
+### 8.5. Ajuste do peso personalizado
 
 Para cada feature:
 
 ```ts
-overallOccurrenceRate = totalDays > 0 ? overallCount / totalDays : 0
-precursorOccurrenceRate =
-  precursorDays.length > 0 ? precursorCount / precursorDays.length : 0
+overallOccurrenceRate = overallCount / totalDays
+precursorOccurrenceRate = precursorCount / precursorDays.length
 
 lift =
   overallOccurrenceRate > 0
@@ -1066,11 +939,7 @@ confidenceFactor =
 
 enrichment = max(0, precursorOccurrenceRate - overallOccurrenceRate)
 suppression = max(0, overallOccurrenceRate - precursorOccurrenceRate)
-```
 
-Peso ajustado:
-
-```ts
 adjustedWeight =
   precursorDays.length === 0
     ? defaultWeight
@@ -1078,123 +947,76 @@ adjustedWeight =
       (1 + enrichment * 1.8 + max(0, lift - 1) * 0.35) *
       (1 - suppression * 0.2) *
       (0.8 + confidenceFactor * 0.2)
+
+personalizedWeight = clamp(
+  adjustedWeight,
+  defaultWeight * 0.65,
+  defaultWeight * 2.4
+)
 ```
 
-Clamp final:
+No codigo, `personalizedWeight` fica com 2 casas decimais.
+
+### 8.6. Score atual e baseline
+
+`currentPersonalizedScore`:
 
 ```ts
-personalizedWeight =
-  clamp(adjustedWeight, defaultWeight * 0.65, defaultWeight * 2.4)
-```
+activeWeightSum = soma de todos os personalizedWeight
+activeScore = soma dos pesos das features ativas no ultimo dia
 
-### 10.6. Score personalizado atual
-
-No último dia da janela:
-
-```ts
 currentPersonalizedScore =
-  round((sum(weights das features ativas no último dia) / sum(todos os pesos)) * 100)
+  round((activeScore / activeWeightSum) * 100)
 ```
 
-### 10.7. Baseline
+`baselineScore`:
 
-É a média dos scores de todos os dias da janela, arredondada para inteiro.
+```ts
+media dos dayScores de toda a janela
+```
 
-### 10.8. Trigger patterns personalizados
+Ambos ficam limitados a `0..100`.
 
-#### Padrões simples
+### 8.7. Padroes antes de crise
 
-Uma feature vira padrão se:
+Padroes simples entram quando:
 
 - `evidenceCount >= 2`
 - `precursorOccurrenceRate >= 0.55`
 - `personalizedWeight >= defaultWeight * 1.05`
 
-Força:
+Padroes em pares avaliados hoje:
 
-- `>= 0.75`: `HIGH`
-- senão: `MEDIUM`
+- `sleepUnder5h + highStress`
+- `sleepUnder5h + lowHydration`
+- `coldWeather + lowHydration`
+- `highStress + lowMood`
+- `highFatigue + cognitiveFog`
+- `poorSleepQuality + highStress`
 
-#### Padrões em pares
-
-Pares avaliados:
-
-- sono curto + estresse alto
-- sono curto + baixa hidratação
-- frio + baixa hidratação
-- estresse alto + humor baixo
-- fadiga alta + névoa cognitiva
-- sono ruim + estresse alto
-
-Critérios:
+Um padrao em par so entra quando:
 
 - `evidenceCount >= 2`
 - `occurrenceRateBeforeCrisis >= 0.4`
 - `weightedSupport >= 18`
 
-## 11. Pontos de atenção do estado atual
+Forca do padrao:
 
-### 11.1. O formulário principal distorce variáveis clínicas
+- `HIGH` se taxa `>= 0.6`
+- senao `MEDIUM`
 
-Hoje o fluxo principal faz:
+O perfil guarda no maximo `8` padroes.
 
-- `fatigueLevel = painLevel`
-- `stressLevel = painLevel`
-- `mood = 10 - painLevel`
-- `sleepQuality = 0`
+## 9. Resumo curto do estado atual
 
-Então:
+Hoje o projeto faz isto:
 
-- correlações podem ficar artificialmente fortes
-- risco pode subir por variáveis derivadas, não por entradas realmente independentes
-- relatórios de humor, estresse e sono podem refletir a regra do formulário, não percepção real do paciente
+- o formulario salva escalas independentes reais, nao mais campos derivados da dor
+- `symptomSignal` ja impacta risco, dashboard e relatorio
+- o score de confiabilidade participa do dashboard, da predicao e dos relatorios
+- o motor clinico calcula risco por soma ponderada limitada a `120`
+- o dashboard trabalha por agregacao diaria em janelas de `7`, `30` ou `90` dias
+- o relatorio usa o maior risco do dia entre `rule_engine` e `ai_prediction`
+- o perfil personalizado recalcula pesos com base na repeticao de sinais antes de dias de risco alto
 
-### 11.2. `Registros hoje` usa `createdAt`, não `recordDate`
-
-Isso pode gerar leitura diferente do que o usuário imagina no calendário.
-
-### 11.3. O dashboard só enxerga a primeira página da API
-
-Sem filtro explícito, o dashboard trabalha com até 20 registros.
-
-### 11.4. `Contexto atual` não mostra a IA generativa
-
-Apesar do rótulo visual, o texto do insight vem hoje da `CrisisPrediction.recommendationSummary`.
-
-### 11.5. `symptom_entries` existe, mas não entra no fluxo principal
-
-Isso afeta principalmente:
-
-- `symptom burden` do motor de risco
-- análises por sintoma ligado ao `DailyRecord`
-
-### 11.6. `symptom_signals` enriquecem relatório e perfil, mas dependem de outro fluxo
-
-O backend está pronto para usar `symptom_signals`, porém eles não são gerados pelo formulário principal de dor.
-
-### 11.7. Percentuais do dashboard e dos relatórios são diferentes
-
-- dashboard: relativo ao item mais frequente
-- relatório: relativo ao total de registros
-
-### 11.8. Contagem por texto não normaliza caixa
-
-O sistema faz `trim()`, mas não padroniza maiúsculas/minúsculas na contagem. Em integrações futuras, `Estresse` e `estresse` podem virar itens distintos.
-
-## 12. Resumo executivo
-
-Hoje o sistema está organizado assim:
-
-- `DailyRecord` é a base do dashboard e dos relatórios
-- o dashboard do paciente usa janelas curtas sobre os registros mais recentes
-- o clima usa Open-Meteo com cache, persistência e fallback
-- o risco de crise é calculado por motor de regras com pesos fixos
-- os relatórios consolidam registros por dia, calculam tendências, padrões, gatilhos, correlações e score de risco
-- `SymptomSignal` e `UserRiskProfile` enriquecem relatórios e IA
-- `SymptomEntry` já existe no schema, mas ainda não faz parte do fluxo principal do registro de dor
-
-Se quiser, o próximo passo natural é eu transformar esse diagnóstico em uma segunda parte no mesmo arquivo com:
-
-- proposta de correção dos cálculos mais frágeis
-- sugestão de novo payload para o registro de dor
-- lista do que precisa mudar no frontend e no backend para os relatórios ficarem clinicamente mais confiáveis
+Se esse arquivo voltar a divergir do codigo, as fontes de verdade sao os arquivos listados no topo.
