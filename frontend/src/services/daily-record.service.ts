@@ -1,38 +1,99 @@
 import { apiCall } from "@/lib/api-client";
 import type { WeatherData } from "@/services/weather.service";
 
+export interface DailyRecordSymptomSignal {
+  fatigueLevel: number;
+  sleepQuality: number;
+  stiffness: number;
+  mood: number;
+  stress: number;
+  cognitiveFog: boolean;
+  cognitiveFogLevel?: number | null;
+  sensitivityLight: boolean;
+  sensitivityLightLevel?: number | null;
+  sensitivityNoise: boolean;
+  sensitivityNoiseLevel?: number | null;
+  digestiveIssues: boolean;
+  digestiveIssuesLevel?: number | null;
+  headache: boolean;
+  headacheLevel?: number | null;
+  anxiety: boolean;
+  anxietyLevel?: number | null;
+  depression: boolean;
+  depressionLevel?: number | null;
+  bodyTemperatureFeeling?: string | null;
+  notes?: string | null;
+}
+
+export interface DailyRecordSymptomEntry {
+  id: string;
+  symptomId: string;
+  symptomName: string;
+  severity: number;
+  durationMinutes?: number | null;
+  notes?: string | null;
+}
+
 export interface DailyRecord {
   id: string;
   recordDate: string;
   painLevel: number;
-  sleepHours?: number | null;
-  sleepQuality?: number | null;
+  sleepHours: number | null;
+  sleepQuality: number | null;
   fatigueLevel: number;
   mood: number;
+  moodLevel: number;
   stressLevel: number;
-  physicalActivity?: number | null;
-  medicationTaken?: boolean | null;
-  hydration?: number | null;
-  weatherFeeling?: string | null;
-  weatherImpact?: string | null;
-  weatherSnapshot?: WeatherData | null;
-  notes?: string | null;
-  painType?: string | null;
+  physicalActivity: number | null;
+  medicationTaken: boolean | null;
+  hydration: number | null;
+  weatherFeeling: string | null;
+  weatherImpact: string | null;
+  weatherSnapshot: WeatherData | null;
+  notes: string | null;
+  painType: string | null;
   painAreas: string[];
+  frontPainAreas: string[];
+  backPainAreas: string[];
   painTriggers: string[];
+  derivedSignals: boolean;
+  dataReliabilityScore: number;
+  dataReliabilityLabel: string;
+  symptomSignal: DailyRecordSymptomSignal | null;
+  symptomEntries: DailyRecordSymptomEntry[];
   createdAt: string;
   updatedAt: string;
 }
 
+export interface SymptomSignalPayload {
+  stiffness?: number;
+  cognitiveFog?: boolean;
+  cognitiveFogLevel?: number | null;
+  headache?: boolean;
+  headacheLevel?: number | null;
+  digestiveIssues?: boolean;
+  digestiveIssuesLevel?: number | null;
+  anxiety?: boolean;
+  anxietyLevel?: number | null;
+  depression?: boolean;
+  depressionLevel?: number | null;
+  sensitivityLight?: boolean;
+  sensitivityLightLevel?: number | null;
+  sensitivityNoise?: boolean;
+  sensitivityNoiseLevel?: number | null;
+  bodyTemperatureFeeling?: string;
+  notes?: string;
+}
+
 export interface CreateDailyRecordDto {
-  recordDate?: string;
-  painLevel?: number;
-  sleepHours?: number;
-  sleepQuality?: number;
+  recordDate: string;
+  painLevel: number;
+  sleepHours: number;
+  sleepQuality: number;
   fatigueLevel: number;
-  mood: number;
+  moodLevel: number;
   stressLevel: number;
-  physicalActivity?: number;
+  physicalActivityMinutes?: number;
   hydration?: number;
   medicationTaken?: boolean;
   weatherFeeling?: string;
@@ -41,7 +102,10 @@ export interface CreateDailyRecordDto {
   notes?: string;
   painType?: string;
   painAreas?: string[];
+  frontPainAreas?: string[];
+  backPainAreas?: string[];
   painTriggers?: string[];
+  symptomSignal?: SymptomSignalPayload;
 }
 
 interface DailyRecordListResponse {
@@ -53,6 +117,7 @@ export interface DailyRecordFilters {
   dateTo?: string;
   page?: number;
   limit?: number;
+  includeAll?: boolean;
 }
 
 export const dailyRecordService = {

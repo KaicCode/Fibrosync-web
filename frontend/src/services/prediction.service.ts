@@ -25,6 +25,20 @@ interface PredictionHistoryResponse {
   items: PredictionApiResponse[];
 }
 
+interface AiPredictionApiResponse {
+  id: string;
+  dailyRecordId?: string | null;
+  provider: string;
+  model: string;
+  promptVersion: string;
+  probabilityScore: number;
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  explanation: string;
+  suggestedAction: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Prediction {
   id: string;
   userId: string;
@@ -37,6 +51,20 @@ export interface Prediction {
   riskFactors: PredictionRiskFactor[];
   recommendationSummary: string | null;
   explanation: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiPrediction {
+  id: string;
+  dailyRecordId?: string | null;
+  provider: string;
+  model: string;
+  promptVersion: string;
+  probabilityScore: number;
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  explanation: string;
+  suggestedAction: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +87,17 @@ export const predictionService = {
         "/crisis-predictions/latest",
       );
       return mapPrediction(response);
+    } catch {
+      return null;
+    }
+  },
+
+  getLatestAiPrediction: async (): Promise<AiPrediction | null> => {
+    try {
+      return await apiCall<AiPredictionApiResponse>(
+        "get",
+        "/ai/predictions/latest",
+      );
     } catch {
       return null;
     }

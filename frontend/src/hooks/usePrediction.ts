@@ -7,6 +7,11 @@ export function usePrediction() {
     queryFn: predictionService.getLatestPrediction,
   });
 
+  const latestAiQuery = useQuery({
+    queryKey: ["latestAiPrediction"],
+    queryFn: predictionService.getLatestAiPrediction,
+  });
+
   const historyQuery = useQuery({
     queryKey: ["predictionHistory"],
     queryFn: predictionService.getPredictionHistory,
@@ -14,7 +19,10 @@ export function usePrediction() {
 
   return {
     latestPrediction: latestQuery.data,
+    latestRulePrediction: latestQuery.data,
+    latestAiPrediction: latestAiQuery.data,
     isLoadingLatest: latestQuery.isLoading,
+    isLoadingLatestAi: latestAiQuery.isLoading,
     predictionHistory: historyQuery.data || [],
     isLoadingHistory: historyQuery.isLoading,
     refetchLatestPrediction: latestQuery.refetch,

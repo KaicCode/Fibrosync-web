@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -8,11 +9,24 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { SymptomCategory } from '@prisma/client';
 
 export class SymptomEntryInputDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsUUID()
-  symptomId!: string;
+  @IsOptional()
+  symptomId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  symptomName?: string;
+
+  @ApiPropertyOptional({ enum: SymptomCategory })
+  @IsOptional()
+  @IsEnum(SymptomCategory)
+  category?: SymptomCategory;
 
   @ApiProperty({ minimum: 0, maximum: 10 })
   @IsInt()

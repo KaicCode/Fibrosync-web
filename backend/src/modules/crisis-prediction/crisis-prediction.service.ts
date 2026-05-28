@@ -5,11 +5,13 @@ import {
   type DailyRecord,
   type Prisma,
 } from '@prisma/client';
+import { calculateDataReliability } from '@/common/utils/data-reliability.util';
 import { addDays, normalizeDateOnly } from '@/common/utils/date.util';
 import {
   buildPaginationMeta,
   resolvePagination,
 } from '@/common/utils/pagination.util';
+import { averageSymptomBurden } from '@/common/utils/symptom-signal.util';
 import { PrismaService } from '@/database/prisma.service';
 import { NotificationsService } from '@/modules/notifications/notifications.service';
 import { WeatherService } from '@/modules/weather/weather.service';
@@ -43,6 +45,12 @@ export class CrisisPredictionService {
         userId,
       },
       include: {
+        symptomSignals: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        },
         symptomEntries: {
           include: {
             symptom: true,
@@ -194,6 +202,27 @@ export class CrisisPredictionService {
 
   private calculateRisk(
     record: DailyRecord & {
+      symptomSignals: Array<{
+        fatigueLevel: number;
+        sleepQuality: number;
+        stiffness: number;
+        mood: number;
+        stress: number;
+        cognitiveFog: boolean;
+        cognitiveFogLevel: number | null;
+        sensitivityLight: boolean;
+        sensitivityLightLevel: number | null;
+        sensitivityNoise: boolean;
+        sensitivityNoiseLevel: number | null;
+        digestiveIssues: boolean;
+        digestiveIssuesLevel: number | null;
+        headache: boolean;
+        headacheLevel: number | null;
+        anxiety: boolean;
+        anxietyLevel: number | null;
+        depression: boolean;
+        depressionLevel: number | null;
+      }>;
       symptomEntries: Array<{ severity: number; symptom: { name: string } }>;
     },
     weatherSnapshot: WeatherSnapshot | null,
@@ -204,103 +233,111 @@ export class CrisisPredictionService {
     factors: RiskFactor[];
     recommendationSummary: string;
   } {
-    const averageSymptomSeverity =
-      record.symptomEntries.length > 0
-        ? record.symptomEntries.reduce((sum, item) => sum + item.severity, 0) /
-          record.symptomEntries.length
-        : 0;
-    const sleepPenalty =
-      record.sleepHours !== null && record.sleepHours !== undefined
-        ? Math.max(0, ((7 - record.sleepHours) / 7) * 15)
-        : 5;
-    const hydrationPenalty =
-      record.waterIntakeLiters !== null &&
-      record.waterIntakeLiters !== undefined
-        ? Math.max(0, ((2 - record.waterIntakeLiters) / 2) * 5)
-        : 2;
+    const symptomBurden = this.resolveSymptomBurden(record);
+    const sleepContribution = this.buildSleepContribution(record);
+    const moodContribution = this.buildMoodContribution(record);
+    const hydrationContribution = this.buildHydrationContribution(record);
+    const weatherContribution = this.buildWeatherContribution(weatherSnapshot);
 
     const factors: RiskFactor[] = [
       {
         key: 'pain',
-        label: 'Pain burden',
+        label: 'Dor',
         value: record.painLevel,
         contribution: (record.painLevel / 10) * 25,
       },
       {
         key: 'fatigue',
-        label: 'Fatigue level',
+        label: 'Fadiga',
         value: record.fatigueLevel,
         contribution: (record.fatigueLevel / 10) * 20,
       },
       {
+        key: 'sleep',
+        label: 'Sono',
+        value: Number(record.sleepQuality ?? 0),
+        contribution: sleepContribution,
+      },
+      {
         key: 'stress',
-        label: 'Stress load',
+        label: 'Estresse',
         value: record.stressLevel,
         contribution: (record.stressLevel / 10) * 15,
       },
       {
-        key: 'sleep',
-        label: 'Sleep deficit',
-        value: Number(record.sleepHours ?? 0),
-        contribution: sleepPenalty,
-      },
-      {
         key: 'mood',
-        label: 'Mood instability',
-        value: 10 - record.moodLevel,
-        contribution: ((10 - record.moodLevel) / 10) * 10,
+        label: 'Humor',
+        value: record.moodLevel,
+        contribution: moodContribution,
       },
       {
-        key: 'symptom-burden',
-        label: 'Symptom burden',
-        value: averageSymptomSeverity,
-        contribution: (averageSymptomSeverity / 10) * 15,
+        key: 'symptoms',
+        label: 'Carga de sintomas',
+        value: symptomBurden,
+        contribution: (symptomBurden / 10) * 15,
+      },
+      {
+        key: 'weather',
+        label: 'Clima',
+        value: weatherContribution,
+        contribution: weatherContribution,
       },
       {
         key: 'hydration',
-        label: 'Hydration deficit',
+        label: 'Hidratacao',
         value: Number(record.waterIntakeLiters ?? 0),
-        contribution: hydrationPenalty,
+        contribution: hydrationContribution,
       },
-      ...this.buildWeatherFactors(weatherSnapshot),
     ];
 
+    const maximumScore = 120;
     const score = Math.min(
       factors.reduce((sum, factor) => sum + factor.contribution, 0),
-      100,
+      maximumScore,
     );
-    const probability = Number((score / 100).toFixed(4));
-    const filledSignals = [
-      record.sleepHours,
-      record.sleepQuality,
-      record.exerciseMinutes,
-      record.waterIntakeLiters,
-      record.medicationAdherence,
-      record.notes,
-      record.symptomEntries.length > 0 ? 1 : null,
-      weatherSnapshot ? 1 : null,
-    ].filter((value) => value !== null && value !== undefined).length;
+    const probability = Number((score / maximumScore).toFixed(4));
+    const reliability = calculateDataReliability({
+      recordDate: record.recordDate,
+      createdAt: record.createdAt,
+      painLevel: record.painLevel,
+      fatigueLevel: record.fatigueLevel,
+      stressLevel: record.stressLevel,
+      moodLevel: record.moodLevel,
+      sleepQuality: record.sleepQuality,
+      sleepHours: record.sleepHours,
+      hydration: record.waterIntakeLiters,
+      physicalActivity: record.exerciseMinutes,
+      medicationTaken: record.medicationAdherence,
+      weatherFeeling: record.weatherFeeling,
+      notes: record.notes,
+      painType: record.painType,
+      painAreas: record.painAreas,
+      painTriggers: record.painTriggers,
+      symptomSignalPresent: record.symptomSignals.length > 0,
+      symptomEntryCount: record.symptomEntries.length,
+      derivedSignals: record.derivedSignals,
+    });
     const confidenceScore = Number(
-      Math.min(0.7 + filledSignals * 0.04, 0.98).toFixed(4),
+      Math.min(Math.max(reliability.score / 100, 0.45), 0.98).toFixed(4),
     );
 
     let riskLevel: RiskLevel = RiskLevel.LOW;
-    if (probability >= 0.8) {
+    if (probability >= 0.85) {
       riskLevel = RiskLevel.CRITICAL;
-    } else if (probability >= 0.6) {
+    } else if (probability >= 0.65) {
       riskLevel = RiskLevel.HIGH;
-    } else if (probability >= 0.35) {
+    } else if (probability >= 0.4) {
       riskLevel = RiskLevel.MODERATE;
     }
 
     const baseRecommendation =
       riskLevel === RiskLevel.CRITICAL
-        ? 'Critical flare risk detected. Consider reducing workload, prioritizing rest and contacting your care team.'
+        ? 'Risco critico de crise detectado. Reduza a carga do dia, priorize descanso e considere acionar sua equipe de cuidado.'
         : riskLevel === RiskLevel.HIGH
-          ? 'High flare risk detected. Increase self-care, hydration and rest while monitoring symptoms closely.'
+          ? 'Risco alto de crise detectado. Reforce autocuidado, hidratacao e pausas, acompanhando os sintomas mais de perto.'
           : riskLevel === RiskLevel.MODERATE
-            ? 'Moderate flare risk detected. Keep a stable routine and watch pain, stress and sleep closely.'
-            : 'Low flare risk detected. Maintain the current care routine and continue tracking consistently.';
+            ? 'Risco moderado de crise detectado. Mantenha uma rotina estavel e observe dor, estresse e sono ao longo do dia.'
+            : 'Risco baixo de crise detectado. Mantenha a rotina atual e continue registrando com consistencia.';
     const weatherRecommendation =
       this.buildWeatherRecommendation(weatherSnapshot);
     const recommendationSummary = weatherRecommendation
@@ -316,62 +353,124 @@ export class CrisisPredictionService {
     };
   }
 
-  private buildWeatherFactors(
-    weatherSnapshot: WeatherSnapshot | null,
-  ): RiskFactor[] {
-    if (!weatherSnapshot) {
-      return [];
+  private resolveSymptomBurden(
+    record: DailyRecord & {
+      symptomSignals: Array<{
+        stiffness: number;
+        cognitiveFogLevel: number | null;
+        sensitivityLightLevel: number | null;
+        sensitivityNoiseLevel: number | null;
+        digestiveIssuesLevel: number | null;
+        headacheLevel: number | null;
+        anxietyLevel: number | null;
+        depressionLevel: number | null;
+      }>;
+      symptomEntries: Array<{ severity: number }>;
+    },
+  ): number {
+    const latestSignal = record.symptomSignals[0];
+
+    if (latestSignal) {
+      return averageSymptomBurden([
+        latestSignal.stiffness,
+        latestSignal.cognitiveFogLevel,
+        latestSignal.sensitivityLightLevel,
+        latestSignal.sensitivityNoiseLevel,
+        latestSignal.digestiveIssuesLevel,
+        latestSignal.headacheLevel,
+        latestSignal.anxietyLevel,
+        latestSignal.depressionLevel,
+      ]);
     }
 
-    const coldAndHumid =
-      weatherSnapshot.temperature < 20 && weatherSnapshot.humidity > 70;
+    return record.symptomEntries.length > 0
+      ? record.symptomEntries.reduce((sum, entry) => sum + entry.severity, 0) /
+          record.symptomEntries.length
+      : 0;
+  }
 
-    return [
-      {
-        key: 'temperature',
-        label: 'Temperature stress',
-        value: weatherSnapshot.temperature,
-        contribution:
-          weatherSnapshot.temperature < 20
-            ? 4
-            : weatherSnapshot.temperature > 32
-              ? 2
-              : 0,
-      },
-      {
-        key: 'humidity',
-        label: 'Humidity load',
-        value: weatherSnapshot.humidity,
-        contribution: coldAndHumid ? 6 : weatherSnapshot.humidity > 70 ? 3 : 0,
-      },
-      {
-        key: 'pressure',
-        label: 'Pressure drop',
-        value: weatherSnapshot.pressure,
-        contribution: weatherSnapshot.pressure < 1000 ? 8 : 0,
-      },
-      {
-        key: 'apparent-temperature',
-        label: 'Apparent temperature stress',
-        value: weatherSnapshot.apparentTemperature,
-        contribution:
-          weatherSnapshot.apparentTemperature < 18 ||
-          weatherSnapshot.apparentTemperature > 32
-            ? 4
-            : 0,
-      },
-      {
-        key: 'precipitation',
-        label: 'Rain and precipitation',
-        value: weatherSnapshot.precipitation,
-        contribution:
-          weatherSnapshot.precipitation >= 5
-            ? 4
-            : weatherSnapshot.precipitation > 0
-              ? 2
-              : 0,
-      },
-    ];
+  private buildSleepContribution(record: DailyRecord): number {
+    const sleepQualityContribution =
+      record.sleepQuality !== null && record.sleepQuality !== undefined
+        ? ((10 - record.sleepQuality) / 10) * 12
+        : 0;
+    const sleepPenalty =
+      record.sleepHours !== null && record.sleepHours !== undefined
+        ? record.sleepHours < 5
+          ? 15
+          : record.sleepHours < 7
+            ? 8
+            : 0
+        : 0;
+
+    return Number(
+      Math.min(sleepQualityContribution + sleepPenalty, 20).toFixed(2),
+    );
+  }
+
+  private buildMoodContribution(record: DailyRecord): number {
+    const moodPenalty =
+      record.moodLevel <= 3 ? 10 : record.moodLevel <= 5 ? 5 : 0;
+    const moodTrendContribution = ((10 - record.moodLevel) / 10) * 4;
+
+    return Number(
+      Math.min(Math.max(moodPenalty + moodTrendContribution, 0), 10).toFixed(
+        2,
+      ),
+    );
+  }
+
+  private buildHydrationContribution(record: DailyRecord): number {
+    if (
+      record.waterIntakeLiters === null ||
+      record.waterIntakeLiters === undefined
+    ) {
+      return 0;
+    }
+
+    if (record.waterIntakeLiters < 1) {
+      return 5;
+    }
+
+    if (record.waterIntakeLiters < 1.5) {
+      return 4;
+    }
+
+    if (record.waterIntakeLiters < 2) {
+      return 2;
+    }
+
+    return 0;
+  }
+
+  private buildWeatherContribution(
+    weatherSnapshot: WeatherSnapshot | null,
+  ): number {
+    if (!weatherSnapshot) {
+      return 0;
+    }
+
+    let contribution = 0;
+
+    if (weatherSnapshot.temperature < 18 || weatherSnapshot.apparentTemperature < 17) {
+      contribution += 3;
+    } else if (weatherSnapshot.temperature > 32 || weatherSnapshot.apparentTemperature > 34) {
+      contribution += 2;
+    }
+
+    if (weatherSnapshot.humidity >= 75) {
+      contribution += 2;
+    }
+
+    if (weatherSnapshot.pressure < 1000) {
+      contribution += 3;
+    }
+
+    if (weatherSnapshot.precipitation > 0) {
+      contribution += weatherSnapshot.precipitation >= 5 ? 2 : 1;
+    }
+
+    return Math.min(contribution, 10);
   }
 
   private buildWeatherRecommendation(
@@ -385,20 +484,20 @@ export class CrisisPredictionService {
 
     if (weatherSnapshot.temperature < 20 && weatherSnapshot.humidity > 70) {
       notes.push(
-        'Cold temperatures with high humidity may intensify stiffness.',
+        'Frio com umidade alta pode intensificar rigidez e sensacao corporal pesada.',
       );
     }
 
     if (weatherSnapshot.pressure < 1000) {
       notes.push(
-        'Lower atmospheric pressure may increase symptom sensitivity.',
+        'Queda de pressao atmosferica pode aumentar sensibilidade a dor.',
       );
     }
 
     if (weatherSnapshot.precipitation > 0) {
-      notes.push('Rain may contribute to fatigue or heavier body sensation.');
+      notes.push('Chuva pode contribuir para mais fadiga ou sensacao de corpo pesado.');
     }
 
-    return notes.length > 0 ? `Weather note: ${notes.join(' ')}` : null;
+    return notes.length > 0 ? `Clima de hoje: ${notes.join(' ')}` : null;
   }
 }

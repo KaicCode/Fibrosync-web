@@ -1,108 +1,309 @@
-import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
-
-type PointId = 'ombros' | 'lombar' | 'quadril' | 'joelhos' | 'punhos' | 'cervical'
+import { memo } from "react";
+import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
+import {
+  backBodyAreas,
+  frontBodyAreas,
+  type BodyAreaDefinition,
+} from "@/features/clinical/clinical-model";
+import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type BodyMapProps = {
-  selectedPoints: string[]
-  onTogglePoint?: (point: PointId) => void
+  frontSelectedAreas: string[];
+  backSelectedAreas: string[];
+  onToggleFrontArea: (areaId: string) => void;
+  onToggleBackArea: (areaId: string) => void;
+  compact?: boolean;
+  showLegend?: boolean;
+};
+
+function FigureSilhouette({ side }: { side: "front" | "back" }) {
+  return (
+    <svg
+      viewBox="0 0 180 320"
+      className="pointer-events-none absolute inset-0 h-full w-full text-slate-500/70"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={`body-fill-${side}`} x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.98)" />
+          <stop offset="55%" stopColor="rgba(247,244,253,0.95)" />
+          <stop offset="100%" stopColor="rgba(236,232,245,0.92)" />
+        </linearGradient>
+        <linearGradient id={`body-stroke-${side}`} x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stopColor="rgba(71,85,105,0.55)" />
+          <stop offset="100%" stopColor="rgba(139,92,246,0.35)" />
+        </linearGradient>
+        <filter id={`body-shadow-${side}`} x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow
+            dx="0"
+            dy="12"
+            stdDeviation="12"
+            floodColor="rgba(100,116,139,0.12)"
+          />
+        </filter>
+      </defs>
+      <g filter={`url(#body-shadow-${side})`}>
+        <circle
+          cx="90"
+          cy="35"
+          r="22"
+          fill={`url(#body-fill-${side})`}
+          stroke={`url(#body-stroke-${side})`}
+          strokeWidth="1.6"
+        />
+        <path
+          d="M67 60c-10 6-21 18-24 33l-8 35c-2 8 2 16 10 18 7 2 14-3 16-10l8-26 3 50-8 110c-1 9 5 16 13 16 8 0 14-6 15-14l8-70 8 70c1 8 7 14 15 14 8 0 14-7 13-16l-8-110 3-50 8 26c2 7 9 12 16 10 8-2 12-10 10-18l-8-35c-3-15-14-27-24-33"
+          fill={`url(#body-fill-${side})`}
+          stroke={`url(#body-stroke-${side})`}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+      <path
+        d="M48 93c11 7 25 11 42 11s31-4 42-11"
+        fill="none"
+        stroke="rgba(148,163,184,0.28)"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M90 58v165"
+        fill="none"
+        stroke="rgba(148,163,184,0.2)"
+        strokeWidth="1"
+        strokeLinecap="round"
+      />
+      {side === "front" ? (
+        <>
+          <path
+            d="M60 74c8 8 18 12 30 12s22-4 30-12"
+            fill="none"
+            stroke="rgba(100,116,139,0.22)"
+            strokeWidth="1.2"
+          />
+          <path
+            d="M74 108c6 7 10 15 16 15s10-8 16-15"
+            fill="none"
+            stroke="rgba(100,116,139,0.18)"
+            strokeWidth="1.1"
+          />
+          <path
+            d="M78 136c4 6 8 9 12 9s8-3 12-9"
+            fill="none"
+            stroke="rgba(100,116,139,0.15)"
+            strokeWidth="1"
+          />
+        </>
+      ) : (
+        <>
+          <path
+            d="M66 74c8 6 16 9 24 9s16-3 24-9"
+            fill="none"
+            stroke="rgba(100,116,139,0.22)"
+            strokeWidth="1.2"
+          />
+          <path
+            d="M70 112c8 8 13 17 20 17s12-9 20-17"
+            fill="none"
+            stroke="rgba(100,116,139,0.18)"
+            strokeWidth="1.1"
+          />
+          <path
+            d="M72 154c7 6 12 9 18 9s11-3 18-9"
+            fill="none"
+            stroke="rgba(100,116,139,0.15)"
+            strokeWidth="1"
+          />
+        </>
+      )}
+    </svg>
+  );
 }
 
-const frontPoints: Array<{ id: PointId; x: number; y: number }> = [
-  { id: 'cervical', x: 74, y: 58 },
-  { id: 'ombros', x: 50, y: 92 },
-  { id: 'ombros', x: 98, y: 92 },
-  { id: 'lombar', x: 74, y: 142 },
-  { id: 'quadril', x: 74, y: 176 },
-  { id: 'joelhos', x: 60, y: 224 },
-  { id: 'joelhos', x: 88, y: 224 },
-]
-
-const backPoints: Array<{ id: PointId; x: number; y: number }> = [
-  { id: 'cervical', x: 74, y: 58 },
-  { id: 'ombros', x: 47, y: 98 },
-  { id: 'ombros', x: 101, y: 98 },
-  { id: 'lombar', x: 74, y: 152 },
-  { id: 'quadril', x: 74, y: 184 },
-  { id: 'punhos', x: 36, y: 160 },
-  { id: 'punhos', x: 112, y: 160 },
-]
-
-function Figure({
-  points,
-  selectedPoints,
-  onTogglePoint,
+function AreaButton({
+  area,
+  selected,
+  onToggle,
 }: {
-  points: Array<{ id: PointId; x: number; y: number }>
-  selectedPoints: string[]
-  onTogglePoint?: (point: PointId) => void
+  area: BodyAreaDefinition;
+  selected: boolean;
+  onToggle: (areaId: string) => void;
+}) {
+  const centerX = area.x + area.width / 2;
+  const centerY = area.y + area.height / 2;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.96 }}
+          whileHover={{ scale: 1.06 }}
+          onClick={() => onToggle(area.id)}
+          className={cn(
+            "absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2",
+            selected
+              ? "drop-shadow-[0_0_16px_rgba(139,92,246,0.22)]"
+              : "hover:drop-shadow-[0_0_12px_rgba(139,92,246,0.14)]",
+          )}
+          style={{
+            left: `${centerX}%`,
+            top: `${centerY}%`,
+          }}
+          aria-pressed={selected}
+          aria-label={`${area.label}. ${selected ? "Selecionada" : "Nao selecionada"}.`}
+        >
+          {selected ? (
+            <motion.span
+              aria-hidden="true"
+              className="absolute h-5 w-5 rounded-full bg-violet-300/25"
+              animate={{ opacity: [0.28, 0.5, 0.28], scale: [0.9, 1.08, 0.9] }}
+              transition={{ duration: 2.1, repeat: Number.POSITIVE_INFINITY }}
+            />
+          ) : null}
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute h-5 w-5 rounded-full bg-transparent",
+              selected ? "bg-violet-200/10" : "bg-white/0",
+            )}
+          />
+          <span
+            aria-hidden="true"
+            className={cn(
+              "relative rounded-full border transition-all duration-200",
+              selected
+                ? "h-3.5 w-3.5 border-violet-100 bg-violet-600 shadow-[0_0_0_3px_rgba(255,255,255,0.7),0_0_0_6px_rgba(139,92,246,0.12)]"
+                : "h-3 w-3 border-[1.2px] border-slate-400/70 bg-white/60 shadow-[0_0_0_1px_rgba(255,255,255,0.72)] hover:border-violet-300 hover:bg-violet-100/70",
+            )}
+          />
+          <span className="sr-only">{area.label}</span>
+        </motion.button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="right"
+        className="border-white/15 bg-slate-950/95 px-3 py-2.5 shadow-[0_18px_42px_rgba(15,23,42,0.28)]"
+      >
+        <p className="font-semibold text-white">{area.label}</p>
+        <p className="mt-1 text-white/75">{area.description}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+const FigureCard = memo(function FigureCard({
+  title,
+  subtitle,
+  side,
+  areas,
+  selectedAreas,
+  onToggleArea,
+  compact = false,
+}: {
+  title: string;
+  subtitle: string;
+  side: "front" | "back";
+  areas: BodyAreaDefinition[];
+  selectedAreas: string[];
+  onToggleArea: (areaId: string) => void;
+  compact?: boolean;
 }) {
   return (
-    <svg viewBox="0 0 148 268" className="h-full w-full">
-      <circle cx="74" cy="26" r="15" stroke="#C9C3DB" strokeWidth="2.2" fill="white" />
-      <path
-        d="M74 42C74 42 69 56 69 72C61 81 55 91 53 106C49 129 47 138 43 154C41 163 44 169 51 170C56 171 61 166 62 160L66 138L67 175L60 241C59 249 64 256 71 256C79 256 83 250 84 241L89 190L94 241C95 250 100 256 108 256C115 256 120 249 119 241L112 175L113 138L117 160C118 166 123 171 128 170C135 169 138 163 136 154C132 138 130 129 126 106C123 91 117 81 109 72C109 56 104 42 104 42"
-        stroke="#C9C3DB"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M53 106L30 145M95 106L118 145M60 83L40 95M88 83L108 95"
-        stroke="#C9C3DB"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      {points.map((point, index) => {
-        const active = selectedPoints.includes(point.id)
-
-        return (
-          <g key={`${point.id}-${index}`}>
-            {active ? (
-              <motion.circle
-                cx={point.x}
-                cy={point.y}
-                r="15"
-                fill="#CDAEFF"
-                fillOpacity="0.35"
-                animate={{ opacity: [0.25, 0.52, 0.25], scale: [0.95, 1.06, 0.95] }}
-                transition={{ duration: 2.6, repeat: Number.POSITIVE_INFINITY }}
-              />
-            ) : null}
-            <circle
-              cx={point.x}
-              cy={point.y}
-              r="8"
-              fill={active ? '#9B73FF' : '#E7DFFF'}
-              fillOpacity={active ? 1 : 0.68}
-              className={cn(onTogglePoint ? 'cursor-pointer' : '')}
-              onClick={() => onTogglePoint?.(point.id)}
-            />
-            <circle
-              cx={point.x}
-              cy={point.y}
-              r="3"
-              fill="white"
-              className={cn(onTogglePoint ? 'cursor-pointer' : '')}
-              onClick={() => onTogglePoint?.(point.id)}
-            />
-          </g>
-        )
-      })}
-    </svg>
-  )
-}
-
-export function BodyMap({ selectedPoints, onTogglePoint }: BodyMapProps) {
-  return (
-    <div className="grid gap-4 rounded-[1.5rem] border border-white/80 bg-white/84 p-4 shadow-soft lg:grid-cols-2">
-      <div className="rounded-[1.25rem] bg-brand-50/30 p-3">
-        <Figure points={frontPoints} selectedPoints={selectedPoints} onTogglePoint={onTogglePoint} />
+    <div
+      className={cn(
+        "glass-surface relative overflow-hidden",
+        compact ? "p-3" : "p-4",
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-start justify-between gap-3",
+          compact ? "mb-2" : "mb-3",
+        )}
+      >
+        <div>
+          <p className="text-sm font-semibold text-slate-950">{title}</p>
+          <p
+            className={cn(
+              "text-slate-500",
+              compact ? "mt-1 text-[11px] leading-4" : "mt-1 text-xs leading-5",
+            )}
+          >
+            {subtitle}
+          </p>
+        </div>
+        <div className="rounded-full border border-white/80 bg-white/88 px-3 py-1 text-xs font-semibold text-violet-800 shadow-[0_10px_24px_rgba(148,163,184,0.08)]">
+          {selectedAreas.length} selecionada{selectedAreas.length === 1 ? "" : "s"}
+        </div>
       </div>
-      <div className="rounded-[1.25rem] bg-brand-50/20 p-3">
-        <Figure points={backPoints} selectedPoints={selectedPoints} onTogglePoint={onTogglePoint} />
+
+      <div
+        className={cn(
+          "relative mx-auto aspect-[9/16] w-full rounded-[1.8rem] border border-slate-200/80 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(246,243,250,0.92),rgba(240,236,247,0.88))] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_18px_34px_rgba(148,163,184,0.08)]",
+          compact ? "max-w-[12.75rem] px-3 py-2" : "max-w-[17rem] px-4 py-3",
+        )}
+      >
+        <FigureSilhouette side={side} />
+        {areas.map((area) => (
+          <AreaButton
+            key={area.id}
+            area={area}
+            selected={selectedAreas.includes(area.id)}
+            onToggle={onToggleArea}
+          />
+        ))}
       </div>
     </div>
-  )
+  );
+});
+
+export function BodyMap({
+  frontSelectedAreas,
+  backSelectedAreas,
+  onToggleFrontArea,
+  onToggleBackArea,
+  compact = false,
+  showLegend = true,
+}: BodyMapProps) {
+  return (
+    <TooltipProvider>
+      <div className={cn("grid sm:grid-cols-2", compact ? "gap-3" : "gap-4")}>
+        <FigureCard
+          title="Vista frontal"
+          subtitle="16 regioes clinicas independentes para registrar dor difusa na parte anterior."
+          side="front"
+          areas={frontBodyAreas}
+          selectedAreas={frontSelectedAreas}
+          onToggleArea={onToggleFrontArea}
+          compact={compact}
+        />
+        <FigureCard
+          title="Vista traseira"
+          subtitle="3 regioes posteriores separadas para cervical e costas, sem espelhar selecoes da frente."
+          side="back"
+          areas={backBodyAreas}
+          selectedAreas={backSelectedAreas}
+          onToggleArea={onToggleBackArea}
+          compact={compact}
+        />
+      </div>
+      {showLegend ? (
+        <div className="mt-4 flex items-start gap-3 rounded-[1.25rem] border border-violet-100/80 bg-violet-50/70 px-4 py-3 text-sm text-violet-900">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+          <p>
+            As selecoes usam as 19 areas do ACR 2010. Frente e costas possuem
+            estados separados para evitar marcacoes espelhadas por engano.
+          </p>
+        </div>
+      ) : null}
+    </TooltipProvider>
+  );
 }

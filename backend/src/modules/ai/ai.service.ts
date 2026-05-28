@@ -134,6 +134,28 @@ export class AiService {
     return this.mapPrediction(prediction);
   }
 
+  async getLatestPredictionForUser(
+    userId: string,
+  ): Promise<AiPredictionResponseDto> {
+    const prediction = await this.prisma.aiPrediction.findFirst({
+      where: {
+        userId,
+      },
+      select: aiPredictionResponseSelect,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!prediction) {
+      throw new NotFoundException(
+        'No AI prediction was generated for this user yet.',
+      );
+    }
+
+    return this.mapPrediction(prediction);
+  }
+
   async generateInsight(
     userId: string,
     dto: GenerateAiInsightDto,

@@ -48,6 +48,20 @@ export class AiController {
     return this.aiService.predict(userId, dto);
   }
 
+  @Get('predictions/latest')
+  @ApiOperation({
+    summary: 'Returns the latest stored AI prediction for the authenticated user.',
+  })
+  @ApiOkResponse({ type: AiPredictionResponseDto })
+  @ApiNotFoundResponse({
+    description: 'No AI prediction was generated for this user yet.',
+  })
+  getLatestPrediction(
+    @CurrentUser('sub') userId: string,
+  ): Promise<AiPredictionResponseDto> {
+    return this.aiService.getLatestPredictionForUser(userId);
+  }
+
   @Post('pattern-analysis')
   @ApiOperation({
     summary:

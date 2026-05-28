@@ -102,6 +102,9 @@ export interface ReportStructuredData {
     averageMoodLevel: number;
     averageStressLevel: number;
     averageProbabilityScore: number;
+    averageDataReliabilityScore: number;
+    dataReliabilityLabel: string;
+    derivedRecordRate: number;
   };
   painEvolution: ReportMetricEvolution;
   sleepEvolution: {

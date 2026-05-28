@@ -15,6 +15,7 @@ export function useDailyRecords(filters?: DailyRecordFilters) {
       filters?.dateTo ?? null,
       filters?.page ?? 1,
       filters?.limit ?? null,
+      filters?.includeAll ?? false,
     ],
     queryFn: () => dailyRecordService.getDailyRecords(filters),
   });
@@ -25,6 +26,7 @@ export function useDailyRecords(filters?: DailyRecordFilters) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dailyRecords"] });
       queryClient.invalidateQueries({ queryKey: ["latestPrediction"] });
+      queryClient.invalidateQueries({ queryKey: ["latestAiPrediction"] });
       queryClient.invalidateQueries({ queryKey: ["predictionHistory"] });
       queryClient.invalidateQueries({ queryKey: ["report"] });
     },
@@ -41,6 +43,7 @@ export function useDailyRecords(filters?: DailyRecordFilters) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dailyRecords"] });
       queryClient.invalidateQueries({ queryKey: ["latestPrediction"] });
+      queryClient.invalidateQueries({ queryKey: ["latestAiPrediction"] });
       queryClient.invalidateQueries({ queryKey: ["predictionHistory"] });
       queryClient.invalidateQueries({ queryKey: ["report"] });
     },

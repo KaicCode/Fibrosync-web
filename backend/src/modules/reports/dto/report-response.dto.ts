@@ -80,6 +80,15 @@ class ReportOverviewDto {
 
   @ApiProperty()
   averageProbabilityScore!: number;
+
+  @ApiProperty()
+  averageDataReliabilityScore!: number;
+
+  @ApiProperty()
+  dataReliabilityLabel!: string;
+
+  @ApiProperty()
+  derivedRecordRate!: number;
 }
 
 class ReportMetricPointDto {

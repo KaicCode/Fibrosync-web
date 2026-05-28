@@ -240,6 +240,10 @@ function openPrintableReport(report: ReportResponse) {
     ["Registros", `${reportData.overview.recordedEntries}`],
     ["Cobertura", formatPercentage(reportData.overview.dataCoverageRate)],
     [
+      "Confiabilidade",
+      `${formatDecimal(reportData.overview.averageDataReliabilityScore)}%`,
+    ],
+    [
       "Risco medio",
       formatPercentage(reportData.overview.averageProbabilityScore),
     ],
@@ -451,7 +455,7 @@ export function ReportsPage() {
             </div>
           ) : (
             <>
-              <div className="metric-grid grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="metric-grid grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <StatCard
                   label="Dor media"
                   value={`${formatDecimal(reportData.overview.averagePainLevel)}/10`}
@@ -482,6 +486,14 @@ export function ReportsPage() {
                   )}
                   icon={ShieldAlert}
                 />
+                <StatCard
+                  label="Confiabilidade media"
+                  value={`${formatDecimal(
+                    reportData.overview.averageDataReliabilityScore,
+                  )}%`}
+                  hint={reportData.overview.dataReliabilityLabel}
+                  icon={Sparkles}
+                />
               </div>
 
               <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
@@ -492,11 +504,12 @@ export function ReportsPage() {
                         Linha do tempo
                       </p>
                       <h2 className="mt-2 text-xl font-semibold md:text-2xl">
-                        Evolucao da dor por registro
+                        Evolucao diaria da dor
                       </h2>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        Cada ponto representa um registro salvo, inclusive
-                        multiplos registros no mesmo dia.
+                        Cada ponto representa um dia agregado do periodo, sem
+                        repetir artificialmente multiplos registros no mesmo
+                        dia.
                       </p>
                     </div>
                     <Badge

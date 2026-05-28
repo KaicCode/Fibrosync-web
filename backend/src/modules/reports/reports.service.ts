@@ -6,11 +6,16 @@ import {
   type Prisma,
   type RiskLevel,
 } from '@prisma/client';
+import {
+  calculateDataReliability,
+  type DataReliabilitySnapshot,
+} from '@/common/utils/data-reliability.util';
 import { addDays, normalizeDateOnly } from '@/common/utils/date.util';
 import {
   buildPaginationMeta,
   resolvePagination,
 } from '@/common/utils/pagination.util';
+import { averageSymptomBurden } from '@/common/utils/symptom-signal.util';
 import { PrismaService } from '@/database/prisma.service';
 import { parseWeatherSnapshotFromMetadata } from '@/modules/weather/weather.types';
 import type { GenerateReportDto } from './dto/generate-report.dto';
@@ -39,7 +44,23 @@ const reportDailyRecordSelect = {
   waterIntakeLiters: true,
   medicationAdherence: true,
   weatherFeeling: true,
+  notes: true,
+  derivedSignals: true,
   metadata: true,
+  symptomSignals: {
+    orderBy: {
+      createdAt: 'desc',
+    },
+    take: 1,
+    select: {
+      id: true,
+    },
+  },
+  symptomEntries: {
+    select: {
+      id: true,
+    },
+  },
   crisisPrediction: {
     select: {
       probability: true,
@@ -49,14 +70,23 @@ const reportDailyRecordSelect = {
 } satisfies Prisma.DailyRecordSelect;
 
 const reportSymptomSignalSelect = {
+  dailyRecordId: true,
   createdAt: true,
+  stiffness: true,
   cognitiveFog: true,
+  cognitiveFogLevel: true,
   sensitivityLight: true,
+  sensitivityLightLevel: true,
   sensitivityNoise: true,
+  sensitivityNoiseLevel: true,
   digestiveIssues: true,
+  digestiveIssuesLevel: true,
   headache: true,
+  headacheLevel: true,
   anxiety: true,
+  anxietyLevel: true,
   depression: true,
+  depressionLevel: true,
   bodyTemperatureFeeling: true,
 } satisfies Prisma.SymptomSignalSelect;
 
@@ -118,6 +148,7 @@ interface ReportDaySnapshot {
   ruleBasedRiskLevel: RiskLevel | null;
   aiProbabilityScore: number | null;
   aiRiskLevel: AiPredictionRiskLevel | null;
+  symptomLoad: number | null;
   cognitiveFog: boolean;
   sensitivityLight: boolean;
   sensitivityNoise: boolean;
@@ -126,6 +157,12 @@ interface ReportDaySnapshot {
   anxiety: boolean;
   depression: boolean;
   coldBodyTemperature: boolean;
+  dataReliabilityScore: number | null;
+  dataReliabilityLabel:
+    | DataReliabilitySnapshot['label']
+    | null;
+  derivedSignalsPresent: boolean;
+  reliabilitySampleCount: number;
   signalCount: number;
   recordCount: number;
 }
@@ -372,7 +409,9 @@ export class ReportsService {
         recordedEntries: dailyRecords.length,
         recordedDays,
         averagePainLevel: this.average(
-          dailyRecords.map((record) => record.painLevel),
+          daySnapshots
+            .map((day) => day.painLevel)
+            .filter((value): value is number => value !== null),
         ),
         symptomSignalCount: symptomSignals.length,
         rulePredictionCount: dailyRecords.filter(
@@ -383,80 +422,74 @@ export class ReportsService {
           expectedDays > 0 ? (activeDays / expectedDays) * 100 : 0,
         ),
         averageSleepHours: this.average(
-          dailyRecords
-            .map((record) => record.sleepHours)
+          daySnapshots
+            .map((day) => day.sleepHours)
             .filter((value): value is number => value !== null),
         ),
         averageFatigueLevel: this.average(
-          dailyRecords.map((record) => record.fatigueLevel),
+          daySnapshots
+            .map((day) => day.fatigueLevel)
+            .filter((value): value is number => value !== null),
         ),
         averageMoodLevel: this.average(
-          dailyRecords.map((record) => record.moodLevel),
+          daySnapshots
+            .map((day) => day.moodLevel)
+            .filter((value): value is number => value !== null),
         ),
         averageStressLevel: this.average(
-          dailyRecords.map((record) => record.stressLevel),
+          daySnapshots
+            .map((day) => day.stressLevel)
+            .filter((value): value is number => value !== null),
         ),
         averageProbabilityScore: this.average(
           daySnapshots
             .map((day) => this.resolveCombinedProbability(day))
             .filter((value): value is number => value !== null),
         ),
+        averageDataReliabilityScore: this.average(
+          daySnapshots
+            .map((day) => day.dataReliabilityScore)
+            .filter((value): value is number => value !== null),
+        ),
+        dataReliabilityLabel: this.resolveReliabilityLabel(
+          this.average(
+            daySnapshots
+              .map((day) => day.dataReliabilityScore)
+              .filter((value): value is number => value !== null),
+          ),
+        ) ?? 'Baixa confiabilidade',
+        derivedRecordRate: this.toFixedNumber(
+          dailyRecords.length > 0
+            ? (dailyRecords.filter((record) => record.derivedSignals).length /
+                dailyRecords.length) *
+                100
+            : 0,
+        ),
       },
       painEvolution: this.buildMetricEvolution(
-        dailyRecords.map((record) => ({
-          date: this.formatDateTime(record.createdAt),
-          value: record.painLevel,
-        })),
+        this.buildDailySeries(daySnapshots, (day) => day.painLevel),
         false,
         0.4,
       ),
       sleepEvolution: {
         hours: this.buildMetricEvolution(
-          dailyRecords
-            .map((record) =>
-              record.sleepHours !== null
-                ? {
-                    date: this.formatDateTime(record.createdAt),
-                    value: record.sleepHours,
-                  }
-                : null,
-            )
-            .filter(
-              (item): item is { date: string; value: number } => item !== null,
-            ),
+          this.buildDailySeries(daySnapshots, (day) => day.sleepHours),
           true,
           0.35,
         ),
         quality: this.buildMetricEvolution(
-          dailyRecords
-            .map((record) =>
-              record.sleepQuality !== null
-                ? {
-                    date: this.formatDateTime(record.createdAt),
-                    value: record.sleepQuality,
-                  }
-                : null,
-            )
-            .filter(
-              (item): item is { date: string; value: number } => item !== null,
-            ),
+          this.buildDailySeries(daySnapshots, (day) => day.sleepQuality),
           true,
           0.4,
         ),
       },
       fatigueEvolution: this.buildMetricEvolution(
-        dailyRecords.map((record) => ({
-          date: this.formatDateTime(record.createdAt),
-          value: record.fatigueLevel,
-        })),
+        this.buildDailySeries(daySnapshots, (day) => day.fatigueLevel),
         false,
         0.4,
       ),
       moodEvolution: this.buildMetricEvolution(
-        dailyRecords.map((record) => ({
-          date: this.formatDateTime(record.createdAt),
-          value: record.moodLevel,
-        })),
+        this.buildDailySeries(daySnapshots, (day) => day.moodLevel),
         true,
         0.4,
       ),
@@ -479,6 +512,7 @@ export class ReportsService {
     for (const record of dailyRecords) {
       const key = this.formatDateOnly(record.recordDate);
       const day = this.getOrCreateDay(dayMap, key, record.recordDate);
+      const reliability = this.buildRecordReliability(record);
 
       day.recordCount += 1;
       day.painLevel =
@@ -514,6 +548,20 @@ export class ReportsService {
         day.weatherFeeling = record.weatherFeeling;
       }
 
+      day.derivedSignalsPresent =
+        day.derivedSignalsPresent || record.derivedSignals;
+      day.reliabilitySampleCount += 1;
+      day.dataReliabilityScore = this.toFixedNumber(
+        day.dataReliabilityScore === null
+          ? reliability.score
+          : ((day.dataReliabilityScore * (day.reliabilitySampleCount - 1) +
+              reliability.score) /
+              day.reliabilitySampleCount),
+      );
+      day.dataReliabilityLabel = this.resolveReliabilityLabel(
+        day.dataReliabilityScore,
+      );
+
       const weatherSnapshot = parseWeatherSnapshotFromMetadata(record.metadata);
 
       if (weatherSnapshot) {
@@ -544,8 +592,22 @@ export class ReportsService {
       const normalizedDate = normalizeDateOnly(signal.createdAt);
       const key = this.formatDateOnly(normalizedDate);
       const day = this.getOrCreateDay(dayMap, key, normalizedDate);
+      const symptomLoad = averageSymptomBurden([
+        signal.stiffness,
+        signal.cognitiveFogLevel,
+        signal.sensitivityLightLevel,
+        signal.sensitivityNoiseLevel,
+        signal.digestiveIssuesLevel,
+        signal.headacheLevel,
+        signal.anxietyLevel,
+        signal.depressionLevel,
+      ]);
 
       day.signalCount += 1;
+      day.symptomLoad =
+        day.symptomLoad === null
+          ? symptomLoad
+          : Math.max(day.symptomLoad, symptomLoad);
       day.cognitiveFog = day.cognitiveFog || signal.cognitiveFog;
       day.sensitivityLight = day.sensitivityLight || signal.sensitivityLight;
       day.sensitivityNoise = day.sensitivityNoise || signal.sensitivityNoise;
@@ -617,6 +679,70 @@ export class ReportsService {
         value: this.toFixedNumber(point.value),
       })),
     };
+  }
+
+  private buildDailySeries(
+    days: ReportDaySnapshot[],
+    selector: (day: ReportDaySnapshot) => number | null,
+  ): Array<{ date: string; value: number }> {
+    return days
+      .map((day) => {
+        const value = selector(day);
+
+        return value === null
+          ? null
+          : {
+              date: this.formatDateOnly(day.date),
+              value,
+            };
+      })
+      .filter(
+        (item): item is { date: string; value: number } => item !== null,
+      );
+  }
+
+  private buildRecordReliability(
+    record: ReportDailyRecordRow,
+  ): DataReliabilitySnapshot {
+    return calculateDataReliability({
+      recordDate: record.recordDate,
+      createdAt: record.createdAt,
+      painLevel: record.painLevel,
+      fatigueLevel: record.fatigueLevel,
+      stressLevel: record.stressLevel,
+      moodLevel: record.moodLevel,
+      sleepQuality: record.sleepQuality,
+      sleepHours: record.sleepHours,
+      hydration: record.waterIntakeLiters,
+      physicalActivity: record.exerciseMinutes,
+      medicationTaken: record.medicationAdherence,
+      weatherFeeling: record.weatherFeeling,
+      notes: record.notes,
+      painType: record.painType,
+      painAreas: record.painAreas,
+      painTriggers: record.painTriggers,
+      symptomSignalPresent: record.symptomSignals.length > 0,
+      symptomEntryCount: record.symptomEntries.length,
+      derivedSignals: record.derivedSignals,
+    });
+  }
+
+  private resolveReliabilityLabel(
+    score: number | null,
+  ): DataReliabilitySnapshot['label'] | null {
+    if (score === null) {
+      return null;
+    }
+
+    if (score <= 40) {
+      return 'Baixa confiabilidade';
+    }
+
+    if (score <= 70) {
+      return 'Confiabilidade moderada';
+    }
+
+    return 'Alta confiabilidade';
   }
 
   private buildRecurringTriggers(
@@ -922,7 +1048,7 @@ export class ReportsService {
         leftMetric: 'humidity',
         rightMetric: 'symptomLoad',
         left: (day) => day.humidity,
-        right: (day) => day.signalCount,
+        right: (day) => day.symptomLoad,
       },
       {
         key: 'apparent_temperature_vs_fatigue',
@@ -1098,6 +1224,7 @@ export class ReportsService {
       ruleBasedRiskLevel: null,
       aiProbabilityScore: null,
       aiRiskLevel: null,
+      symptomLoad: null,
       cognitiveFog: false,
       sensitivityLight: false,
       sensitivityNoise: false,
@@ -1106,6 +1233,10 @@ export class ReportsService {
       anxiety: false,
       depression: false,
       coldBodyTemperature: false,
+      dataReliabilityScore: null,
+      dataReliabilityLabel: null,
+      derivedSignalsPresent: false,
+      reliabilitySampleCount: 0,
       signalCount: 0,
       recordCount: 0,
     };

@@ -2,8 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
-  IsBoolean,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsInt,
   IsNumber,
@@ -15,6 +15,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { WeatherSnapshotDto } from '@/modules/weather/weather.types';
+import { SymptomEntryInputDto } from './symptom-entry-input.dto';
+import { SymptomSignalInputDto } from './symptom-signal-input.dto';
 
 export class CreateDailyRecordDto {
   @ApiPropertyOptional({ format: 'date' })
@@ -46,26 +48,37 @@ export class CreateDailyRecordDto {
   @Max(10)
   sleepQuality?: number;
 
-  @ApiProperty({ minimum: 0, maximum: 10 })
+  @ApiPropertyOptional({ minimum: 0, maximum: 10 })
   @Type(() => Number)
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(10)
-  fatigueLevel!: number;
+  fatigueLevel?: number;
 
-  @ApiProperty({ minimum: 0, maximum: 10 })
+  @ApiPropertyOptional({ minimum: 0, maximum: 10 })
   @Type(() => Number)
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(10)
-  mood!: number;
+  mood?: number;
 
-  @ApiProperty({ minimum: 0, maximum: 10 })
+  @ApiPropertyOptional({ minimum: 0, maximum: 10 })
   @Type(() => Number)
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(10)
-  stressLevel!: number;
+  moodLevel?: number;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 10 })
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  stressLevel?: number;
 
   @ApiPropertyOptional({
     description: 'Minutes of physical activity during the day.',
@@ -76,6 +89,16 @@ export class CreateDailyRecordDto {
   @Min(0)
   @Max(1440)
   physicalActivity?: number;
+
+  @ApiPropertyOptional({
+    description: 'Alias for physical activity minutes.',
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1440)
+  physicalActivityMinutes?: number;
 
   @ApiPropertyOptional({
     description: 'Hydration in liters.',
@@ -141,5 +164,41 @@ export class CreateDailyRecordDto {
   @ArrayMaxSize(24)
   @IsString({ each: true })
   @MaxLength(120, { each: true })
+  frontPainAreas?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(24)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  backPainAreas?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(24)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
   painTriggers?: string[];
+
+  @ApiPropertyOptional({
+    type: SymptomSignalInputDto,
+    description: 'Structured symptom signal linked to the daily record.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SymptomSignalInputDto)
+  symptomSignal?: SymptomSignalInputDto;
+
+  @ApiPropertyOptional({
+    type: [SymptomEntryInputDto],
+    description: 'Structured symptom entries linked to the daily record.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(24)
+  @ValidateNested({ each: true })
+  @Type(() => SymptomEntryInputDto)
+  symptomEntries?: SymptomEntryInputDto[];
 }

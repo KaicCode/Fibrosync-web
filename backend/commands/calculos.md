@@ -2,6 +2,8 @@
 
 Este arquivo agora serve como um README funcional de como os dados clínicos estão sendo salvos e de como o sistema calcula dashboard, risco, clima, relatórios e padrões.
 
+> Atualização importante: o fluxo principal foi refatorado. As derivações artificiais `fatigueLevel = painLevel`, `stressLevel = painLevel`, `mood = 10 - painLevel` e `sleepQuality = 0` não fazem mais parte do formulário principal.
+
 Os pontos abaixo refletem o comportamento real do código atual, principalmente nestes arquivos:
 
 - `frontend/src/pages/patient/pain-log-page.tsx`
@@ -20,9 +22,9 @@ Os pontos abaixo refletem o comportamento real do código atual, principalmente 
 | --- | --- |
 | `DailyRecord` | Registro principal de dor e contexto do dia. Alimenta dashboard, risco e relatórios. |
 | `WeatherRecord` | Histórico de clima salvo por usuário. Serve de apoio para dashboard, registro e fallback. |
-| `SymptomSignal` | Sinais complementares independentes do registro de dor, como névoa cognitiva, cefaleia, sensibilidade etc. |
+| `SymptomSignal` | Sinais complementares independentes ligados ao `DailyRecord`, como névoa cognitiva, cefaleia, sensibilidade etc. |
 | `Symptom` | Catálogo de sintomas. |
-| `SymptomEntry` | Relação entre `DailyRecord` e `Symptom`, com severidade e duração. Existe no banco, mas não entra no fluxo principal do formulário atual de dor. |
+| `SymptomEntry` | Relação entre `DailyRecord` e `Symptom`, com severidade e duração. Agora é criado junto com o fluxo principal. |
 | `CrisisPrediction` | Predição por motor de regras, gerada a cada criação/edição de `DailyRecord`. |
 | `AiPrediction` | Predição gerada por IA, separada do motor de regras. |
 | `UserRiskProfile` | Perfil personalizado com pesos, padrões e score de risco com base no histórico. |
@@ -35,61 +37,100 @@ Os pontos abaixo refletem o comportamento real do código atual, principalmente 
 No fluxo atual de `frontend/src/pages/patient/pain-log-page.tsx`, o usuário informa:
 
 - `recordDate`
-- intensidade da dor
+- `painLevel`
+- `fatigueLevel`
+- `stressLevel`
+- `moodLevel`
+- `sleepQuality`
+- `sleepHours`
+- `hydration`
+- `physicalActivityMinutes`
+- `medicationTaken`
 - tipo de dor
-- áreas do corpo selecionadas no mapa
+- áreas do corpo em mapa frontal e traseiro independentes
 - gatilhos selecionados
 - observações
 - impacto percebido do clima
 - clima automático do dia atual, quando o GPS está disponível
+- `symptomSignal`
+  - `stiffness`
+  - `cognitiveFog`
+  - `headache`
+  - `digestiveIssues`
+  - `anxiety`
+  - `depression`
+  - `sensitivityLight`
+  - `sensitivityNoise`
+  - `bodyTemperatureFeeling`
+  - `notes`
 
-### 2.2. Campos derivados automaticamente no frontend
+### 2.2. O que não é mais derivado automaticamente
 
-Hoje o formulário atual não pede separadamente fadiga, estresse, humor e sono. Em vez disso, ele deriva esses campos a partir do slider de dor:
+O frontend principal agora envia cada variável clínica de forma independente.
+
+Não existe mais este comportamento no fluxo principal:
 
 ```ts
-painLevel = intensidade
 fatigueLevel = painLevel
 stressLevel = painLevel
-mood = Math.max(0, 10 - painLevel)
+mood = 10 - painLevel
 sleepQuality = 0
 ```
 
-Isso é muito importante, porque vários cálculos de dashboard, risco e relatório acabam herdando esses valores derivados.
+Essas fórmulas antigas ficaram apenas como referência histórica em trechos mais antigos deste documento.
 
-### 2.3. Campos que hoje não são preenchidos no formulário principal
-
-No fluxo principal de dor, estes campos normalmente não são enviados:
-
-- `sleepHours`
-- `physicalActivity`
-- `hydration`
-- `medicationTaken`
-- `symptomEntries`
-
-### 2.4. Áreas, tipos e gatilhos disponíveis no fluxo atual
+### 2.3. Áreas, tipos e gatilhos disponíveis no fluxo atual
 
 No frontend atual:
 
-- `painType` vem de opções fixas: `Pontadas`, `Queimação`, `Peso`, `Rigidez`, `Latejante`
-- `painTriggers` vem de opções fixas: `Sono irregular`, `Estresse`, `Período menstrual`, `Clima frio`, `Excesso de tela`, `Sedentarismo`
-- `painAreas` vem do mapa corporal e hoje fica restrito a: `Ombros`, `Lombar`, `Quadril`, `Joelhos`, `Punhos`, `Cervical`
+- `painType` usa um conjunto guiado de opções clínicas, mas a API continua aceitando string
+- `painTriggers` usa opções guiadas e continua aceitando string
+- `painAreas` agora usa as 19 áreas do ACR 2010 em dois estados separados:
+  - `frontPainAreas`
+  - `backPainAreas`
 
-Observação: a API aceita strings livres, mas o formulário atual restringe a entrada a esse conjunto.
+Áreas frontais:
 
-### 2.5. Normalização feita no backend ao salvar `DailyRecord`
+- `Mandibula esquerda`
+- `Mandibula direita`
+- `Ombro esquerdo`
+- `Ombro direito`
+- `Braco superior esquerdo`
+- `Braco superior direito`
+- `Braco inferior esquerdo`
+- `Braco inferior direito`
+- `Quadril esquerdo`
+- `Quadril direito`
+- `Coxa esquerda`
+- `Coxa direita`
+- `Joelho esquerdo`
+- `Joelho direito`
+- `Torax`
+- `Abdomen`
+
+Áreas traseiras:
+
+- `Cervical`
+- `Costas superiores`
+- `Costas inferiores`
+
+### 2.4. Normalização feita no backend ao salvar `DailyRecord`
 
 No `DailyRecordsService`:
 
 - `recordDate` é normalizado para data UTC sem horário
-- `painType` e textos são `trim()`
+- textos passam por limpeza visual com `trim()` e colapso de espaços
+- comparações e deduplicação usam `normalizeText(value)`
+  - lowercase
+  - remoção de acentos
+  - colapso de espaços
 - `painAreas` e `painTriggers`
   - removem vazios
-  - fazem `trim()`
-  - removem duplicados com `Set`
+  - removem duplicados por versão normalizada
 - `weatherImpact` e `weatherFeeling` acabam salvos em `weatherFeeling`
+- `symptomEntries` podem ser montados automaticamente a partir de `symptomSignal`
 
-### 2.6. Inferência de dor no backend
+### 2.5. Inferência de dor no backend
 
 Se `painLevel` não vier no payload, o backend infere assim:
 
@@ -98,9 +139,9 @@ painLevel = round((fatigueLevel + stressLevel + (10 - mood)) / 3)
 painLevel = clamp(0, 10)
 ```
 
-No formulário atual isso quase nunca acontece, porque o frontend já envia `painLevel`.
+Hoje isso existe apenas como compatibilidade defensiva. O frontend principal envia `painLevel` explicitamente.
 
-### 2.7. Como o clima entra no `DailyRecord`
+### 2.6. Como o clima entra no `DailyRecord`
 
 Prioridade de resolução do `weatherSnapshot`:
 
@@ -108,16 +149,25 @@ Prioridade de resolução do `weatherSnapshot`:
 2. snapshot já salvo em `metadata` no update
 3. último `WeatherRecord` do mesmo usuário na mesma data
 
-O snapshot é salvo em `metadata.weatherSnapshot`.
+O snapshot:
 
-### 2.8. O que acontece depois de salvar um `DailyRecord`
+- é salvo em `metadata.weatherSnapshot`
+- e também pode gerar um `WeatherRecord` dentro da mesma transação do registro
+
+### 2.7. O que acontece depois de salvar um `DailyRecord`
 
 Após criar ou atualizar um registro:
 
+- o backend persiste:
+  - `DailyRecord`
+  - `SymptomSignal` ligado ao registro
+  - `SymptomEntry`
+  - `WeatherRecord`, quando há snapshot disponível
 - o backend faz `upsert` da `CrisisPrediction`
 - o frontend invalida cache de:
   - `dailyRecords`
   - `latestPrediction`
+  - `latestAiPrediction`
   - `predictionHistory`
   - `report`
 

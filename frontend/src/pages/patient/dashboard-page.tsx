@@ -1,144 +1,106 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Activity,
+  Brain,
   CloudSun,
-  Clock3,
-  Droplets,
   HeartPulse,
   LoaderCircle,
-  LocateFixed,
-  MapPin,
+  MoonStar,
+  ShieldAlert,
   Sparkles,
-  TriangleAlert,
   TrendingUp,
+  TriangleAlert,
+  Waves,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { TrendLineChart } from "@/components/charts/trend-line-chart";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
-import { TrendLineChart } from "@/components/charts/trend-line-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { usePageTitle } from "@/hooks/use-page-title";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  buildDailyAggregates,
+  buildFrequency,
+  resolveDateWindow,
+  type DashboardRangeDays,
+} from "@/features/clinical/record-analytics";
 import { useDailyRecords } from "@/hooks/useDailyRecords";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { usePrediction } from "@/hooks/usePrediction";
 import { useUser } from "@/hooks/useUser";
-import type { DailyRecord } from "@/services/daily-record.service";
 import { useCurrentLocation, useWeather } from "@/hooks/useWeather";
 
-type FrequencyItem = {
-  label: string;
-  count: number;
-  percentage: number;
-};
+const rangeOptions: DashboardRangeDays[] = [7, 30, 90];
 
-function buildFrequency(values: string[]): FrequencyItem[] {
-  const counts = new Map<string, number>();
-
-  values.forEach((value) => {
-    const normalized = value.trim();
-
-    if (!normalized) {
-      return;
-    }
-
-    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
-  });
-
-  const maxCount = Math.max(...counts.values(), 1);
-
-  return [...counts.entries()]
-    .map(([label, count]) => ({
-      label,
-      count,
-      percentage: Math.round((count / maxCount) * 100),
-    }))
-    .sort(
-      (left, right) =>
-        right.count - left.count || left.label.localeCompare(right.label),
-    );
-}
-
-function calculateAverage(values: number[]): number {
-  if (values.length === 0) {
-    return 0;
-  }
-
-  return Number(
-    (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1),
-  );
-}
-
-function formatEntryDateTime(value: string): string {
+function formatChartLabel(value: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(new Date(value));
 }
 
-function formatEntryTime(value: string): string {
+function formatLongDate(value: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
+    day: "2-digit",
+    month: "long",
   }).format(new Date(value));
 }
 
-function isSameCalendarDay(value: string, reference: Date): boolean {
-  const date = new Date(value);
-
-  return (
-    date.getFullYear() === reference.getFullYear() &&
-    date.getMonth() === reference.getMonth() &&
-    date.getDate() === reference.getDate()
-  );
+function formatNumber(value: number, digits = 1): string {
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
 }
 
 function resolvePainState(painLevel: number): string {
   if (painLevel >= 8) {
-    return "Muito alta";
+    return "Dor muito alta";
   }
 
   if (painLevel >= 6) {
-    return "Alta";
+    return "Dor alta";
   }
 
   if (painLevel >= 3) {
-    return "Moderada";
+    return "Dor moderada";
   }
 
-  return "Controlada";
+  return "Dor controlada";
 }
 
-function resolvePainBadgeVariant(
-  painLevel: number,
-): "default" | "success" | "warning" | "neutral" {
-  if (painLevel >= 6) {
-    return "warning";
+function resolveReliabilityVariant(
+  score: number,
+): "default" | "success" | "warning" {
+  if (score >= 71) {
+    return "success";
   }
 
-  if (painLevel === 0) {
-    return "neutral";
+  if (score >= 41) {
+    return "default";
   }
 
-  return "success";
-}
-
-function summarizeAreas(record: DailyRecord): string {
-  if (record.painAreas.length === 0) {
-    return "Areas nao informadas";
-  }
-
-  return record.painAreas.join(", ");
+  return "warning";
 }
 
 export function DashboardPage() {
   usePageTitle("Dashboard");
 
   const { user } = useUser();
-  const { records, isLoading: isLoadingRecords } = useDailyRecords();
-  const { latestPrediction, isLoadingLatest } = usePrediction();
+  const [rangeDays, setRangeDays] = useState<DashboardRangeDays>(30);
+  const windowRange = useMemo(() => resolveDateWindow(rangeDays), [rangeDays]);
+  const { records, isLoading: isLoadingRecords } = useDailyRecords({
+    ...windowRange,
+    includeAll: true,
+  });
+  const {
+    latestRulePrediction,
+    latestAiPrediction,
+    isLoadingLatest,
+    isLoadingLatestAi,
+  } = usePrediction();
   const {
     coordinates,
     status: locationStatus,
@@ -152,91 +114,87 @@ export function DashboardPage() {
     sourceLabel,
     isWeatherRiskElevated,
     isLoading: isLoadingWeather,
-    isFetching: isFetchingWeather,
     refetch: refetchWeather,
   } = useWeather(coordinates?.lat, coordinates?.lon);
 
-  const isLoading = isLoadingRecords || isLoadingLatest;
-  const recordList = Array.isArray(records) ? records : [];
-  const latestRecord = recordList[0] ?? null;
-  const trendWindow = recordList.slice(0, 7);
-  const patternWindow = recordList.slice(0, 12);
-
-  const currentPainLevel = latestRecord?.painLevel ?? 0;
-  const currentMood = latestRecord?.mood ?? null;
-  const currentSleepQuality = latestRecord?.sleepQuality ?? null;
-
-  const recordsToday = useMemo(
+  const aggregates = useMemo(() => buildDailyAggregates(records), [records]);
+  const latestDay = aggregates.at(-1) ?? null;
+  const latestRecord = latestDay?.latestRecord ?? null;
+  const trendSeries = useMemo(
     () =>
-      recordList.filter((record) =>
-        isSameCalendarDay(record.createdAt, new Date()),
-      ).length,
-    [recordList],
+      aggregates.map((day) => ({
+        label: formatChartLabel(day.date),
+        value: day.painAverage,
+        comparison: day.stressAverage,
+      })),
+    [aggregates],
   );
 
-  const recentPainAverage = useMemo(
-    () => calculateAverage(trendWindow.map((record) => record.painLevel)),
-    [trendWindow],
+  const topAreas = useMemo(
+    () => buildFrequency(records.flatMap((record) => record.painAreas)).slice(0, 4),
+    [records],
+  );
+  const topTriggers = useMemo(
+    () =>
+      buildFrequency(records.flatMap((record) => record.painTriggers)).slice(0, 4),
+    [records],
   );
 
-  const peakPainRecord = useMemo(
+  const averagePain = useMemo(
     () =>
-      trendWindow.reduce<DailyRecord | null>((highest, record) => {
-        if (!highest || record.painLevel > highest.painLevel) {
-          return record;
+      aggregates.length > 0
+        ? aggregates.reduce((sum, day) => sum + day.painAverage, 0) /
+          aggregates.length
+        : 0,
+    [aggregates],
+  );
+  const peakDay = useMemo(
+    () =>
+      aggregates.reduce<typeof aggregates[number] | null>((highest, day) => {
+        if (!highest || day.painPeak > highest.painPeak) {
+          return day;
         }
 
         return highest;
       }, null),
-    [trendWindow],
+    [aggregates],
   );
+  const averageReliability = useMemo(() => {
+    const scores = aggregates
+      .map((day) => day.reliabilityAverage)
+      .filter((value): value is number => typeof value === "number");
 
-  const dashboardTrend = useMemo(
-    () =>
-      trendWindow
-        .slice()
-        .reverse()
-        .map((record) => ({
-          label: formatEntryDateTime(record.createdAt),
-          value: record.painLevel,
-          comparison: record.stressLevel,
-        })),
-    [trendWindow],
-  );
+    if (scores.length === 0) {
+      return 0;
+    }
 
-  const recentEntries = useMemo(() => recordList.slice(0, 4), [recordList]);
+    return Number(
+      (scores.reduce((sum, value) => sum + value, 0) / scores.length).toFixed(1),
+    );
+  }, [aggregates]);
 
-  const topPainAreas = useMemo(
-    () =>
-      buildFrequency(patternWindow.flatMap((record) => record.painAreas)).slice(
-        0,
-        4,
-      ),
-    [patternWindow],
-  );
-
-  const topPainTriggers = useMemo(
-    () =>
-      buildFrequency(
-        patternWindow.flatMap((record) => record.painTriggers),
-      ).slice(0, 4),
-    [patternWindow],
-  );
-
-  const topPainTypes = useMemo(
-    () =>
-      buildFrequency(
-        patternWindow
-          .map((record) => record.painType)
-          .filter((value): value is string => Boolean(value)),
-      ).slice(0, 3),
-    [patternWindow],
-  );
+  const isLoading = isLoadingRecords || isLoadingLatest;
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <LoaderCircle className="h-8 w-8 animate-spin text-brand-500" />
+      <div className="space-y-5">
+        <PageHeader
+          eyebrow={`Ola, ${user?.fullName?.split(" ")[0] || "Paciente"}`}
+          title="Panorama clinico da sua rotina"
+          description="Estamos reunindo dor, contexto e sinais do corpo para montar o painel mais recente."
+        />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-36 w-full" />
+          ))}
+        </div>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
+          <Skeleton className="h-[24rem] w-full" />
+          <div className="space-y-5">
+            <Skeleton className="h-56 w-full" />
+            <Skeleton className="h-56 w-full" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -244,483 +202,458 @@ export function DashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow={`Olá, ${user?.fullName?.split(" ")[0] || "Paciente"}`}
-        title="Como a sua dor tem se comportado?"
-        description="Acompanhe intensidade, horarios, areas afetadas e gatilhos reais registrados ao longo do dia."
+        eyebrow={`Ola, ${user?.fullName?.split(" ")[0] || "Paciente"}`}
+        title="Panorama clinico da sua fibromialgia"
+        description="Os indicadores abaixo usam agregacao diaria por periodo para mostrar comportamento recente da dor, confiabilidade do dado e contexto corporal real."
         actions={
-          <Button asChild>
-            <Link to="/app/pain-log">Novo registro</Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {rangeOptions.map((option) => (
+              <Button
+                key={option}
+                variant={rangeDays === option ? "default" : "secondary"}
+                size="sm"
+                onClick={() => setRangeDays(option)}
+              >
+                {option} dias
+              </Button>
+            ))}
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/app/pain-log">Novo registro</Link>
+            </Button>
+          </div>
         }
       />
 
-      <div className="metric-grid grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="metric-grid grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Dor atual"
-          value={`${currentPainLevel}/10`}
-          hint={resolvePainState(currentPainLevel)}
+          label="Dor mais recente"
+          value={`${latestRecord?.painLevel ?? 0}/10`}
+          hint={latestRecord ? resolvePainState(latestRecord.painLevel) : "Sem registros no periodo"}
           icon={HeartPulse}
         />
         <StatCard
           label="Media recente"
-          value={`${recentPainAverage.toFixed(1)}/10`}
-          hint="Ultimos 7 registros"
+          value={`${formatNumber(averagePain)}/10`}
+          hint={`Media diaria dos ultimos ${rangeDays} dias`}
           icon={TrendingUp}
         />
         <StatCard
-          label="Registros hoje"
-          value={recordsToday.toString()}
-          hint="Ocorrencias salvas hoje"
-          icon={Clock3}
+          label="Pico recente"
+          value={`${peakDay?.painPeak ?? 0}/10`}
+          hint={peakDay ? formatLongDate(peakDay.date) : "Sem historico"}
+          icon={Activity}
         />
         <StatCard
-          label="Pico recente"
-          value={`${peakPainRecord?.painLevel ?? 0}/10`}
+          label="Confiabilidade"
+          value={`${formatNumber(averageReliability)}%`}
           hint={
-            peakPainRecord
-              ? formatEntryTime(peakPainRecord.createdAt)
-              : "Sem historico"
+            latestRecord?.dataReliabilityLabel ??
+            "Sem confiabilidade calculada ainda"
           }
-          icon={Activity}
+          icon={ShieldAlert}
+          tone={resolveReliabilityVariant(averageReliability)}
         />
       </div>
 
-      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.2fr)_minmax(19rem,0.8fr)]">
-        <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-brand-500">
-                Dor e estresse
-              </p>
-              <h2 className="mt-2 text-xl font-semibold md:text-2xl">
-                Evolucao das ultimas ocorrencias
-              </h2>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
+        <div className="space-y-5">
+          <div className="panel-surface p-5">
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <p className="section-label">Evolucao diaria</p>
+                <h2 className="mt-2 text-2xl font-semibold">
+                  Evolucao das ultimas ocorrencias
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Linha principal: media diaria da dor. Linha de comparacao:
+                  estresse medio do mesmo dia.
+                </p>
+              </div>
+              <Badge variant="neutral">
+                {windowRange.dateFrom} ate {windowRange.dateTo}
+              </Badge>
             </div>
-            <Button asChild variant="secondary" size="sm">
-              <Link to="/app/reports">Ver relatorios</Link>
-            </Button>
+
+            {trendSeries.length > 0 ? (
+              <TrendLineChart
+                data={trendSeries}
+                secondaryKey="comparison"
+                height={300}
+              />
+            ) : (
+              <div className="flex h-[18rem] items-center justify-center rounded-[1.6rem] border border-dashed border-violet-200 bg-white/72 px-6 text-center text-sm text-muted-foreground">
+                Ainda nao ha registros suficientes nesse periodo para montar a
+                evolucao diaria.
+              </div>
+            )}
           </div>
-          {dashboardTrend.length > 0 ? (
-            <TrendLineChart
-              data={dashboardTrend}
-              secondaryKey="comparison"
-              height={250}
-            />
-          ) : (
-            <div className="flex h-[250px] items-center justify-center text-slate-400">
-              Registre a dor para visualizar a evolucao real.
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className="panel-surface p-5">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+                  <Waves className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Areas mais citadas
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Frequencia considerando todos os registros do periodo.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {topAreas.length > 0 ? (
+                  topAreas.map((item) => (
+                    <div key={item.label} className="space-y-2">
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="font-medium text-foreground">
+                          {item.label}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {item.count} citacoes
+                        </span>
+                      </div>
+                      <Progress value={item.percentage} />
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Sem areas suficientes para ranking neste recorte.
+                  </p>
+                )}
+              </div>
             </div>
-          )}
+
+            <div className="panel-surface p-5">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Gatilhos mais citados
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Ranking baseado no que voce realmente marcou.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {topTriggers.length > 0 ? (
+                  topTriggers.map((item) => (
+                    <div key={item.label} className="space-y-2">
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="font-medium text-foreground">
+                          {item.label}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {item.count} citacoes
+                        </span>
+                      </div>
+                      <Progress value={item.percentage} />
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum gatilho foi citado nesse periodo.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-5">
-          <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
+          <div className="panel-surface p-5">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
                 <CloudSun className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-medium text-brand-500">
-                  Clima em tempo real
-                </p>
-                <h2 className="mt-1 text-lg font-semibold md:text-xl">
+                <p className="text-sm font-semibold text-foreground">
                   Como o tempo pode afetar hoje
-                </h2>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Leitura do clima atual separada do motor clinico.
+                </p>
               </div>
             </div>
 
-            {locationStatus === "loading" ||
-            (locationStatus === "ready" && isLoadingWeather) ? (
-              <div className="space-y-3 animate-pulse">
-                <div className="h-16 rounded-[1.2rem] bg-slate-100" />
-                <div className="h-3 w-3/4 rounded-full bg-slate-100" />
-                <div className="h-3 w-1/2 rounded-full bg-slate-100" />
+            {locationStatus === "loading" || isLoadingWeather ? (
+              <div className="space-y-3">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-16 w-full" />
               </div>
-            ) : null}
-
-            {locationStatus === "ready" && weather ? (
+            ) : weather ? (
               <div className="space-y-4">
-                <div className="rounded-[1.2rem] border border-white/80 bg-brand-50/55 p-4">
+                <div className="rounded-[1.4rem] border border-white/80 bg-white/84 p-4 shadow-soft">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-3xl font-semibold tracking-[-0.06em] text-foreground">
+                      <p className="text-3xl font-semibold text-foreground">
                         {Math.round(weather.temperature)}°C
                       </p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {conditionLabel}
                       </p>
                     </div>
-                    <div className="flex flex-wrap justify-end gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Badge
-                        variant={isWeatherRiskElevated ? "warning" : "success"}
+                        variant={
+                          isWeatherRiskElevated ? "warning" : "success"
+                        }
                       >
-                        {isWeatherRiskElevated
-                          ? "Atenção climática"
-                          : "Clima estável"}
+                        {isWeatherRiskElevated ? "Maior impacto" : "Impacto menor"}
                       </Badge>
                       {sourceLabel ? (
                         <Badge variant="neutral">{sourceLabel}</Badge>
                       ) : null}
                     </div>
                   </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl bg-white/75 px-3 py-2.5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Umidade
-                      </p>
-                      <p className="mt-1 text-base font-semibold text-foreground">
-                        {Math.round(weather.humidity)}%
-                      </p>
-                    </div>
-                    <div className="rounded-2xl bg-white/75 px-3 py-2.5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Sensação
-                      </p>
-                      <p className="mt-1 text-base font-semibold text-foreground">
-                        {Math.round(weather.apparentTemperature)}°C
-                      </p>
-                    </div>
-                  </div>
+                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                    {impactMessage}
+                  </p>
                 </div>
-
-                <div className="rounded-[1.2rem] border border-dashed border-brand-100 bg-white/80 p-4">
-                  <div className="flex items-start gap-3">
-                    <Droplets className="mt-0.5 h-4 w-4 text-brand-500" />
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {impactMessage}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void refetchWeather()}
-                  >
-                    Atualizar clima
-                  </Button>
-                  {isFetchingWeather ? (
-                    <Badge variant="neutral">Sincronizando...</Badge>
-                  ) : (
-                    <Badge variant="neutral">GPS conectado</Badge>
-                  )}
-                </div>
+                <Button variant="secondary" size="sm" onClick={() => void refetchWeather()}>
+                  Atualizar clima
+                </Button>
               </div>
-            ) : null}
-
-            {(locationStatus === "denied" ||
-              locationStatus === "unsupported" ||
-              locationStatus === "error") &&
-            !weather ? (
-              <div className="rounded-[1.2rem] border border-dashed border-brand-100 bg-white/80 p-4">
+            ) : (
+              <div className="rounded-[1.4rem] border border-dashed border-violet-200 bg-white/84 p-4">
                 <div className="flex items-start gap-3">
-                  <LocateFixed className="mt-0.5 h-4 w-4 text-brand-500" />
+                  <TriangleAlert className="mt-0.5 h-4 w-4 text-violet-600" />
                   <div className="space-y-3">
                     <p className="text-sm leading-6 text-muted-foreground">
                       {locationError ??
-                        "Sem localização no momento. Você ainda pode usar o app normalmente."}
+                        "Nao conseguimos carregar o clima agora. O dashboard continua funcional mesmo sem essa leitura."}
                     </p>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={requestLocation}
-                    >
+                    <Button variant="secondary" size="sm" onClick={requestLocation}>
                       Tentar novamente
                     </Button>
                   </div>
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
 
-          <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
+          <div className="panel-surface p-5">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                <MapPin className="h-4 w-4" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+                <MoonStar className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-medium text-brand-500">
-                  Ultimo registro
+                <p className="text-sm font-semibold text-foreground">
+                  Contexto atual
                 </p>
-                <h2 className="mt-1 text-lg font-semibold md:text-xl">
-                  Resumo real da ultima dor
-                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Ultimo registro real que alimenta risco e relatorios.
+                </p>
               </div>
             </div>
 
             {latestRecord ? (
               <div className="space-y-4">
-                <div className="rounded-[1.2rem] border border-white/80 bg-brand-50/55 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {latestRecord.painType || "Tipo de dor nao informado"}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {formatEntryDateTime(latestRecord.createdAt)}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={resolvePainBadgeVariant(latestRecord.painLevel)}
-                    >
-                      {latestRecord.painLevel}/10
-                    </Badge>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="glass-surface p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Sono
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-foreground">
+                      {latestRecord.sleepHours ?? 0}h / {latestRecord.sleepQuality ?? 0}
+                    </p>
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  <div className="glass-surface p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Humor
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-foreground">
+                      {latestRecord.moodLevel}/10
+                    </p>
+                  </div>
+                  <div className="glass-surface p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Fadiga
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-foreground">
+                      {latestRecord.fatigueLevel}/10
+                    </p>
+                  </div>
+                  <div className="glass-surface p-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Estresse
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-foreground">
+                      {latestRecord.stressLevel}/10
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-[1.3rem] border border-white/80 bg-white/82 p-4">
+                  <p className="text-sm font-semibold text-foreground">
+                    Resumo real da ultima dor
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     {latestRecord.notes?.trim() ||
-                      "Sem observacoes adicionadas neste registro."}
+                      "Sem resumo livre neste registro. O sistema usara areas, gatilhos e escalas preenchidas para contextualizar a ocorrencia."}
                   </p>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    Areas relatadas
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {latestRecord.painAreas.length > 0 ? (
-                      latestRecord.painAreas.map((area) => (
-                        <Badge key={area}>{area}</Badge>
-                      ))
-                    ) : (
-                      <Badge variant="neutral">Nenhuma area informada</Badge>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    Gatilhos percebidos
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {latestRecord.painTriggers.length > 0 ? (
-                      latestRecord.painTriggers.map((trigger) => (
-                        <Badge key={trigger} variant="warning">
-                          {trigger}
-                        </Badge>
-                      ))
-                    ) : (
-                      <Badge variant="neutral">Nenhum gatilho informado</Badge>
-                    )}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {latestRecord.painAreas.map((area) => (
+                      <Badge key={area} variant="neutral">
+                        {area}
+                      </Badge>
+                    ))}
+                    {latestRecord.painTriggers.map((trigger) => (
+                      <Badge key={trigger} variant="default">
+                        {trigger}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-slate-500">
-                Ainda nao ha registro de dor salvo para exibir neste painel.
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Ainda nao ha um registro recente dentro do periodo selecionado.
+              </p>
             )}
           </div>
 
-          <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
+          <div className="panel-surface p-5">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                <Sparkles className="h-4 w-4" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+                <ShieldAlert className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-medium text-brand-500">
-                  Leitura do dia
+                <p className="text-sm font-semibold text-foreground">
+                  Motor clinico x IA
                 </p>
-                <h2 className="mt-1 text-lg font-semibold md:text-xl">
-                  Contexto atual
-                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Fontes separadas para evitar confusao entre regra e inferencia.
+                </p>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-foreground">Dor</p>
-                <Badge variant={resolvePainBadgeVariant(currentPainLevel)}>
-                  {currentPainLevel}/10
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-foreground">Humor</p>
-                <Badge variant="neutral">
-                  {currentMood !== null ? `${currentMood}/10` : "Sem dado"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-foreground">Qualidade do sono</p>
-                <Badge variant="neutral">
-                  {currentSleepQuality !== null
-                    ? `${currentSleepQuality}/10`
-                    : "Sem dado"}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-foreground">
-                  Ocorrencias salvas hoje
-                </p>
-                <Badge>{recordsToday}</Badge>
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              <p className="text-sm font-semibold text-foreground">
-                Insight rapido
-              </p>
-              {weather && isWeatherRiskElevated ? (
-                <div className="rounded-[1.2rem] border border-amber-100 bg-amber-50/80 p-4">
-                  <div className="flex items-start gap-3">
-                    <TriangleAlert className="mt-0.5 h-4 w-4 text-amber-600" />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Clima atual pode contribuir para maior risco de
-                        sintomas.
-                      </p>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        {impactMessage}
-                      </p>
-                    </div>
+            <div className="space-y-4">
+              <div className="rounded-[1.4rem] border border-white/80 bg-white/82 p-4 shadow-soft">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Rule Engine
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Calculado a partir dos seus inputs clinicos reais.
+                    </p>
                   </div>
+                  <Badge
+                    variant={
+                      latestRulePrediction?.riskLevel === "HIGH" ||
+                      latestRulePrediction?.riskLevel === "CRITICAL"
+                        ? "warning"
+                        : "default"
+                    }
+                  >
+                    {latestRulePrediction
+                      ? `${latestRulePrediction.probabilityScore}%`
+                      : "Sem calculo"}
+                  </Badge>
                 </div>
-              ) : null}
-              {latestPrediction ? (
-                <div className="rounded-[1.2rem] border border-white/80 bg-brand-50/55 p-4">
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {latestPrediction.explanation}
-                  </p>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {latestRulePrediction?.explanation ??
+                    "Ainda nao existe um calculo recente do motor clinico para mostrar aqui."}
+                </p>
+              </div>
+
+              <div className="rounded-[1.4rem] border border-white/80 bg-white/82 p-4 shadow-soft">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      AI Prediction
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Insight armazenado da camada de IA, quando disponivel.
+                    </p>
+                  </div>
+                  <Badge
+                    variant={
+                      latestAiPrediction?.riskLevel === "HIGH"
+                        ? "warning"
+                        : "default"
+                    }
+                  >
+                    {isLoadingLatestAi ? (
+                      <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                    ) : latestAiPrediction ? (
+                      `${latestAiPrediction.probabilityScore}%`
+                    ) : (
+                      "Sem IA"
+                    )}
+                  </Badge>
                 </div>
-              ) : (
-                <div className="rounded-[1.2rem] border border-dashed border-brand-100 bg-white/80 p-4 text-sm text-slate-500">
-                  O painel de IA ainda nao encontrou um padrao recente para
-                  complementar os seus registros.
-                </div>
-              )}
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {latestAiPrediction?.explanation ??
+                    "Nenhuma previsao de IA foi armazenada ainda para este paciente."}
+                </p>
+                {latestAiPrediction?.suggestedAction ? (
+                  <div className="mt-3 rounded-[1.2rem] bg-violet-50/80 px-4 py-3 text-sm text-violet-900">
+                    {latestAiPrediction.suggestedAction}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
-          <div className="mb-5 flex items-center justify-between gap-3">
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="panel-surface p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+              <Brain className="h-4 w-4" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-brand-500">
-                Linha do tempo
+              <p className="text-sm font-semibold text-foreground">
+                Cobertura do periodo
               </p>
-              <h2 className="mt-2 text-xl font-semibold md:text-2xl">
-                Ultimas dores registradas
-              </h2>
+              <p className="text-sm text-muted-foreground">
+                Dias com registro valido dentro da janela escolhida.
+              </p>
             </div>
           </div>
-          <div className="space-y-3">
-            {recentEntries.length > 0 ? (
-              recentEntries.map((record) => (
-                <div
-                  key={record.id}
-                  className="rounded-[1.2rem] border border-white/80 bg-white/88 px-4 py-3.5 shadow-soft"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {record.painType || "Dor registrada"}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatEntryDateTime(record.createdAt)}
-                      </p>
-                    </div>
-                    <Badge variant={resolvePainBadgeVariant(record.painLevel)}>
-                      {record.painLevel}/10
-                    </Badge>
-                  </div>
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    {summarizeAreas(record)}
-                  </p>
-                  {record.painTriggers.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {record.painTriggers.slice(0, 3).map((trigger) => (
-                        <Badge
-                          key={`${record.id}-${trigger}`}
-                          variant="warning"
-                        >
-                          {trigger}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-slate-500">
-                Nenhuma ocorrencia de dor foi registrada ainda.
-              </div>
-            )}
-          </div>
+          <Progress value={Math.min((aggregates.length / rangeDays) * 100, 100)} />
+          <p className="mt-3 text-sm text-muted-foreground">
+            {aggregates.length} dias com dados entre {windowRange.dateFrom} e{" "}
+            {windowRange.dateTo}.
+          </p>
         </div>
 
-        <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
-          <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="panel-surface p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+              <Sparkles className="h-4 w-4" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-brand-500">
-                Padroes recentes
+              <p className="text-sm font-semibold text-foreground">
+                Carga de sintomas recente
               </p>
-              <h2 className="mt-2 text-xl font-semibold md:text-2xl">
-                Areas e gatilhos mais citados
-              </h2>
+              <p className="text-sm text-muted-foreground">
+                Media diaria baseada em sinais independentes registrados.
+              </p>
             </div>
           </div>
-
-          <div className="space-y-5">
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">
-                Areas mais afetadas
-              </p>
-              {topPainAreas.length > 0 ? (
-                topPainAreas.map((item) => (
-                  <div key={item.label} className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-foreground">{item.label}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.count}x
-                      </p>
-                    </div>
-                    <Progress value={item.percentage} className="h-2.5" />
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm text-slate-500">
-                  As areas do corpo vao aparecer aqui conforme os registros
-                  forem feitos.
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">
-                Gatilhos mais percebidos
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {topPainTriggers.length > 0 ? (
-                  topPainTriggers.map((item) => (
-                    <Badge key={item.label} variant="warning">
-                      {item.label} • {item.count}x
-                    </Badge>
-                  ))
-                ) : (
-                  <Badge variant="neutral">Sem gatilhos frequentes ainda</Badge>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-3xl font-semibold text-foreground">
+                {formatNumber(
+                  latestDay?.symptomLoadAverage ?? 0,
                 )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">
-                Tipos de dor recorrentes
+                /10
               </p>
-              <div className="flex flex-wrap gap-2">
-                {topPainTypes.length > 0 ? (
-                  topPainTypes.map((item) => (
-                    <Badge key={item.label}>
-                      {item.label} • {item.count}x
-                    </Badge>
-                  ))
-                ) : (
-                  <Badge variant="neutral">Sem tipos recorrentes ainda</Badge>
-                )}
-              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {latestDay
+                  ? `Ultimo dia observado: ${formatLongDate(latestDay.date)}`
+                  : "Sem sinais recentes"}
+              </p>
             </div>
+            <Badge variant="neutral">{rangeDays} dias</Badge>
           </div>
         </div>
       </div>
