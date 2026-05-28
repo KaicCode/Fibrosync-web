@@ -1,27 +1,26 @@
-# Comandos Prisma
-
-O Prisma é o ORM utilizado para interagir com o PostgreSQL.
+## 1. Comandos Prisma
 
 ### Gerar o Client
-Deve ser executado sempre que o schema for alterado ou após um `npm install`:
+Executar sempre que o schema mudar ou após `npm install`:
+
 ```bash
 npx prisma generate
 ```
 
-### Sincronizar Schema com o Banco (Desenvolvimento)
-Aplica as mudanças do `schema.prisma` diretamente no banco:
+### Sincronizar schema com o banco em desenvolvimento
+
 ```bash
 npx prisma db push
 ```
 
-### Prisma Studio
-Interface visual para visualizar e editar os dados do banco:
+### Abrir o Prisma Studio
+
 ```bash
 npx prisma studio
 ```
 
-### Migrations (Produção/Histórico)
-Para criar e aplicar migrações versionadas:
+### Criar migração versionada
+
 ```bash
 npx prisma migrate dev --name nome_da_migracao
 ```
