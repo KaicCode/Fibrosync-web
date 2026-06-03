@@ -4,7 +4,6 @@ import {
   CalendarDays,
   ChevronDown,
   Eye,
-  Globe,
   Heart,
   LoaderCircle,
   LockKeyhole,
@@ -48,13 +47,6 @@ const benefits = [
 
 const passwordRules = ['8 caracteres', '1 letra maiúscula', '1 número', '1 caractere especial']
 
-const countryCodeByLabel: Record<string, string> = {
-  Argentina: 'AR',
-  Brasil: 'BR',
-  Chile: 'CL',
-  Portugal: 'PT',
-}
-
 type SignupFormValues = {
   name: string
   birthDate: string
@@ -64,7 +56,6 @@ type SignupFormValues = {
   gender: string
   height: string
   weight: string
-  country: string
   acceptedTerms: boolean
 }
 
@@ -77,7 +68,6 @@ const initialFormValues: SignupFormValues = {
   gender: '',
   height: '',
   weight: '',
-  country: 'Brasil',
   acceptedTerms: true,
 }
 
@@ -254,7 +244,7 @@ export function SignupPage() {
         gender: formValues.gender || undefined,
         heightCm: normalizedHeightCm ?? undefined,
         weightKg: parsedWeight ?? undefined,
-        countryCode: countryCodeByLabel[formValues.country] ?? 'BR',
+        countryCode: 'BR',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       })
 
@@ -418,7 +408,7 @@ export function SignupPage() {
               </div>
 
               <label className="space-y-2.5">
-                <span className="text-sm font-medium text-slate-900">Gênero <span className="font-normal text-slate-500">(opcional)</span></span>
+                <span className="text-sm font-medium text-slate-900">Sexo <span className="font-normal text-slate-500">(opcional)</span></span>
                 <div className="relative">
                   <Users className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                   <select
@@ -452,24 +442,6 @@ export function SignupPage() {
                   onChange={handleInputChange('weight')}
                 />
               </div>
-
-              <label className="space-y-2.5">
-                <span className="text-sm font-medium text-slate-900">País</span>
-                <div className="relative">
-                  <Globe className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                  <select
-                    value={formValues.country}
-                    onChange={handleInputChange('country')}
-                    className="h-12 w-full appearance-none rounded-[0.95rem] border border-slate-200 bg-white/95 pl-12 pr-12 text-sm text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100/60 md:text-base"
-                  >
-                    <option>Brasil</option>
-                    <option>Portugal</option>
-                    <option>Argentina</option>
-                    <option>Chile</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                </div>
-              </label>
 
               <label className="flex items-start gap-3 pt-1 text-sm leading-6 text-slate-500">
                 <input

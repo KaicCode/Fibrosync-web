@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { PageLoader } from '@/components/page-loader'
 import { AuthLayout } from '@/layouts/auth-layout'
 import { AdminLayout, MedicalLayout, PatientLayout } from '@/layouts/workspace-layout'
@@ -22,14 +22,8 @@ const PainLogPage = lazy(() =>
 const ReportsPage = lazy(() =>
   import('@/pages/patient/reports-page').then((module) => ({ default: module.ReportsPage })),
 )
-const AssistantPage = lazy(() =>
-  import('@/pages/patient/assistant-page').then((module) => ({ default: module.AssistantPage })),
-)
 const CalendarPage = lazy(() =>
   import('@/pages/patient/calendar-page').then((module) => ({ default: module.CalendarPage })),
-)
-const CommunityPage = lazy(() =>
-  import('@/pages/patient/community-page').then((module) => ({ default: module.CommunityPage })),
 )
 const ProfilePage = lazy(() =>
   import('@/pages/patient/profile-page').then((module) => ({ default: module.ProfilePage })),
@@ -72,6 +66,21 @@ const AdminSettingsPage = lazy(() =>
     default: module.AdminSettingsPage,
   })),
 )
+const AiActivePreviewPage = lazy(() =>
+  import('@/pages/shared/ai-active-preview-page').then((module) => ({
+    default: module.AiActivePreviewPage,
+  })),
+)
+const WorkspaceSearchPage = lazy(() =>
+  import('@/pages/shared/workspace-search-page').then((module) => ({
+    default: module.WorkspaceSearchPage,
+  })),
+)
+const NotFoundPage = lazy(() =>
+  import('@/pages/shared/not-found-page').then((module) => ({
+    default: module.NotFoundPage,
+  })),
+)
 
 export function AppRouter() {
   return (
@@ -85,22 +94,28 @@ export function AppRouter() {
 
         <Route element={<PatientLayout />}>
           <Route path="/app" element={<DashboardPage />} />
+          <Route path="/app/ai-active" element={<AiActivePreviewPage />} />
+          <Route path="/app/search" element={<WorkspaceSearchPage />} />
           <Route path="/app/pain-log" element={<PainLogPage />} />
           <Route path="/app/reports" element={<ReportsPage />} />
-          <Route path="/app/assistant" element={<AssistantPage />} />
+          <Route path="/app/assistant" element={<AiActivePreviewPage />} />
           <Route path="/app/calendar" element={<CalendarPage />} />
-          <Route path="/app/community" element={<CommunityPage />} />
+          <Route path="/app/community" element={<AiActivePreviewPage />} />
           <Route path="/app/profile" element={<ProfilePage />} />
           <Route path="/app/settings" element={<SettingsPage />} />
         </Route>
 
         <Route element={<MedicalLayout />}>
           <Route path="/medical" element={<MedicalDashboardPage />} />
+          <Route path="/medical/ai-active" element={<AiActivePreviewPage />} />
+          <Route path="/medical/search" element={<WorkspaceSearchPage />} />
         </Route>
 
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/admin/ai-active" element={<AiActivePreviewPage />} />
+          <Route path="/admin/search" element={<WorkspaceSearchPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/symptoms" element={<AdminSymptomsPage />} />
           <Route path="/admin/reports" element={<AdminReportsPage />} />
@@ -108,7 +123,7 @@ export function AppRouter() {
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   )

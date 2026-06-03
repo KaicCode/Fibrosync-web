@@ -42,7 +42,7 @@ export function LoginPage() {
           <div className="mx-auto mt-8 max-w-[27rem]">
             <div className="space-y-2 text-center">
               <h2 className="text-2xl font-semibold tracking-[-0.06em] text-slate-950 md:text-3xl">
-                Bem-vinda de volta! <span className="text-brand-500">💜</span>
+                Bem-vindo(a) de volta! <span className="text-brand-500">💜</span>
               </h2>
               <p className="text-sm leading-6 text-slate-500 md:text-base">
                 Faça login para continuar cuidando de você.

@@ -1,3 +1,4 @@
+import brandLogo from '@/assets/logofibrosync (1).png'
 import { cn } from '@/lib/utils'
 
 type BrandLogoProps = {
@@ -8,28 +9,13 @@ type BrandLogoProps = {
 export function BrandLogo({ compact = false, className }: BrandLogoProps) {
   return (
     <div className={cn('flex items-center gap-3', className)}>
-      <div className="relative flex h-12 w-12 items-center justify-center rounded-[1.35rem] bg-white/90 shadow-soft">
-        <div className="absolute inset-[6px] rounded-[1rem] bg-brand-gradient opacity-90" />
-        <svg
-          viewBox="0 0 48 48"
-          className="relative h-8 w-8 text-white drop-shadow-[0_6px_16px_rgba(0,0,0,0.18)]"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M7 25.5H14L18 18L23 31L28 14L32 25.5H41"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M24 43C33.3888 43 41 35.3888 41 26C41 16.6112 33.3888 9 24 9C14.6112 9 7 16.6112 7 26C7 35.3888 14.6112 43 24 43Z"
-            stroke="currentColor"
-            strokeOpacity="0.78"
-            strokeWidth="2.4"
-          />
-        </svg>
+      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
+        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(123,77,255,0.2),transparent_72%)] blur-xl" />
+        <img
+          src={brandLogo}
+          alt="Logo FibroSync"
+          className="relative h-full w-full object-contain drop-shadow-[0_20px_34px_rgba(123,77,255,0.18)]"
+        />
       </div>
       {!compact && (
         <div>

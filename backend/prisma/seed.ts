@@ -19,8 +19,10 @@ const prisma = new PrismaClient({
 });
 const bcryptSaltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12);
 const adminSeedEmail =
-  process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase() ?? 'admin@fibrosync.local';
-const adminSeedPassword = process.env.ADMIN_SEED_PASSWORD ?? 'Admin12345!';
+  process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase() ??
+  'fibrosyncadmin@gmail.com';
+const legacyAdminSeedEmail = 'admin@fibrosync.local';
+const adminSeedPassword = process.env.ADMIN_SEED_PASSWORD ?? '2026Admin@$';
 const adminSeedFullName =
   process.env.ADMIN_SEED_FULL_NAME?.trim() ?? 'FibroSync Admin';
 
@@ -73,26 +75,54 @@ const defaultSymptoms: Array<{
 
 async function ensureAdminUser(): Promise<void> {
   const passwordHash = await bcrypt.hash(adminSeedPassword, bcryptSaltRounds);
+  const adminData = {
+    fullName: adminSeedFullName,
+    passwordHash,
+    role: Role.ADMIN,
+    onboardingCompleted: true,
+    timezone: 'America/Sao_Paulo',
+    deletedAt: null,
+  } as const;
+
+  if (adminSeedEmail !== legacyAdminSeedEmail) {
+    const [targetAdmin, legacyAdmin] = await Promise.all([
+      prisma.user.findUnique({
+        where: {
+          email: adminSeedEmail,
+        },
+      }),
+      prisma.user.findUnique({
+        where: {
+          email: legacyAdminSeedEmail,
+        },
+      }),
+    ]);
+
+    if (!targetAdmin && legacyAdmin) {
+      await prisma.user.update({
+        where: {
+          id: legacyAdmin.id,
+        },
+        data: {
+          email: adminSeedEmail,
+          ...adminData,
+        },
+      });
+
+      return;
+    }
+  }
 
   await prisma.user.upsert({
     where: {
       email: adminSeedEmail,
     },
     update: {
-      fullName: adminSeedFullName,
-      passwordHash,
-      role: Role.ADMIN,
-      onboardingCompleted: true,
-      timezone: 'America/Sao_Paulo',
-      deletedAt: null,
+      ...adminData,
     },
     create: {
       email: adminSeedEmail,
-      passwordHash,
-      fullName: adminSeedFullName,
-      role: Role.ADMIN,
-      onboardingCompleted: true,
-      timezone: 'America/Sao_Paulo',
+      ...adminData,
     },
   });
 }
