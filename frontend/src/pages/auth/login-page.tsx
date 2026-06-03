@@ -86,15 +86,6 @@ export function LoginPage() {
                 </div>
               </label>
 
-              <div className="flex justify-end pr-1">
-                <button
-                  type="button"
-                  className="text-sm font-medium text-brand-500 transition hover:text-brand-600"
-                >
-                  Esqueceu a senha?
-                </button>
-              </div>
-
               {loginError && (
                 <div className="text-red-500 text-sm text-center">
                   Email ou senha incorretos
