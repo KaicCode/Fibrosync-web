@@ -22,7 +22,10 @@ interface DataReliabilityInput {
 
 export interface DataReliabilitySnapshot {
   score: number;
-  label: 'Baixa confiabilidade' | 'Confiabilidade moderada' | 'Alta confiabilidade';
+  label:
+    | 'Baixa confiabilidade'
+    | 'Confiabilidade moderada'
+    | 'Alta confiabilidade';
 }
 
 function hasNumber(value: number | null | undefined): boolean {
@@ -34,7 +37,9 @@ function hasText(value: string | null | undefined): boolean {
 }
 
 function hasList(values: string[] | null | undefined): boolean {
-  return Array.isArray(values) && values.some((value) => value.trim().length > 0);
+  return (
+    Array.isArray(values) && values.some((value) => value.trim().length > 0)
+  );
 }
 
 function temporalConsistencyScore(
@@ -85,7 +90,10 @@ export function calculateDataReliability(
 
   score += hasNumber(input.hydration) ? 6 : 0;
   score += hasNumber(input.physicalActivity) ? 5 : 0;
-  score += input.medicationTaken !== null && input.medicationTaken !== undefined ? 4 : 0;
+  score +=
+    input.medicationTaken !== null && input.medicationTaken !== undefined
+      ? 4
+      : 0;
   score += hasText(input.weatherFeeling) ? 4 : 0;
   score += hasText(input.painType) ? 4 : 0;
   score += hasList(input.painAreas) ? 6 : 0;

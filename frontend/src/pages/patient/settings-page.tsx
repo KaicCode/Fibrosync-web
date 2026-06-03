@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import type { ReactNode, SetStateAction } from 'react'
 import {
   AlertCircle,
   BellRing,
@@ -23,6 +23,8 @@ import { usePageTitle } from '@/hooks/use-page-title'
 import { useUser } from '@/hooks/useUser'
 import { useUserSettings } from '@/hooks/useUserSettings'
 import { ApiError } from '@/lib/api-client'
+import type { UserSettings } from '@/services/user-settings.service'
+import type { UserProfile } from '@/services/user.service'
 
 type AccountFormState = {
   fullName: string
@@ -100,6 +102,42 @@ function parseOptionalNumber(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function buildAccountFormState(user: UserProfile | null | undefined): AccountFormState {
+  return {
+    fullName: user?.fullName ?? '',
+    birthDate: toDateInputValue(user?.birthDate),
+    gender: user?.gender ?? '',
+    heightCm: toNumberInputValue(user?.heightCm),
+    weightKg: toNumberInputValue(user?.weightKg),
+    countryCode: user?.countryCode ?? '',
+    timezone: user?.timezone || 'America/Sao_Paulo',
+    onboardingCompleted: user?.onboardingCompleted ?? false,
+  }
+}
+
+function buildPreferenceFormState(
+  settings: UserSettings | null | undefined,
+): PreferenceFormState {
+  return {
+    dailySummaryEnabled: settings?.dailySummaryEnabled ?? true,
+    dailySummaryTime: settings?.dailySummaryTime ?? '08:00',
+    endOfDayReminderEnabled: settings?.endOfDayReminderEnabled ?? true,
+    endOfDayReminderTime: settings?.endOfDayReminderTime ?? '20:00',
+    smartSearchEnabled: settings?.smartSearchEnabled ?? true,
+    calendarInsightsEnabled: settings?.calendarInsightsEnabled ?? true,
+    inAppNotificationsEnabled: settings?.inAppNotificationsEnabled ?? true,
+    emailNotificationsEnabled: settings?.emailNotificationsEnabled ?? false,
+    quietHoursEnabled: settings?.quietHoursEnabled ?? false,
+    quietHoursStart: settings?.quietHoursStart ?? '22:00',
+    quietHoursEnd: settings?.quietHoursEnd ?? '06:30',
+    clinicalDataSharingEnabled: settings?.clinicalDataSharingEnabled ?? false,
+    reportExportConfirmationEnabled:
+      settings?.reportExportConfirmationEnabled ?? true,
+    deviceProtectionEnabled: settings?.deviceProtectionEnabled ?? true,
+    permissionReviewEnabled: settings?.permissionReviewEnabled ?? true,
+  }
+}
+
 function Field({
   label,
   hint,
@@ -165,75 +203,46 @@ export function SettingsPage() {
     unreadCount,
   } = useNotifications({ limit: 5 })
 
-  const [accountForm, setAccountForm] = useState<AccountFormState>({
-    fullName: '',
-    birthDate: '',
-    gender: '',
-    heightCm: '',
-    weightKg: '',
-    countryCode: '',
-    timezone: 'America/Sao_Paulo',
-    onboardingCompleted: false,
-  })
-  const [preferencesForm, setPreferencesForm] = useState<PreferenceFormState>({
-    dailySummaryEnabled: true,
-    dailySummaryTime: '08:00',
-    endOfDayReminderEnabled: true,
-    endOfDayReminderTime: '20:00',
-    smartSearchEnabled: true,
-    calendarInsightsEnabled: true,
-    inAppNotificationsEnabled: true,
-    emailNotificationsEnabled: false,
-    quietHoursEnabled: false,
-    quietHoursStart: '22:00',
-    quietHoursEnd: '06:30',
-    clinicalDataSharingEnabled: false,
-    reportExportConfirmationEnabled: true,
-    deviceProtectionEnabled: true,
-    permissionReviewEnabled: true,
-  })
+  const [accountDraft, setAccountDraftState] = useState<AccountFormState | null>(null)
+  const [preferencesDraft, setPreferencesDraftState] =
+    useState<PreferenceFormState | null>(null)
   const [saveState, setSaveState] = useState<SaveState>({ kind: 'idle' })
 
-  useEffect(() => {
-    if (!user) {
-      return
-    }
+  const accountForm = useMemo(
+    () => accountDraft ?? buildAccountFormState(user),
+    [accountDraft, user],
+  )
+  const preferencesForm = useMemo(
+    () => preferencesDraft ?? buildPreferenceFormState(settings),
+    [preferencesDraft, settings],
+  )
 
-    setAccountForm({
-      fullName: user.fullName,
-      birthDate: toDateInputValue(user.birthDate),
-      gender: user.gender ?? '',
-      heightCm: toNumberInputValue(user.heightCm),
-      weightKg: toNumberInputValue(user.weightKg),
-      countryCode: user.countryCode ?? '',
-      timezone: user.timezone || 'America/Sao_Paulo',
-      onboardingCompleted: user.onboardingCompleted,
-    })
-  }, [user])
+  const setAccountForm = useCallback(
+    (next: SetStateAction<AccountFormState>) => {
+      setAccountDraftState((currentDraft) => {
+        const currentState = currentDraft ?? buildAccountFormState(user)
 
-  useEffect(() => {
-    if (!settings) {
-      return
-    }
+        return typeof next === 'function'
+          ? next(currentState)
+          : next
+      })
+    },
+    [user],
+  )
 
-    setPreferencesForm({
-      dailySummaryEnabled: settings.dailySummaryEnabled,
-      dailySummaryTime: settings.dailySummaryTime,
-      endOfDayReminderEnabled: settings.endOfDayReminderEnabled,
-      endOfDayReminderTime: settings.endOfDayReminderTime,
-      smartSearchEnabled: settings.smartSearchEnabled,
-      calendarInsightsEnabled: settings.calendarInsightsEnabled,
-      inAppNotificationsEnabled: settings.inAppNotificationsEnabled,
-      emailNotificationsEnabled: settings.emailNotificationsEnabled,
-      quietHoursEnabled: settings.quietHoursEnabled,
-      quietHoursStart: settings.quietHoursStart ?? '22:00',
-      quietHoursEnd: settings.quietHoursEnd ?? '06:30',
-      clinicalDataSharingEnabled: settings.clinicalDataSharingEnabled,
-      reportExportConfirmationEnabled: settings.reportExportConfirmationEnabled,
-      deviceProtectionEnabled: settings.deviceProtectionEnabled,
-      permissionReviewEnabled: settings.permissionReviewEnabled,
-    })
-  }, [settings])
+  const setPreferencesForm = useCallback(
+    (next: SetStateAction<PreferenceFormState>) => {
+      setPreferencesDraftState((currentDraft) => {
+        const currentState =
+          currentDraft ?? buildPreferenceFormState(settings)
+
+        return typeof next === 'function'
+          ? next(currentState)
+          : next
+      })
+    },
+    [settings],
+  )
 
   const protectionScore = useMemo(() => {
     const protections = [
@@ -296,6 +305,9 @@ export function SettingsPage() {
           permissionReviewEnabled: preferencesForm.permissionReviewEnabled,
         }),
       ])
+
+      setAccountDraftState(null)
+      setPreferencesDraftState(null)
 
       setSaveState({
         kind: 'success',

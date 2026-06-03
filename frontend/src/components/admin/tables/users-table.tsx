@@ -13,6 +13,23 @@ type SortConfig = {
   direction: 'asc' | 'desc'
 }
 
+type SortIconProps = {
+  column: keyof AdminUser
+  sortConfig: SortConfig
+}
+
+function SortIcon({ column, sortConfig }: SortIconProps) {
+  if (sortConfig.key !== column) {
+    return <div className="w-4 h-4" />
+  }
+
+  return sortConfig.direction === 'asc' ? (
+    <ChevronUp className="w-4 h-4" />
+  ) : (
+    <ChevronDown className="w-4 h-4" />
+  )
+}
+
 export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) {
   const [search, setSearch] = useState('')
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -21,7 +38,7 @@ export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) 
   })
 
   const filteredAndSorted = useMemo(() => {
-    let filtered = users.filter(
+    const filtered = users.filter(
       (user) =>
         user.name.toLowerCase().includes(search.toLowerCase()) ||
         user.email.toLowerCase().includes(search.toLowerCase()),
@@ -47,11 +64,6 @@ export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) 
       key,
       direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc',
     })
-  }
-
-  const SortIcon = ({ column }: { column: keyof AdminUser }) => {
-    if (sortConfig.key !== column) return <div className="w-4 h-4" />
-    return sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
   }
 
   if (isLoading) {
@@ -87,7 +99,7 @@ export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) 
               >
                 <div className="flex items-center gap-2">
                   Nome
-                  <SortIcon column="name" />
+                  <SortIcon column="name" sortConfig={sortConfig} />
                 </div>
               </th>
               <th
@@ -96,7 +108,7 @@ export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) 
               >
                 <div className="flex items-center gap-2">
                   Email
-                  <SortIcon column="email" />
+                  <SortIcon column="email" sortConfig={sortConfig} />
                 </div>
               </th>
               <th
@@ -105,7 +117,7 @@ export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) 
               >
                 <div className="flex items-center gap-2">
                   Função
-                  <SortIcon column="role" />
+                  <SortIcon column="role" sortConfig={sortConfig} />
                 </div>
               </th>
               <th
@@ -114,7 +126,7 @@ export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) 
               >
                 <div className="flex items-center gap-2">
                   Status
-                  <SortIcon column="status" />
+                  <SortIcon column="status" sortConfig={sortConfig} />
                 </div>
               </th>
               <th
@@ -123,7 +135,7 @@ export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) 
               >
                 <div className="flex items-center gap-2">
                   Cadastro
-                  <SortIcon column="createdAt" />
+                  <SortIcon column="createdAt" sortConfig={sortConfig} />
                 </div>
               </th>
               <th className="px-4 py-3 text-left font-semibold text-foreground">Ações</th>

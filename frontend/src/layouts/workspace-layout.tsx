@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { WorkspaceSidebar } from '@/components/workspace-sidebar'
 import { WorkspaceTopbar } from '@/components/workspace-topbar'
-import { inferRoleFromPath, type WorkspaceVariant } from '@/lib/navigation'
+import type { WorkspaceVariant } from '@/lib/navigation'
 import { useAppStore } from '@/store/app-store'
 
 type WorkspaceLayoutProps = {
@@ -11,16 +11,14 @@ type WorkspaceLayoutProps = {
 }
 
 export function WorkspaceLayout({ variant }: WorkspaceLayoutProps) {
-  const [open, setOpen] = useState(false)
+  const [mobileSidebarPath, setMobileSidebarPath] = useState<string | null>(null)
   const location = useLocation()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const setRole = useAppStore((state) => state.setRole)
+  const isMobileSidebarOpen = mobileSidebarPath === location.pathname
 
   useEffect(() => {
-    setRole(inferRoleFromPath(location.pathname))
-    setOpen(false)
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'auto' })
-  }, [location.pathname, setRole])
+  }, [location.pathname])
 
   return (
     <div className="relative min-h-screen overflow-hidden xl:h-screen">
@@ -40,7 +38,10 @@ export function WorkspaceLayout({ variant }: WorkspaceLayoutProps) {
       >
         <div className="px-4 py-4 md:px-6 md:py-5 xl:px-6 xl:py-6 2xl:px-8">
           <div className="mx-auto flex w-full max-w-screen-2xl min-w-0 flex-col gap-5">
-            <WorkspaceTopbar variant={variant} onOpenSidebar={() => setOpen(true)} />
+            <WorkspaceTopbar
+              variant={variant}
+              onOpenSidebar={() => setMobileSidebarPath(location.pathname)}
+            />
             <main className="min-w-0 pb-6 xl:pb-10">
               <Outlet />
             </main>
@@ -48,10 +49,18 @@ export function WorkspaceLayout({ variant }: WorkspaceLayoutProps) {
         </div>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={isMobileSidebarOpen}
+        onOpenChange={(nextOpen) =>
+          setMobileSidebarPath(nextOpen ? location.pathname : null)
+        }
+      >
         <DialogContent className="left-auto right-4 top-4 h-[calc(100vh-2rem)] w-[min(92vw,18.75rem)] translate-x-0 translate-y-0 overflow-hidden border-white/60 bg-white/75 p-0 shadow-panel backdrop-blur-2xl sm:left-auto sm:right-5 sm:top-5 sm:w-[18.75rem]">
           <div className="h-full p-3">
-            <WorkspaceSidebar variant={variant} onNavigate={() => setOpen(false)} />
+            <WorkspaceSidebar
+              variant={variant}
+              onNavigate={() => setMobileSidebarPath(null)}
+            />
           </div>
         </DialogContent>
       </Dialog>
@@ -68,5 +77,16 @@ export function MedicalLayout() {
 }
 
 export function AdminLayout() {
+  const location = useLocation()
+  const authSession = useAppStore((state) => state.authSession)
+
+  if (!authSession) {
+    return <Navigate to="/" replace state={{ from: location.pathname }} />
+  }
+
+  if (authSession.user.role !== 'ADMIN') {
+    return <Navigate to="/app" replace />
+  }
+
   return <WorkspaceLayout variant="admin" />
 }

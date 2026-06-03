@@ -50,7 +50,8 @@ export class AiController {
 
   @Get('predictions/latest')
   @ApiOperation({
-    summary: 'Returns the latest stored AI prediction for the authenticated user.',
+    summary:
+      'Returns the latest stored AI prediction for the authenticated user.',
   })
   @ApiOkResponse({ type: AiPredictionResponseDto })
   @ApiNotFoundResponse({

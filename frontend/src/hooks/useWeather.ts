@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from "react";
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   weatherService,
@@ -20,6 +20,16 @@ type Coordinates = {
   lat: number;
   lon: number;
 };
+
+class GeolocationRequestError extends Error {
+  readonly kind: "permission" | "position" | "unsupported";
+
+  constructor(kind: "permission" | "position" | "unsupported", message: string) {
+    super(message);
+    this.name = "GeolocationRequestError";
+    this.kind = kind;
+  }
+}
 
 export function resolveWeatherConditionLabel(weatherCode: number): string {
   if (weatherCode === 0) {
@@ -112,72 +122,91 @@ export function resolveWeatherSourceLabel(
 }
 
 export function useCurrentLocation(enabled = true) {
-  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
-  const [status, setStatus] = useState<CurrentLocationStatus>(
-    enabled ? "loading" : "idle",
-  );
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const requestLocation = useEffectEvent(() => {
-    if (!enabled) {
-      setCoordinates(null);
-      setStatus("idle");
-      setErrorMessage(null);
-      return;
-    }
-
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setCoordinates(null);
-      setStatus("unsupported");
-      setErrorMessage(
-        "Seu navegador não oferece geolocalização para cruzar clima e sintomas.",
-      );
-      return;
-    }
-
-    setStatus("loading");
-    setErrorMessage(null);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoordinates({
-          lat: Number(position.coords.latitude.toFixed(6)),
-          lon: Number(position.coords.longitude.toFixed(6)),
-        });
-        setStatus("ready");
-      },
-      (error) => {
-        setCoordinates(null);
-
-        if (error.code === error.PERMISSION_DENIED) {
-          setStatus("denied");
-          setErrorMessage(
-            "Você pode continuar usando o app normalmente. Quando quiser, habilite o GPS para conectarmos clima e sintomas.",
+  const supportsGeolocation =
+    typeof navigator !== "undefined" && Boolean(navigator.geolocation);
+  const locationQuery = useQuery<Coordinates, GeolocationRequestError>({
+    queryKey: ["current-location", enabled, supportsGeolocation],
+    queryFn: () =>
+      new Promise<Coordinates>((resolve, reject) => {
+        if (!supportsGeolocation) {
+          reject(
+            new GeolocationRequestError(
+              "unsupported",
+              "Seu navegador não oferece geolocalização para cruzar clima e sintomas.",
+            ),
           );
           return;
         }
 
-        setStatus("error");
-        setErrorMessage(
-          "Não conseguimos acessar sua localização agora. Tente novamente em instantes.",
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              lat: Number(position.coords.latitude.toFixed(6)),
+              lon: Number(position.coords.longitude.toFixed(6)),
+            });
+          },
+          (error) => {
+            if (error.code === error.PERMISSION_DENIED) {
+              reject(
+                new GeolocationRequestError(
+                  "permission",
+                  "Você pode continuar usando o app normalmente. Quando quiser, habilite o GPS para conectarmos clima e sintomas.",
+                ),
+              );
+              return;
+            }
+
+            reject(
+              new GeolocationRequestError(
+                "position",
+                "Não conseguimos acessar sua localização agora. Tente novamente em instantes.",
+              ),
+            );
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: WEATHER_CACHE_MS,
+          },
         );
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: WEATHER_CACHE_MS,
-      },
-    );
+      }),
+    enabled: enabled && supportsGeolocation,
+    staleTime: WEATHER_CACHE_MS,
+    gcTime: WEATHER_CACHE_MS * 2,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
-  useEffect(() => {
-    requestLocation();
-  }, [enabled]);
+  const requestLocation = useCallback(() => {
+    if (!enabled || !supportsGeolocation) {
+      return;
+    }
+
+    void locationQuery.refetch();
+  }, [enabled, supportsGeolocation, locationQuery]);
+
+  const resolvedStatus: CurrentLocationStatus = !enabled
+    ? "idle"
+    : !supportsGeolocation
+      ? "unsupported"
+      : locationQuery.isPending || locationQuery.isFetching
+        ? "loading"
+        : locationQuery.isSuccess
+          ? "ready"
+          : locationQuery.error?.kind === "permission"
+            ? "denied"
+            : "error";
+
+  const resolvedErrorMessage = !enabled
+    ? null
+    : !supportsGeolocation
+      ? "Seu navegador não oferece geolocalização para cruzar clima e sintomas."
+      : locationQuery.error?.message ?? null;
 
   return {
-    coordinates,
-    status,
-    errorMessage,
+    coordinates: enabled ? locationQuery.data ?? null : null,
+    status: resolvedStatus,
+    errorMessage: resolvedErrorMessage,
     requestLocation,
   };
 }

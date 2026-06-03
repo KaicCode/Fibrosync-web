@@ -1,15 +1,20 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma, User } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
+import type { Prisma, Role, User } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@/database/prisma.service';
 import { normalizeDateOnly } from '@/common/utils/date.util';
 import {
   buildPaginationMeta,
   resolvePagination,
 } from '@/common/utils/pagination.util';
+import type { CreateAdminUserDto } from './dto/create-admin-user.dto';
+import type { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import type { UpdateProfileDto } from './dto/update-profile.dto';
 import type { UpdateUserSettingsDto } from './dto/update-user-settings.dto';
 import type { UserQueryDto } from './dto/user-query.dto';
@@ -31,35 +36,33 @@ interface CreatePatientInput {
   weightKg?: number;
   countryCode?: string;
   timezone?: string;
+  role?: Role;
+  onboardingCompleted?: boolean;
 }
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly bcryptSaltRounds: number;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    configService: ConfigService,
+  ) {
+    this.bcryptSaltRounds = configService.get<number>(
+      'auth.bcryptSaltRounds',
+      12,
+    );
+  }
 
   async createPatient(input: CreatePatientInput): Promise<PublicUser> {
-    const email = input.email.toLowerCase().trim();
-    const exists = await this.findByEmail(email);
+    const email = this.normalizeEmail(input.email);
+    await this.ensureEmailAvailable(email);
 
-    if (exists) {
-      throw new ConflictException('A user with this email already exists.');
-    }
-
-    return this.prisma.user.create({
-      data: {
-        email,
-        passwordHash: input.passwordHash,
-        fullName: input.fullName.trim(),
-        birthDate: input.birthDate
-          ? normalizeDateOnly(input.birthDate)
-          : undefined,
-        gender: input.gender?.trim(),
-        heightCm: input.heightCm,
-        weightKg: input.weightKg,
-        countryCode: input.countryCode?.toUpperCase(),
-        timezone: input.timezone?.trim() ?? 'America/Sao_Paulo',
-      },
-      select: userPublicSelect,
+    return this.createUserRecord({
+      ...input,
+      email,
+      role: input.role,
+      onboardingCompleted: input.onboardingCompleted,
     });
   }
 
@@ -103,6 +106,27 @@ export class UsersService {
     return this.findPublicById(userId);
   }
 
+  async createAdminUser(dto: CreateAdminUserDto): Promise<PublicUser> {
+    const email = this.normalizeEmail(dto.email);
+    await this.ensureEmailAvailable(email);
+
+    const passwordHash = await this.hashPassword(dto.password);
+
+    return this.createUserRecord({
+      email,
+      passwordHash,
+      fullName: dto.fullName,
+      birthDate: dto.birthDate,
+      gender: dto.gender ?? undefined,
+      heightCm: dto.heightCm ?? undefined,
+      weightKg: dto.weightKg ?? undefined,
+      countryCode: dto.countryCode ?? undefined,
+      timezone: dto.timezone,
+      role: dto.role,
+      onboardingCompleted: dto.onboardingCompleted,
+    });
+  }
+
   async updateProfile(
     userId: string,
     dto: UpdateProfileDto,
@@ -140,6 +164,96 @@ export class UsersService {
       data,
       select: userPublicSelect,
     });
+  }
+
+  async updateUserByAdmin(
+    userId: string,
+    dto: UpdateAdminUserDto,
+  ): Promise<PublicUser> {
+    const existing = await this.findPublicById(userId);
+    const nextEmail =
+      dto.email !== undefined ? this.normalizeEmail(dto.email) : undefined;
+
+    if (nextEmail && nextEmail !== existing.email) {
+      await this.ensureEmailAvailable(nextEmail, userId);
+    }
+
+    const passwordHash =
+      dto.password !== undefined
+        ? await this.hashPassword(dto.password)
+        : undefined;
+
+    const data: Prisma.UserUpdateInput = {
+      email: nextEmail,
+      passwordHash,
+      fullName: dto.fullName?.trim(),
+      birthDate:
+        dto.birthDate === undefined
+          ? undefined
+          : dto.birthDate === null
+            ? null
+            : normalizeDateOnly(dto.birthDate),
+      gender:
+        dto.gender === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.gender),
+      heightCm: dto.heightCm,
+      weightKg: dto.weightKg,
+      countryCode:
+        dto.countryCode === undefined
+          ? undefined
+          : dto.countryCode
+            ? dto.countryCode.toUpperCase()
+            : null,
+      timezone: dto.timezone?.trim(),
+      role: dto.role,
+      onboardingCompleted: dto.onboardingCompleted,
+    };
+
+    return this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data,
+      select: userPublicSelect,
+    });
+  }
+
+  async softDeleteUser(
+    adminUserId: string,
+    userId: string,
+  ): Promise<{ message: string }> {
+    if (adminUserId === userId) {
+      throw new BadRequestException(
+        'Administrators cannot delete their own account.',
+      );
+    }
+
+    await this.findPublicById(userId);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: {
+          userId,
+          revokedAt: null,
+        },
+        data: {
+          revokedAt: new Date(),
+        },
+      }),
+    ]);
+
+    return {
+      message: 'User account deleted successfully.',
+    };
   }
 
   async getSettings(userId: string): Promise<UserSettingsResponseDto> {
@@ -267,7 +381,9 @@ export class UsersService {
     });
   }
 
-  private normalizeNullableText(value?: string | null): string | null | undefined {
+  private normalizeNullableText(
+    value?: string | null,
+  ): string | null | undefined {
     if (value === undefined) {
       return undefined;
     }
@@ -276,13 +392,62 @@ export class UsersService {
     return trimmed ? trimmed : null;
   }
 
-  private normalizeNullableTime(value?: string | null): string | null | undefined {
+  private normalizeNullableTime(
+    value?: string | null,
+  ): string | null | undefined {
     if (value === undefined) {
       return undefined;
     }
 
     const trimmed = value?.trim();
     return trimmed ? trimmed : null;
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.toLowerCase().trim();
+  }
+
+  private async ensureEmailAvailable(
+    email: string,
+    currentUserId?: string,
+  ): Promise<void> {
+    const existingUser = await this.prisma.user.findUnique({
+      where: {
+        email,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingUser && existingUser.id !== currentUserId) {
+      throw new ConflictException('A user with this email already exists.');
+    }
+  }
+
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, this.bcryptSaltRounds);
+  }
+
+  private createUserRecord(input: CreatePatientInput): Promise<PublicUser> {
+    return this.prisma.user.create({
+      data: {
+        email: input.email,
+        passwordHash: input.passwordHash,
+        fullName: input.fullName.trim(),
+        birthDate: input.birthDate
+          ? normalizeDateOnly(input.birthDate)
+          : undefined,
+        gender: this.normalizeNullableText(input.gender) ?? undefined,
+        heightCm: input.heightCm,
+        weightKg: input.weightKg,
+        countryCode: input.countryCode?.toUpperCase(),
+        timezone: input.timezone?.trim() ?? 'America/Sao_Paulo',
+        role: input.role,
+        onboardingCompleted: input.onboardingCompleted,
+      },
+      select: userPublicSelect,
+    });
   }
 
   private mapSettings(settings: UserSettingsDetails): UserSettingsResponseDto {

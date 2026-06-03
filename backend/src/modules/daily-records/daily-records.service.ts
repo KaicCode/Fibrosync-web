@@ -8,7 +8,6 @@ import { calculateDataReliability } from '@/common/utils/data-reliability.util';
 import { normalizeDateOnly } from '@/common/utils/date.util';
 import { normalizeText } from '@/common/utils/normalize-text.util';
 import {
-  averageSymptomBurden,
   buildSymptomSignalLevels,
   resolveSymptomFlag,
   symptomCatalogDefinitions,
@@ -108,7 +107,10 @@ const CATEGORY_BY_NAME = new Map(
 );
 
 const NAME_BY_KEY = new Map(
-  symptomCatalogDefinitions.map((definition) => [definition.key, definition.label]),
+  symptomCatalogDefinitions.map((definition) => [
+    definition.key,
+    definition.label,
+  ]),
 );
 
 @Injectable()
@@ -369,12 +371,20 @@ export class DailyRecordsService {
             null,
             false,
           )
-        : this.resolveOptionalNumber(existingRecord?.exerciseMinutes, null, false);
+        : this.resolveOptionalNumber(
+            existingRecord?.exerciseMinutes,
+            null,
+            false,
+          );
 
     const hydration =
       dto.hydration !== undefined
         ? this.resolveOptionalNumber(dto.hydration, null, false)
-        : this.resolveOptionalNumber(existingRecord?.waterIntakeLiters, null, false);
+        : this.resolveOptionalNumber(
+            existingRecord?.waterIntakeLiters,
+            null,
+            false,
+          );
 
     const medicationTaken =
       dto.medicationTaken !== undefined
@@ -383,12 +393,12 @@ export class DailyRecordsService {
 
     const notes =
       dto.notes !== undefined
-        ? this.cleanDisplayText(dto.notes) ?? null
+        ? (this.cleanDisplayText(dto.notes) ?? null)
         : (existingRecord?.notes ?? null);
 
     const painType =
       dto.painType !== undefined
-        ? this.cleanDisplayText(dto.painType) ?? null
+        ? (this.cleanDisplayText(dto.painType) ?? null)
         : (existingRecord?.painType ?? null);
 
     const painTriggers =
@@ -398,7 +408,8 @@ export class DailyRecordsService {
 
     const weatherFeeling =
       dto.weatherImpact !== undefined || dto.weatherFeeling !== undefined
-        ? (this.cleanDisplayText(dto.weatherImpact ?? dto.weatherFeeling) ?? null)
+        ? (this.cleanDisplayText(dto.weatherImpact ?? dto.weatherFeeling) ??
+          null)
         : (existingRecord?.weatherFeeling ?? null);
 
     const painLevel =
@@ -584,7 +595,9 @@ export class DailyRecordsService {
       }
 
       const inferredCategory =
-        (symptomName ? CATEGORY_BY_NAME.get(normalizeText(symptomName)) : undefined) ??
+        (symptomName
+          ? CATEGORY_BY_NAME.get(normalizeText(symptomName))
+          : undefined) ??
         entry.category ??
         SymptomCategory.OTHER;
 
@@ -633,8 +646,14 @@ export class DailyRecordsService {
       { key: 'digestiveIssues', severity: symptomSignal.digestiveIssuesLevel },
       { key: 'anxiety', severity: symptomSignal.anxietyLevel },
       { key: 'depression', severity: symptomSignal.depressionLevel },
-      { key: 'sensitivityLight', severity: symptomSignal.sensitivityLightLevel },
-      { key: 'sensitivityNoise', severity: symptomSignal.sensitivityNoiseLevel },
+      {
+        key: 'sensitivityLight',
+        severity: symptomSignal.sensitivityLightLevel,
+      },
+      {
+        key: 'sensitivityNoise',
+        severity: symptomSignal.sensitivityNoiseLevel,
+      },
       { key: 'stiffness', severity: symptomSignal.stiffness },
     ] as const;
 
@@ -647,15 +666,12 @@ export class DailyRecordsService {
         (item) => item.key === entry.key || item.levelKey === entry.key,
       );
       const symptomName =
-        NAME_BY_KEY.get(entry.key as keyof typeof NAME_BY_KEY extends infer K ? never : never) ??
+        NAME_BY_KEY.get(entry.key) ??
         (entry.key === 'stiffness' ? 'Rigidez corporal' : null);
 
       return [
         {
-          symptomName:
-            symptomName ??
-            definition?.label ??
-            'Sintoma clinico',
+          symptomName: symptomName ?? definition?.label ?? 'Sintoma clinico',
           category: definition?.category ?? SymptomCategory.OTHER,
           severity: entry.severity,
           durationMinutes: null,
@@ -712,7 +728,12 @@ export class DailyRecordsService {
       },
     });
 
-    await this.createLinkedSymptomSignal(tx, userId, dailyRecordId, symptomSignal);
+    await this.createLinkedSymptomSignal(
+      tx,
+      userId,
+      dailyRecordId,
+      symptomSignal,
+    );
   }
 
   private async replaceSymptomEntries(
@@ -818,7 +839,8 @@ export class DailyRecordsService {
       latestRecord &&
       latestRecord.temperature === weatherSnapshot.temperature &&
       latestRecord.humidity === weatherSnapshot.humidity &&
-      latestRecord.apparentTemperature === weatherSnapshot.apparentTemperature &&
+      latestRecord.apparentTemperature ===
+        weatherSnapshot.apparentTemperature &&
       latestRecord.precipitation === weatherSnapshot.precipitation &&
       latestRecord.pressure === weatherSnapshot.pressure &&
       latestRecord.windSpeed === weatherSnapshot.windSpeed &&
@@ -864,7 +886,11 @@ export class DailyRecordsService {
       const cleanedValue = this.cleanDisplayText(rawValue);
       const normalizedValue = normalizeText(cleanedValue);
 
-      if (!cleanedValue || !normalizedValue || uniqueValues.has(normalizedValue)) {
+      if (
+        !cleanedValue ||
+        !normalizedValue ||
+        uniqueValues.has(normalizedValue)
+      ) {
         continue;
       }
 

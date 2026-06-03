@@ -20,7 +20,9 @@ export class CommunityPostsController {
   constructor(private readonly communityPostsService: CommunityPostsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Creates a new community post for the authenticated user.' })
+  @ApiOperation({
+    summary: 'Creates a new community post for the authenticated user.',
+  })
   @ApiCreatedResponse({ type: CommunityPostResponseDto })
   create(
     @CurrentUser('sub') userId: string,
@@ -30,9 +32,13 @@ export class CommunityPostsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lists community posts visible to authenticated users.' })
+  @ApiOperation({
+    summary: 'Lists community posts visible to authenticated users.',
+  })
   @ApiOkResponse({ type: CommunityPostListResponseDto })
-  list(@Query() query: CommunityPostQueryDto): Promise<CommunityPostListResponseDto> {
+  list(
+    @Query() query: CommunityPostQueryDto,
+  ): Promise<CommunityPostListResponseDto> {
     return this.communityPostsService.list(query);
   }
 }

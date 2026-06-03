@@ -9,13 +9,13 @@ export function useAdmin() {
 
   const usersQuery = useQuery({
     queryKey: ['adminUsers'],
-    queryFn: adminService.getUsers,
+    queryFn: () => adminService.getUsers(),
   });
 
   return {
     dashboardAnalytics: dashboardQuery.data,
     isLoadingDashboard: dashboardQuery.isLoading,
-    users: usersQuery.data || [],
+    users: usersQuery.data?.items || [],
     isLoadingUsers: usersQuery.isLoading,
   };
 }

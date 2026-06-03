@@ -1,4 +1,5 @@
 import {
+  Delete,
   Controller,
   Get,
   Param,
@@ -6,12 +7,15 @@ import {
   Patch,
   Query,
   Body,
+  Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { UsersService } from './users.service';
+import { CreateAdminUserDto } from './dto/create-admin-user.dto';
+import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UpdateUserSettingsDto } from './dto/update-user-settings.dto';
@@ -59,10 +63,37 @@ export class UsersController {
     return this.usersService.listUsers(query);
   }
 
+  @Post()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Creates a new platform user. Admin only.' })
+  createUser(@Body() dto: CreateAdminUserDto): Promise<unknown> {
+    return this.usersService.createAdminUser(dto);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Returns a specific user. Admin only.' })
   findById(@Param('id', new ParseUUIDPipe()) id: string): Promise<unknown> {
     return this.usersService.findPublicById(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Updates a specific user. Admin only.' })
+  updateByAdmin(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateAdminUserDto,
+  ): Promise<unknown> {
+    return this.usersService.updateUserByAdmin(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Deletes a specific user account. Admin only.' })
+  removeByAdmin(
+    @CurrentUser('sub') adminUserId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<{ message: string }> {
+    return this.usersService.softDeleteUser(adminUserId, id);
   }
 }

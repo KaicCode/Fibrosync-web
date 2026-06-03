@@ -91,6 +91,12 @@ export const adminNavigation: NavigationItem[] = [
     icon: Users,
   },
   {
+    label: 'Sintomas',
+    description: 'Acompanhar sinais clínicos e registros',
+    to: '/admin/symptoms',
+    icon: HeartPulse,
+  },
+  {
     label: 'Relatórios',
     description: 'Gerar e exportar dados',
     to: '/admin/reports',

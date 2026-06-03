@@ -414,9 +414,7 @@ export class CrisisPredictionService {
     const moodTrendContribution = ((10 - record.moodLevel) / 10) * 4;
 
     return Number(
-      Math.min(Math.max(moodPenalty + moodTrendContribution, 0), 10).toFixed(
-        2,
-      ),
+      Math.min(Math.max(moodPenalty + moodTrendContribution, 0), 10).toFixed(2),
     );
   }
 
@@ -452,9 +450,15 @@ export class CrisisPredictionService {
 
     let contribution = 0;
 
-    if (weatherSnapshot.temperature < 18 || weatherSnapshot.apparentTemperature < 17) {
+    if (
+      weatherSnapshot.temperature < 18 ||
+      weatherSnapshot.apparentTemperature < 17
+    ) {
       contribution += 3;
-    } else if (weatherSnapshot.temperature > 32 || weatherSnapshot.apparentTemperature > 34) {
+    } else if (
+      weatherSnapshot.temperature > 32 ||
+      weatherSnapshot.apparentTemperature > 34
+    ) {
       contribution += 2;
     }
 
@@ -495,7 +499,9 @@ export class CrisisPredictionService {
     }
 
     if (weatherSnapshot.precipitation > 0) {
-      notes.push('Chuva pode contribuir para mais fadiga ou sensacao de corpo pesado.');
+      notes.push(
+        'Chuva pode contribuir para mais fadiga ou sensacao de corpo pesado.',
+      );
     }
 
     return notes.length > 0 ? `Clima de hoje: ${notes.join(' ')}` : null;

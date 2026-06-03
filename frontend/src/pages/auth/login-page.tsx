@@ -20,8 +20,8 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await login({ email, password })
-      navigate('/app')
+      const session = await login({ email, password })
+      navigate(session.user.role === 'ADMIN' ? '/admin/dashboard' : '/app')
     } catch (error) {
       console.error('Login failed:', error)
     }

@@ -52,6 +52,11 @@ const AdminUsersPage = lazy(() =>
     default: module.AdminUsersPage,
   })),
 )
+const AdminSymptomsPage = lazy(() =>
+  import('@/pages/admin/symptoms-page').then((module) => ({
+    default: module.AdminSymptomsPage,
+  })),
+)
 const AdminReportsPage = lazy(() =>
   import('@/pages/admin/reports-page').then((module) => ({
     default: module.AdminReportsPage,
@@ -97,6 +102,7 @@ export function AppRouter() {
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/symptoms" element={<AdminSymptomsPage />} />
           <Route path="/admin/reports" element={<AdminReportsPage />} />
           <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />

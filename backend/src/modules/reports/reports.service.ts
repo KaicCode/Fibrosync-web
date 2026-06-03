@@ -158,9 +158,7 @@ interface ReportDaySnapshot {
   depression: boolean;
   coldBodyTemperature: boolean;
   dataReliabilityScore: number | null;
-  dataReliabilityLabel:
-    | DataReliabilitySnapshot['label']
-    | null;
+  dataReliabilityLabel: DataReliabilitySnapshot['label'] | null;
   derivedSignalsPresent: boolean;
   reliabilitySampleCount: number;
   signalCount: number;
@@ -451,13 +449,14 @@ export class ReportsService {
             .map((day) => day.dataReliabilityScore)
             .filter((value): value is number => value !== null),
         ),
-        dataReliabilityLabel: this.resolveReliabilityLabel(
-          this.average(
-            daySnapshots
-              .map((day) => day.dataReliabilityScore)
-              .filter((value): value is number => value !== null),
-          ),
-        ) ?? 'Baixa confiabilidade',
+        dataReliabilityLabel:
+          this.resolveReliabilityLabel(
+            this.average(
+              daySnapshots
+                .map((day) => day.dataReliabilityScore)
+                .filter((value): value is number => value !== null),
+            ),
+          ) ?? 'Baixa confiabilidade',
         derivedRecordRate: this.toFixedNumber(
           dailyRecords.length > 0
             ? (dailyRecords.filter((record) => record.derivedSignals).length /
@@ -554,9 +553,9 @@ export class ReportsService {
       day.dataReliabilityScore = this.toFixedNumber(
         day.dataReliabilityScore === null
           ? reliability.score
-          : ((day.dataReliabilityScore * (day.reliabilitySampleCount - 1) +
+          : (day.dataReliabilityScore * (day.reliabilitySampleCount - 1) +
               reliability.score) /
-              day.reliabilitySampleCount),
+              day.reliabilitySampleCount,
       );
       day.dataReliabilityLabel = this.resolveReliabilityLabel(
         day.dataReliabilityScore,
@@ -696,9 +695,7 @@ export class ReportsService {
               value,
             };
       })
-      .filter(
-        (item): item is { date: string; value: number } => item !== null,
-      );
+      .filter((item): item is { date: string; value: number } => item !== null);
   }
 
   private buildRecordReliability(

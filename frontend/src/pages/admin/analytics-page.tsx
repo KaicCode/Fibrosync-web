@@ -12,10 +12,10 @@ import { useAnalytics } from '@/hooks/use-admin'
 export function AdminAnalyticsPage() {
   usePageTitle('Análiticos')
 
-  const [startDate, setStartDate] = useState(
+  const [startDate, setStartDate] = useState(() =>
     new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   )
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0])
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
 
   const { data: analyticsData, isLoading } = useAnalytics(startDate, endDate)
 

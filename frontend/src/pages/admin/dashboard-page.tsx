@@ -1,159 +1,221 @@
-import { Users, AlertCircle, Zap, TrendingUp, Calendar, Activity } from 'lucide-react'
-import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { HeartPulse, ShieldPlus, UserRound, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { AdminMetricCard } from '@/components/admin/cards/metric-card'
-import { CrisisAlertsTable } from '@/components/admin/tables/crisis-alerts-table'
-import { TriggersBarChart } from '@/components/admin/charts/triggers-chart'
-import { DateRangeFilter } from '@/components/admin/cards/date-range-filter'
 import { AdminContentSection } from '@/components/admin/cards/content-section'
 import { PageHeader } from '@/components/page-header'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { usePageTitle } from '@/hooks/use-page-title'
-import { useAdminDashboardMetrics, useCrisisAlerts } from '@/hooks/use-admin'
+import { adminService } from '@/services/admin.service'
+
+function resolveSymptomHighlights(record: {
+  cognitiveFog: boolean
+  sensitivityLight: boolean
+  sensitivityNoise: boolean
+  digestiveIssues: boolean
+  headache: boolean
+  anxiety: boolean
+  depression: boolean
+}) {
+  const flags: string[] = []
+
+  if (record.cognitiveFog) flags.push('Fibro fog')
+  if (record.sensitivityLight) flags.push('Luz')
+  if (record.sensitivityNoise) flags.push('Ruido')
+  if (record.digestiveIssues) flags.push('Digestivo')
+  if (record.headache) flags.push('Cefaleia')
+  if (record.anxiety) flags.push('Ansiedade')
+  if (record.depression) flags.push('Humor depressivo')
+
+  return flags
+}
 
 export function AdminDashboardPage() {
   usePageTitle('Dashboard Admin')
 
-  const { metrics, isLoading: metricsLoading } = useAdminDashboardMetrics()
-  const { data: alertsData, isLoading: alertsLoading } = useCrisisAlerts(1, 10)
+  const usersQuery = useQuery({
+    queryKey: ['admin-dashboard-users'],
+    queryFn: () => adminService.getUsers({ page: 1, limit: 6 }),
+  })
 
-  const [startDate, setStartDate] = useState(
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-  )
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0])
+  const adminsQuery = useQuery({
+    queryKey: ['admin-dashboard-admins'],
+    queryFn: () => adminService.getUsers({ page: 1, limit: 1, role: 'ADMIN' }),
+  })
 
-  // Mock data for triggers - replace with real data from API
-  const triggersData = [
-    { name: 'Estresse', count: 45 },
-    { name: 'Atividade Física', count: 38 },
-    { name: 'Sono Ruim', count: 32 },
-    { name: 'Clima', count: 28 },
-    { name: 'Alimentação', count: 25 },
-  ]
+  const symptomsQuery = useQuery({
+    queryKey: ['admin-dashboard-symptoms'],
+    queryFn: () => adminService.getSymptoms({ page: 1, limit: 6 }),
+  })
 
-  if (metricsLoading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          eyebrow="FibroSync Admin"
-          title="Dashboard administrativo"
-          description="Monitore métricas e alertas do sistema em tempo real"
-        />
-        <div className="text-center py-12 text-muted-foreground">Carregando dados...</div>
-      </div>
-    )
-  }
+  const isLoading =
+    usersQuery.isLoading || adminsQuery.isLoading || symptomsQuery.isLoading
+
+  const users = usersQuery.data?.items ?? []
+  const symptoms = symptomsQuery.data?.items ?? []
+  const totalUsers = usersQuery.data?.meta.total ?? 0
+  const totalAdmins = adminsQuery.data?.meta.total ?? 0
+  const totalSymptoms = symptomsQuery.data?.meta.total ?? 0
+  const linkedSignals = symptoms.filter((item) => item.dailyRecordId).length
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="FibroSync Admin"
-        title="Dashboard administrativo"
-        description="Monitore métricas e alertas do sistema em tempo real"
+        title="Operação administrativa"
+        description="Acompanhe contas, sinais clínicos e ações rápidas da plataforma em um único workspace."
+        actions={
+          <>
+            <Button asChild variant="secondary">
+              <Link to="/admin/users">Gerenciar usuarios</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/admin/symptoms">Gerenciar sintomas</Link>
+            </Button>
+          </>
+        }
       />
 
-      {/* Métricas principais */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <AdminMetricCard
-          label="Total de Usuários"
-          value={metrics?.totalUsers ?? 0}
+          label="Contas ativas"
+          value={totalUsers}
           icon={Users}
+          description="Usuarios com acesso disponivel na plataforma"
           variant="default"
-          trend={12}
         />
         <AdminMetricCard
-          label="Usuários Ativos"
-          value={metrics?.activeUsers ?? 0}
-          icon={Activity}
-          variant="success"
-          trend={8}
-        />
-        <AdminMetricCard
-          label="Risco Médio de Crise"
-          value={`${(metrics?.averageCrisisRisk ?? 0).toFixed(1)}%`}
-          icon={AlertCircle}
+          label="Administradores"
+          value={totalAdmins}
+          icon={ShieldPlus}
+          description="Contas com controle operacional do sistema"
           variant="warning"
-          trend={-5}
         />
         <AdminMetricCard
-          label="Taxa de Adesão"
-          value={`${(metrics?.adherenceRate ?? 0).toFixed(1)}%`}
-          icon={TrendingUp}
+          label="Sinais monitorados"
+          value={totalSymptoms}
+          icon={HeartPulse}
+          description="Registros de sintomas acessiveis pelo admin"
           variant="success"
-          trend={3}
+        />
+        <AdminMetricCard
+          label="Sinais ligados ao diario"
+          value={linkedSignals}
+          icon={UserRound}
+          description="Snapshots que nasceram do fluxo clinico do paciente"
+          variant="default"
         />
       </div>
 
-      {/* Filtro de período */}
-      <DateRangeFilter
-        startDate={startDate}
-        endDate={endDate}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
-        onApply={() => {
-          // Trigger analytics refresh
-          console.log('Applying date range:', startDate, endDate)
-        }}
-      />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <AdminContentSection
+          title="Usuarios recentes"
+          description="Ultimas contas ativas visiveis para operacao"
+          isLoading={isLoading}
+        >
+          <div className="space-y-3">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center justify-between gap-3 rounded-[1.15rem] border border-white/75 bg-white/70 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-foreground">
+                    {user.fullName}
+                  </p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
 
-      {/* Gráfico de gatilhos */}
-      <AdminContentSection
-        title="Gatilhos Mais Comuns"
-        description={`Principais causadores de crises no período de ${startDate} a ${endDate}`}
-      >
-        <TriggersBarChart data={triggersData} />
-      </AdminContentSection>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="neutral">
+                    {user.role === 'ADMIN' ? 'Admin' : 'Paciente'}
+                  </Badge>
+                  <Badge variant={user.onboardingCompleted ? 'success' : 'warning'}>
+                    {user.onboardingCompleted ? 'Onboarding ok' : 'Onboarding pendente'}
+                  </Badge>
+                </div>
+              </div>
+            ))}
 
-      {/* Alertas recentes */}
-      <AdminContentSection
-        title="Alertas de Crise Recentes"
-        description="Últimas detecções de risco alto ou crítico"
-        isLoading={alertsLoading}
-      >
-        {alertsData && alertsData.data.length > 0 ? (
-          <CrisisAlertsTable alerts={alertsData.data} />
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            Nenhum alerta de crise nos últimos 7 dias. Sistema operando normalmente.
-          </div>
-        )}
-      </AdminContentSection>
-
-      {/* Informações adicionais */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="card-surface p-4">
-          <div className="flex items-start gap-3">
-            <Zap className="w-5 h-5 text-yellow-600 mt-1" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Gatilho Mais Frequente</p>
-              <p className="text-2xl font-bold text-foreground mt-1">
-                {metrics?.mostCommonTrigger ?? 'N/A'}
+            {users.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Nenhuma conta encontrada no momento.
               </p>
-            </div>
+            ) : null}
           </div>
-        </div>
+        </AdminContentSection>
 
-        <div className="card-surface p-4">
-          <div className="flex items-start gap-3">
-            <Calendar className="w-5 h-5 text-blue-600 mt-1" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Registros Diários</p>
-              <p className="text-2xl font-bold text-foreground mt-1">
-                {metrics?.dailyRecordsCount ?? 0}
-              </p>
-            </div>
-          </div>
-        </div>
+        <AdminContentSection
+          title="Sinais clinicos recentes"
+          description="Ultimos sintomas acessiveis para monitoramento administrativo"
+          isLoading={isLoading}
+        >
+          <div className="space-y-3">
+            {symptoms.map((record) => {
+              const highlights = resolveSymptomHighlights(record)
 
-        <div className="card-surface p-4">
-          <div className="flex items-start gap-3">
-            <TrendingUp className="w-5 h-5 text-green-600 mt-1" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Histórico de Predições</p>
-              <p className="text-2xl font-bold text-foreground mt-1">
-                {metrics?.predictionHistoryCount ?? 0}
+              return (
+                <div
+                  key={record.id}
+                  className="rounded-[1.15rem] border border-white/75 bg-white/70 px-4 py-3"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {record.user.fullName}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {record.user.email}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant={record.dailyRecordId ? 'warning' : 'neutral'}>
+                        {record.dailyRecordId ? 'Ligado ao diario' : 'Sinal isolado'}
+                      </Badge>
+                      {record.bodyTemperatureFeeling ? (
+                        <Badge variant="neutral">
+                          {record.bodyTemperatureFeeling}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span>Fadiga {record.fatigueLevel}/10</span>
+                    <span>Sono {record.sleepQuality}/10</span>
+                    <span>Rigidez {record.stiffness}/10</span>
+                    <span>Humor {record.mood}/10</span>
+                    <span>Estresse {record.stress}/10</span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {highlights.length > 0 ? (
+                      highlights.map((label) => (
+                        <Badge key={label} variant="neutral">
+                          {label}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        Nenhuma flag adicional ativa
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+
+            {symptoms.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Nenhum sinal recente encontrado.
               </p>
-            </div>
+            ) : null}
           </div>
-        </div>
+        </AdminContentSection>
       </div>
     </div>
   )

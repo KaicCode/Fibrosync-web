@@ -1,4 +1,4 @@
-import { Download, Loader } from 'lucide-react'
+import { Download } from 'lucide-react'
 import type { AdminReport } from '@/types/admin'
 
 type ReportsTableProps = {

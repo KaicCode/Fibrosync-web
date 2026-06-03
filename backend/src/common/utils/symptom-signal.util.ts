@@ -51,8 +51,10 @@ export const symptomCatalogDefinitions = [
   },
 ] as const;
 
-export type SymptomCatalogKey = (typeof symptomCatalogDefinitions)[number]['key'];
-export type SymptomLevelKey = (typeof symptomCatalogDefinitions)[number]['levelKey'];
+export type SymptomCatalogKey =
+  (typeof symptomCatalogDefinitions)[number]['key'];
+export type SymptomLevelKey =
+  (typeof symptomCatalogDefinitions)[number]['levelKey'];
 
 export type SymptomSignalInput = {
   stiffness?: number | null;

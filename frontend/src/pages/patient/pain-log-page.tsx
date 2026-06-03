@@ -14,10 +14,9 @@ import {
   Plus,
   Save,
   Sparkles,
-  TriangleAlert,
   Waves,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { BodyMap } from "@/components/body-map";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -453,7 +452,6 @@ function resolveWeatherSummary(
 export function PainLogPage() {
   usePageTitle("Registro de Dor");
 
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialRecordDate = resolveInitialRecordDate(searchParams.get("date"));
   const [form, setForm] = useState<RecordFormState>(() =>
@@ -669,7 +667,6 @@ export function PainLogPage() {
       });
 
       window.alert("Registro multidimensional salvo com sucesso.");
-      navigate("/app/dashboard");
     } catch (error) {
       setSubmitError(
         error instanceof Error

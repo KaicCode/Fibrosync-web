@@ -1,6 +1,15 @@
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ElementRef,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/utils";
+import {
+  tooltipContentClassName,
+  tooltipProviderDelayDuration,
+} from "./tooltip.constants";
 
 export function TooltipProvider({
   children,
@@ -8,30 +17,47 @@ export function TooltipProvider({
   children: ReactNode;
 }) {
   return (
-    <TooltipPrimitive.Provider delayDuration={120}>
+    <TooltipPrimitive.Provider delayDuration={tooltipProviderDelayDuration}>
       {children}
     </TooltipPrimitive.Provider>
   );
 }
 
-export const Tooltip = TooltipPrimitive.Root;
-export const TooltipTrigger = TooltipPrimitive.Trigger;
-
-export function TooltipContent({
-  className,
-  sideOffset = 10,
+export function Tooltip({
+  children,
   ...props
-}: ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>) {
+}: ComponentPropsWithoutRef<typeof TooltipPrimitive.Root>) {
+  return <TooltipPrimitive.Root {...props}>{children}</TooltipPrimitive.Root>;
+}
+
+export const TooltipTrigger = forwardRef<
+  ElementRef<typeof TooltipPrimitive.Trigger>,
+  ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger>
+>(function TooltipTrigger(props, ref) {
+  return <TooltipPrimitive.Trigger ref={ref} {...props} />;
+});
+
+TooltipTrigger.displayName =
+  TooltipPrimitive.Trigger.displayName ?? "TooltipTrigger";
+
+export const TooltipContent = forwardRef<
+  ElementRef<typeof TooltipPrimitive.Content>,
+  ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
+>(function TooltipContent(
+  { className, sideOffset = 10, ...props },
+  ref,
+) {
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
+        ref={ref}
         sideOffset={sideOffset}
-        className={cn(
-          "z-50 max-w-xs rounded-2xl border border-white/80 bg-slate-950/92 px-3 py-2 text-xs leading-5 text-white shadow-[0_18px_46px_rgba(15,23,42,0.28)] backdrop-blur",
-          className,
-        )}
+        className={cn(tooltipContentClassName, className)}
         {...props}
       />
     </TooltipPrimitive.Portal>
   );
-}
+});
+
+TooltipContent.displayName =
+  TooltipPrimitive.Content.displayName ?? "TooltipContent";

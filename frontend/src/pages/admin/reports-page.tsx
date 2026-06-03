@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, FileJson, Loader } from 'lucide-react'
+import { FileJson, Loader } from 'lucide-react'
 import { ReportsTable } from '@/components/admin/tables/reports-table'
 import { AdminContentSection } from '@/components/admin/cards/content-section'
 import { AdminAlertCard } from '@/components/admin/cards/alert-card'
@@ -12,7 +12,7 @@ export function AdminReportsPage() {
   usePageTitle('Relatórios')
 
   const [reports, setReports] = useState<AdminReport[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const isLoading = false
   const [generatingReport, setGeneratingReport] = useState<string | null>(null)
 
   // Mock reports data

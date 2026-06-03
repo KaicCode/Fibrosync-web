@@ -1,9 +1,18 @@
 import { CommunityPostType } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateCommunityPostDto {
-  @ApiPropertyOptional({ enum: CommunityPostType, default: CommunityPostType.FEED })
+  @ApiPropertyOptional({
+    enum: CommunityPostType,
+    default: CommunityPostType.FEED,
+  })
   @IsOptional()
   @IsEnum(CommunityPostType)
   type?: CommunityPostType = CommunityPostType.FEED;

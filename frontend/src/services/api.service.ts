@@ -1,5 +1,5 @@
 import { apiCall } from '@/lib/api-client'
-import type { AuthUser, AuthSession } from '@/store/app-store'
+import type { AuthUser } from '@/store/app-store'
 
 export type LoginPayload = {
   email: string
@@ -152,7 +152,7 @@ export type PredictionHistoryItem = PredictionResult & {
 }
 
 export const predictionService = {
-  async predict(recordData: any): Promise<PredictionResult> {
+  async predict(recordData: Record<string, unknown>): Promise<PredictionResult> {
     return apiCall<PredictionResult>('post', '/ai/predict', recordData)
   },
 
@@ -187,7 +187,7 @@ export type Notification = {
   message: string
   type: 'alert' | 'reminder' | 'update' | 'info'
   read: boolean
-  data?: Record<string, any>
+  data?: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }

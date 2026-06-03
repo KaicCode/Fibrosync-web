@@ -59,7 +59,9 @@ async function bootstrap(): Promise<void> {
   }
 
   await app.listen(port);
-  logger.log(`FibroSync API listening on http://localhost:${port}/${apiPrefix}`);
+  logger.log(
+    `FibroSync API listening on http://localhost:${port}/${apiPrefix}`,
+  );
 }
 
 void bootstrap();

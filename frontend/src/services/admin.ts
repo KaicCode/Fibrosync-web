@@ -9,6 +9,10 @@ import type {
   AISettings,
   NotificationSettings,
   RiskLimits,
+  TriggerAnalytics,
+  TriggerStat,
+  SymptomCorrelationStat,
+  RecurringPatternStat,
 } from '@/types/admin'
 
 const API_URL = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:3000/api'
@@ -116,16 +120,18 @@ export async function getAnalytics(
 
 export async function getTriggerAnalytics(
   period: 'day' | 'week' | 'month' = 'month',
-): Promise<any[]> {
-  return authenticatedFetch<any[]>(`/admin/analytics/triggers?period=${period}`)
+): Promise<TriggerStat[] | TriggerAnalytics[]> {
+  return authenticatedFetch<TriggerStat[] | TriggerAnalytics[]>(
+    `/admin/analytics/triggers?period=${period}`,
+  )
 }
 
-export async function getSymptomCorrelation(): Promise<any> {
-  return authenticatedFetch<any>('/admin/analytics/symptoms')
+export async function getSymptomCorrelation(): Promise<SymptomCorrelationStat[]> {
+  return authenticatedFetch<SymptomCorrelationStat[]>('/admin/analytics/symptoms')
 }
 
-export async function getRecurringPatterns(): Promise<any[]> {
-  return authenticatedFetch<any[]>('/admin/analytics/patterns')
+export async function getRecurringPatterns(): Promise<RecurringPatternStat[]> {
+  return authenticatedFetch<RecurringPatternStat[]>('/admin/analytics/patterns')
 }
 
 export async function getPredictionHistory(

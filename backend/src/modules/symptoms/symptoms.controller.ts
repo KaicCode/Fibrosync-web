@@ -17,7 +17,11 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { AdminCreateSymptomDto } from './dto/admin-create-symptom.dto';
+import { AdminSymptomQueryDto } from './dto/admin-symptom-query.dto';
 import { CreateSymptomDto } from './dto/create-symptom.dto';
 import { DeleteSymptomResponseDto } from './dto/delete-symptom-response.dto';
 import { SymptomListResponseDto } from './dto/symptom-list-response.dto';
@@ -45,6 +49,15 @@ export class SymptomsController {
     return this.symptomsService.create(userId, dto);
   }
 
+  @Post('admin')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Creates a symptom signal record for any user. Admin only.',
+  })
+  createForAdmin(@Body() dto: AdminCreateSymptomDto): Promise<unknown> {
+    return this.symptomsService.createForAdmin(dto);
+  }
+
   @Get()
   @ApiOperation({
     summary:
@@ -56,6 +69,26 @@ export class SymptomsController {
     @Query() query: SymptomQueryDto,
   ): Promise<SymptomListResponseDto> {
     return this.symptomsService.listForUser(userId, query);
+  }
+
+  @Get('admin')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Lists symptom signal records for all users. Admin only.',
+  })
+  listForAdmin(@Query() query: AdminSymptomQueryDto): Promise<unknown> {
+    return this.symptomsService.listForAdmin(query);
+  }
+
+  @Get('admin/:id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Returns a symptom signal record by id. Admin only.',
+  })
+  findOneForAdmin(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<unknown> {
+    return this.symptomsService.findOneForAdmin(id);
   }
 
   @Get(':id')
@@ -81,6 +114,16 @@ export class SymptomsController {
     return this.symptomsService.update(userId, id, dto);
   }
 
+  @Patch('admin/:id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Updates a symptom signal record. Admin only.' })
+  updateForAdmin(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateSymptomDto,
+  ): Promise<unknown> {
+    return this.symptomsService.updateForAdmin(id, dto);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Deletes an indirect symptom signal record.' })
   @ApiOkResponse({ type: DeleteSymptomResponseDto })
@@ -90,5 +133,14 @@ export class SymptomsController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<DeleteSymptomResponseDto> {
     return this.symptomsService.remove(userId, id);
+  }
+
+  @Delete('admin/:id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Deletes a symptom signal record. Admin only.' })
+  removeForAdmin(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<DeleteSymptomResponseDto> {
+    return this.symptomsService.removeForAdmin(id);
   }
 }

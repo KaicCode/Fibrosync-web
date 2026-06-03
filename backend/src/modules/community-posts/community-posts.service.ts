@@ -38,7 +38,9 @@ export class CommunityPostsService {
     return this.mapPost(post);
   }
 
-  async list(query: CommunityPostQueryDto): Promise<CommunityPostListResponseDto> {
+  async list(
+    query: CommunityPostQueryDto,
+  ): Promise<CommunityPostListResponseDto> {
     const { page, limit, skip } = resolvePagination(query.page, query.limit);
     const search = this.normalizeSearch(query.search);
     const tagSearch = search?.replace(/^#/, '').toLowerCase();

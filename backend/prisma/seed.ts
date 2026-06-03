@@ -1,7 +1,28 @@
-import { PrismaClient, SymptomCategory } from '@prisma/client';
+import process from 'node:process';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient, Role, SymptomCategory } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { slugify } from '../src/common/utils/slugify.util';
 
-const prisma = new PrismaClient();
+process.loadEnvFile('.env');
+
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required to run the seed.');
+}
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({
+    connectionString: databaseUrl,
+  }),
+});
+const bcryptSaltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12);
+const adminSeedEmail =
+  process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase() ?? 'admin@fibrosync.local';
+const adminSeedPassword = process.env.ADMIN_SEED_PASSWORD ?? 'Admin12345!';
+const adminSeedFullName =
+  process.env.ADMIN_SEED_FULL_NAME?.trim() ?? 'FibroSync Admin';
 
 const defaultSymptoms: Array<{
   name: string;
@@ -50,7 +71,35 @@ const defaultSymptoms: Array<{
   },
 ];
 
+async function ensureAdminUser(): Promise<void> {
+  const passwordHash = await bcrypt.hash(adminSeedPassword, bcryptSaltRounds);
+
+  await prisma.user.upsert({
+    where: {
+      email: adminSeedEmail,
+    },
+    update: {
+      fullName: adminSeedFullName,
+      passwordHash,
+      role: Role.ADMIN,
+      onboardingCompleted: true,
+      timezone: 'America/Sao_Paulo',
+      deletedAt: null,
+    },
+    create: {
+      email: adminSeedEmail,
+      passwordHash,
+      fullName: adminSeedFullName,
+      role: Role.ADMIN,
+      onboardingCompleted: true,
+      timezone: 'America/Sao_Paulo',
+    },
+  });
+}
+
 async function main(): Promise<void> {
+  await ensureAdminUser();
+
   for (const symptom of defaultSymptoms) {
     await prisma.symptom.upsert({
       where: {
