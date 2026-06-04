@@ -9,23 +9,30 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function normalizeOriginPattern(value: string): string {
+  return value.trim().replace(/\/+$/, '');
+}
+
 function matchesOriginPattern(origin: string, pattern: string): boolean {
-  if (!pattern.includes('*')) {
-    return origin === pattern;
+  const normalizedOrigin = normalizeOriginPattern(origin);
+  const normalizedPattern = normalizeOriginPattern(pattern);
+
+  if (!normalizedPattern.includes('*')) {
+    return normalizedOrigin === normalizedPattern;
   }
 
   const regex = new RegExp(
-    `^${escapeRegex(pattern).replace(/\\\*/g, '.*')}$`,
+    `^${escapeRegex(normalizedPattern).replace(/\\\*/g, '.*')}$`,
     'i',
   );
 
-  return regex.test(origin);
+  return regex.test(normalizedOrigin);
 }
 
 function resolveAllowedOrigins(frontendUrl?: string): string[] {
   const configured = frontendUrl
     ?.split(',')
-    .map((value) => value.trim())
+    .map((value) => normalizeOriginPattern(value))
     .filter(Boolean);
 
   if (configured && configured.length > 0) {

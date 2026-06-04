@@ -17,6 +17,10 @@ export const apiClient: AxiosInstance = axios.create({
   },
 })
 
+function buildConnectivityErrorMessage(): string {
+  return `Nao foi possivel conectar com a API. Verifique se VITE_API_URL aponta para ${API_URL} e se FRONTEND_URL no backend inclui a URL da Vercel.`
+}
+
 // Flag para evitar requisições infinitas de refresh
 let isRefreshing = false
 let failedQueue: Array<{
@@ -198,6 +202,10 @@ export const apiCall = async <T,>(
     return response.data.data
   } catch (error) {
     if (axios.isAxiosError(error)) {
+      if (error.code === 'ERR_NETWORK' || (error.request && !error.response)) {
+        throw new ApiError(buildConnectivityErrorMessage())
+      }
+
       const message =
         error.response?.data?.error ||
         error.response?.data?.message ||
