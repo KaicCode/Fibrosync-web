@@ -5,6 +5,36 @@ import { createServer } from 'node:net';
 import { AppModule } from './app.module';
 import { setupSwagger } from './config/swagger.config';
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function matchesOriginPattern(origin: string, pattern: string): boolean {
+  if (!pattern.includes('*')) {
+    return origin === pattern;
+  }
+
+  const regex = new RegExp(
+    `^${escapeRegex(pattern).replace(/\\\*/g, '.*')}$`,
+    'i',
+  );
+
+  return regex.test(origin);
+}
+
+function resolveAllowedOrigins(frontendUrl?: string): string[] {
+  const configured = frontendUrl
+    ?.split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (configured && configured.length > 0) {
+    return configured;
+  }
+
+  return ['http://localhost:5173'];
+}
+
 async function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const server = createServer();
@@ -29,9 +59,29 @@ async function bootstrap(): Promise<void> {
   const apiPrefix = configService.get<string>('app.apiPrefix', 'api/v1');
   const port = configService.get<number>('app.port', 3100);
   const frontendUrl = configService.get<string | undefined>('app.frontendUrl');
+  const allowedOrigins = resolveAllowedOrigins(frontendUrl);
 
   app.enableCors({
-    origin: frontendUrl ?? 'http://localhost:5173',
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const isAllowed = allowedOrigins.some((pattern) =>
+        matchesOriginPattern(origin, pattern),
+      );
+
+      if (isAllowed) {
+        callback(null, true);
+        return;
+      }
+
+      callback(
+        new Error(`CORS blocked for origin ${origin}. Allowed: ${allowedOrigins.join(', ')}`),
+        false,
+      );
+    },
     credentials: true,
   });
   app.setGlobalPrefix(apiPrefix);

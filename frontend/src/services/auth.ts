@@ -1,4 +1,5 @@
 import type { AuthSession } from '@/store/app-store'
+import { resolveApiUrl } from '@/lib/resolve-api-url'
 
 export type RegisterPayload = {
   name: string
@@ -18,11 +19,11 @@ type ApiEnvelope<T> = {
   statusCode: number
 }
 
-const API_URL = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:3000/api'
+const API_URL = resolveApiUrl()
 
 export async function registerUser(payload: RegisterPayload): Promise<AuthSession> {
   try {
-    const response = await fetch(`${API_URL}/auth/register`, {
+    const response = await fetch(`${API_URL}/auth/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

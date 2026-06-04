@@ -4,9 +4,10 @@ import type {
   AxiosRequestConfig,
   InternalAxiosRequestConfig,
 } from 'axios'
+import { resolveApiUrl } from '@/lib/resolve-api-url'
 import { useAppStore } from '@/store/app-store'
 
-const API_URL = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:3100/api/v1'
+const API_URL = resolveApiUrl()
 
 // Criar instância do Axios
 export const apiClient: AxiosInstance = axios.create({

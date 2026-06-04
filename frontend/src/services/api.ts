@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { resolveApiUrl } from '@/lib/resolve-api-url';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3100/api/v1';
+const API_URL = resolveApiUrl();
 
 export const api = axios.create({
   baseURL: API_URL,

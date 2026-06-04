@@ -14,8 +14,9 @@ import type {
   SymptomCorrelationStat,
   RecurringPatternStat,
 } from '@/types/admin'
+import { resolveApiUrl } from '@/lib/resolve-api-url'
 
-const API_URL = import.meta.env.VITE_API_URL?.trim() || 'http://localhost:3000/api'
+const API_URL = resolveApiUrl()
 
 type ApiResponse<T> = {
   success: boolean

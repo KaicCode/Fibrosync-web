@@ -8,7 +8,7 @@ export const validationSchema = Joi.object({
   API_PREFIX: Joi.string().default('api/v1'),
   APP_NAME: Joi.string().default('FibroSync API'),
   APP_VERSION: Joi.string().default('1.0.0'),
-  FRONTEND_URL: Joi.string().uri().optional(),
+  FRONTEND_URL: Joi.string().optional(),
   SWAGGER_PATH: Joi.string().default('docs'),
   DATABASE_URL: Joi.string().required(),
   DIRECT_URL: Joi.string().optional(),
