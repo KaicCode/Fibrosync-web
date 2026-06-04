@@ -2,6 +2,9 @@ function normalizeBaseUrl(value: string): string {
   return value.trim().replace(/\/+$/, '')
 }
 
+const DEFAULT_API_URL = 'http://localhost:3100/api/v1'
+const DEFAULT_API_PATH = '/api/v1'
+
 function isLocalHost(hostname: string): boolean {
   return (
     hostname === 'localhost' ||
@@ -10,20 +13,36 @@ function isLocalHost(hostname: string): boolean {
   )
 }
 
+function ensureApiPath(value: string): string {
+  const normalizedUrl = normalizeBaseUrl(value)
+
+  try {
+    const parsedUrl = new URL(normalizedUrl)
+
+    if (parsedUrl.pathname === '' || parsedUrl.pathname === '/') {
+      return `${normalizedUrl}${DEFAULT_API_PATH}`
+    }
+  } catch {
+    return normalizedUrl
+  }
+
+  return normalizedUrl
+}
+
 export function resolveApiUrl(): string {
   const configuredUrl = import.meta.env.VITE_API_URL?.trim()
 
   if (configuredUrl) {
-    return normalizeBaseUrl(configuredUrl)
+    return ensureApiPath(configuredUrl)
   }
 
   if (typeof window !== 'undefined') {
     if (isLocalHost(window.location.hostname)) {
-      return 'http://localhost:3100/api/v1'
+      return DEFAULT_API_URL
     }
 
-    return `${normalizeBaseUrl(window.location.origin)}/api/v1`
+    return `${normalizeBaseUrl(window.location.origin)}${DEFAULT_API_PATH}`
   }
 
-  return 'http://localhost:3100/api/v1'
+  return DEFAULT_API_URL
 }
