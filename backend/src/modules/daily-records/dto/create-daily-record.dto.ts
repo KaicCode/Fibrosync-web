@@ -62,6 +62,14 @@ export class CreateDailyRecordDto {
   @IsInt()
   @Min(0)
   @Max(10)
+  batteryLevel?: number;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 10 })
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
   mood?: number;
 
   @ApiPropertyOptional({ minimum: 0, maximum: 10 })

@@ -79,6 +79,7 @@ interface ResolvedRecordInput {
   recordDate: Date;
   painLevel: number;
   fatigueLevel: number;
+  batteryLevel: number | null;
   stressLevel: number;
   moodLevel: number;
   sleepQuality: number;
@@ -134,6 +135,7 @@ export class DailyRecordsService {
           painAreas: resolved.painAreas,
           painTriggers: resolved.painTriggers,
           fatigueLevel: resolved.fatigueLevel,
+          batteryLevel: resolved.batteryLevel,
           sleepHours: resolved.sleepHours,
           sleepQuality: resolved.sleepQuality,
           stressLevel: resolved.stressLevel,
@@ -270,6 +272,7 @@ export class DailyRecordsService {
           painAreas: resolved.painAreas,
           painTriggers: resolved.painTriggers,
           fatigueLevel: resolved.fatigueLevel,
+          batteryLevel: resolved.batteryLevel,
           sleepHours: resolved.sleepHours,
           sleepQuality: resolved.sleepQuality,
           stressLevel: resolved.stressLevel,
@@ -334,6 +337,10 @@ export class DailyRecordsService {
       dto.fatigueLevel,
       existingRecord?.fatigueLevel,
     );
+    const batteryLevel =
+      dto.batteryLevel !== undefined
+        ? Math.min(Math.max(Math.round(Number(dto.batteryLevel)), 0), 10)
+        : existingRecord?.batteryLevel ?? null;
     const stressLevel = this.resolveRequiredNumber(
       'stressLevel',
       dto.stressLevel,
@@ -438,6 +445,7 @@ export class DailyRecordsService {
       recordDate,
       painLevel: Math.min(Math.max(Math.round(painLevel), 0), 10),
       fatigueLevel,
+      batteryLevel,
       stressLevel,
       moodLevel,
       sleepQuality,
@@ -1035,6 +1043,7 @@ export class DailyRecordsService {
     sleepHours: number | null;
     sleepQuality: number | null;
     fatigueLevel: number;
+    batteryLevel: number | null;
     mood: number;
     moodLevel: number;
     stressLevel: number;
@@ -1105,6 +1114,7 @@ export class DailyRecordsService {
       sleepHours: record.sleepHours,
       sleepQuality: record.sleepQuality,
       fatigueLevel: record.fatigueLevel,
+      batteryLevel: record.batteryLevel,
       mood: record.moodLevel,
       moodLevel: record.moodLevel,
       stressLevel: record.stressLevel,

@@ -2,6 +2,7 @@ import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
+  BatteryCharging,
   CalendarDays,
   Check,
   CloudSun,
@@ -64,6 +65,7 @@ type RecordFormState = {
   backPainAreas: string[];
   painLevel: number;
   fatigueLevel: number;
+  batteryLevel: number;
   stressLevel: number;
   moodLevel: number;
   sleepQuality: number;
@@ -103,6 +105,12 @@ const bodyStateScales = [
     label: "Fadiga",
     highIsPositive: false,
     icon: HeartPulse,
+  },
+  {
+    key: "batteryLevel",
+    label: "Bateria",
+    highIsPositive: true,
+    icon: BatteryCharging,
   },
   {
     key: "stressLevel",
@@ -167,6 +175,7 @@ function createInitialState(recordDate: string): RecordFormState {
     backPainAreas: [],
     painLevel: 4,
     fatigueLevel: 5,
+    batteryLevel: 6,
     stressLevel: 4,
     moodLevel: 6,
     sleepQuality: 5,
@@ -597,6 +606,10 @@ export function PainLogPage() {
       return "Os minutos de atividade fisica precisam estar entre 0 e 1440.";
     }
 
+    if (form.batteryLevel < 0 || form.batteryLevel > 10) {
+      return "O nivel de bateria precisa estar entre 0 e 10.";
+    }
+
     return null;
   }
 
@@ -615,6 +628,7 @@ export function PainLogPage() {
         recordDate: form.recordDate,
         painLevel: form.painLevel,
         fatigueLevel: form.fatigueLevel,
+        batteryLevel: form.batteryLevel,
         stressLevel: form.stressLevel,
         moodLevel: form.moodLevel,
         sleepQuality: form.sleepQuality,

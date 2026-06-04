@@ -11,6 +11,7 @@ export const validationSchema = Joi.object({
   FRONTEND_URL: Joi.string().uri().optional(),
   SWAGGER_PATH: Joi.string().default('docs'),
   DATABASE_URL: Joi.string().required(),
+  DIRECT_URL: Joi.string().optional(),
   JWT_ACCESS_SECRET: Joi.string().min(32).required(),
   JWT_ACCESS_TTL: Joi.string().default('15m'),
   JWT_REFRESH_SECRET: Joi.string().min(32).required(),

@@ -247,6 +247,7 @@ model DailyRecord {
   painAreas            String[]          @default([]) @map("pain_areas")
   painTriggers         String[]          @default([]) @map("pain_triggers")
   fatigueLevel         Int               @map("fatigue_level")
+  batteryLevel         Int?              @map("battery_level")
   sleepHours           Float?            @map("sleep_hours")
   sleepQuality         Int?              @map("sleep_quality")
   stressLevel          Int               @map("stress_level")

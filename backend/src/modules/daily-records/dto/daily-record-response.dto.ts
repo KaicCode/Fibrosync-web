@@ -111,6 +111,9 @@ export class DailyRecordResponseDto {
   @ApiProperty()
   fatigueLevel!: number;
 
+  @ApiPropertyOptional()
+  batteryLevel?: number | null;
+
   @ApiProperty()
   mood!: number;
 

@@ -1,5 +1,7 @@
 import { apiCall } from "@/lib/api-client";
+import { useAppStore } from "@/store/app-store";
 import type { WeatherData } from "@/services/weather.service";
+import { supabaseSyncService } from "@/services/supabase-sync.service";
 
 export interface DailyRecordSymptomSignal {
   fatigueLevel: number;
@@ -41,6 +43,7 @@ export interface DailyRecord {
   sleepHours: number | null;
   sleepQuality: number | null;
   fatigueLevel: number;
+  batteryLevel: number | null;
   mood: number;
   moodLevel: number;
   stressLevel: number;
@@ -91,6 +94,7 @@ export interface CreateDailyRecordDto {
   sleepHours: number;
   sleepQuality: number;
   fatigueLevel: number;
+  batteryLevel?: number;
   moodLevel: number;
   stressLevel: number;
   physicalActivityMinutes?: number;
@@ -138,17 +142,42 @@ export const dailyRecordService = {
   createDailyRecord: async (
     data: CreateDailyRecordDto,
   ): Promise<DailyRecord> => {
-    return apiCall<DailyRecord>("post", "/daily-records", data);
+    const record = await apiCall<DailyRecord>("post", "/daily-records", data);
+    const user = useAppStore.getState().authSession?.user ?? null;
+
+    await supabaseSyncService.upsertRecord({
+      entityId: record.id,
+      entityType: "daily-record",
+      userId: user?.id ?? null,
+      userEmail: user?.email ?? null,
+      payload: record as unknown as Record<string, unknown>,
+    });
+
+    return record;
   },
 
   updateDailyRecord: async (
     id: string,
     data: Partial<CreateDailyRecordDto>,
   ): Promise<DailyRecord> => {
-    return apiCall<DailyRecord>("patch", `/daily-records/${id}`, data);
+    const record = await apiCall<DailyRecord>("patch", `/daily-records/${id}`, data);
+    const user = useAppStore.getState().authSession?.user ?? null;
+
+    await supabaseSyncService.upsertRecord({
+      entityId: record.id,
+      entityType: "daily-record",
+      userId: user?.id ?? null,
+      userEmail: user?.email ?? null,
+      payload: record as unknown as Record<string, unknown>,
+    });
+
+    return record;
   },
 
   deleteDailyRecord: async (id: string): Promise<void> => {
     await apiCall<void>("delete", `/daily-records/${id}`);
+    const user = useAppStore.getState().authSession?.user ?? null;
+
+    await supabaseSyncService.markAsDeleted("daily-record", id, user);
   },
 };

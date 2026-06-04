@@ -10,6 +10,7 @@ export const dailyRecordResponseSelect = {
   sleepHours: true,
   sleepQuality: true,
   fatigueLevel: true,
+  batteryLevel: true,
   moodLevel: true,
   stressLevel: true,
   exerciseMinutes: true,
