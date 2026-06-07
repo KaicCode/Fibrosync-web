@@ -5,7 +5,7 @@
   "description": "FibroSync backend built with NestJS, Prisma and PostgreSQL.",
   "license": "MIT",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0 <23.0.0"
   },
   "scripts": {
     "build": "nest build && tsc-alias",
