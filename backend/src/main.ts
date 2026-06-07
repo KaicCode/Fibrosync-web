@@ -13,6 +13,13 @@ function normalizeOriginPattern(value: string): string {
   return value.trim().replace(/\/+$/, '');
 }
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'https://fibrosync.com',
+  'https://www.fibrosync.com',
+  'https://*.vercel.app',
+];
+
 function matchesOriginPattern(origin: string, pattern: string): boolean {
   const normalizedOrigin = normalizeOriginPattern(origin);
   const normalizedPattern = normalizeOriginPattern(pattern);
@@ -35,11 +42,7 @@ function resolveAllowedOrigins(frontendUrl?: string): string[] {
     .map((value) => normalizeOriginPattern(value))
     .filter(Boolean);
 
-  if (configured && configured.length > 0) {
-    return configured;
-  }
-
-  return ['http://localhost:5173'];
+  return Array.from(new Set([...(configured ?? []), ...DEFAULT_ALLOWED_ORIGINS]));
 }
 
 async function isPortAvailable(port: number): Promise<boolean> {
@@ -67,6 +70,14 @@ async function bootstrap(): Promise<void> {
   const port = configService.get<number>('app.port', 3100);
   const frontendUrl = configService.get<string | undefined>('app.frontendUrl');
   const allowedOrigins = resolveAllowedOrigins(frontendUrl);
+
+  if (!frontendUrl?.trim()) {
+    logger.warn(
+      `FRONTEND_URL is not set. Falling back to default origins: ${allowedOrigins.join(', ')}`,
+    );
+  }
+
+  logger.log(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
 
   app.enableCors({
     origin: (origin, callback) => {
