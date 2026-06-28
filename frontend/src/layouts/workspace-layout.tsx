@@ -81,7 +81,7 @@ export function AdminLayout() {
   const authSession = useAppStore((state) => state.authSession)
 
   if (!authSession) {
-    return <Navigate to="/" replace state={{ from: location.pathname }} />
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
 
   if (authSession.user.role !== 'ADMIN') {

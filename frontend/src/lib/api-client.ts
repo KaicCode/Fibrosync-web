@@ -140,7 +140,7 @@ apiClient.interceptors.response.use(
 
         useAppStore.getState().clearAuthSession()
 
-        window.location.href = '/'
+        window.location.href = '/login'
 
         return Promise.reject(err)
       }

@@ -87,7 +87,7 @@ export function useAuth() {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       clearAuthSession();
-      window.location.href = '/';
+      window.location.href = '/login';
     },
   });
 

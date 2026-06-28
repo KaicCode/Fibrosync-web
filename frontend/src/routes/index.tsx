@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { PageLoader } from '@/components/page-loader'
 import { AuthLayout } from '@/layouts/auth-layout'
 import { AdminLayout, MedicalLayout, PatientLayout } from '@/layouts/workspace-layout'
@@ -86,9 +86,11 @@ export function AppRouter() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landingpage" element={<Navigate to="/" replace />} />
+
         <Route element={<AuthLayout />}>
-          <Route path="/landingpage" element={<LandingPage />} />
-          <Route path="/" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
         </Route>
 

@@ -129,7 +129,7 @@ export function NotFoundPage() {
 
   const dashboardPath = authSession
     ? workspaceDashboardPathByVariant[dashboardVariant]
-    : '/landingpage'
+    : '/'
 
   return (
     <main className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 lg:px-8">
@@ -200,10 +200,10 @@ export function NotFoundPage() {
                 variant="secondary"
                 className="w-full border-white/80 bg-white/92 shadow-soft hover:-translate-y-0.5 hover:shadow-[0_20px_40px_rgba(74,144,226,0.16)] sm:w-auto dark:border-white/10 dark:bg-slate-950/80 dark:text-white"
               >
-                <a href="https://fibrosync.vercel.app/" target="_blank" rel="noreferrer">
+                <Link to="/">
                   <Home className="h-4 w-4" />
                   Pagina Inicial
-                </a>
+                </Link>
               </Button>
             </div>
 
