@@ -54,6 +54,15 @@ function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
+function getTooltipNumber(
+  value: number | string | Array<number | string> | ReadonlyArray<number | string> | undefined,
+): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') return Number(value);
+  if (Array.isArray(value)) return Number(value[0] ?? 0);
+  return 0;
+}
+
 // Agrupa o histórico por semana para o gráfico de barras
 function buildWeeklyChartData(history: Array<{ completedAt: string; exercise: { durationMinutes: number }; durationPerformed: number | null }>) {
   const weekMap: Record<string, { week: string; count: number; minutes: number }> = {};
@@ -311,7 +320,7 @@ export function MovementPage() {
                       <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
                       <Tooltip
                         contentStyle={{ borderRadius: 12, border: '1px solid #ede9fe', fontSize: 12 }}
-                        formatter={(v: number) => [`${v} exercício(s)`, 'Sessões']}
+                        formatter={(value) => [`${getTooltipNumber(value)} exercício(s)`, 'Sessões']}
                       />
                       <Bar dataKey="count" fill="#7B4DFF" radius={[6, 6, 0, 0]} />
                     </BarChart>
@@ -338,7 +347,7 @@ export function MovementPage() {
                       <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} />
                       <Tooltip
                         contentStyle={{ borderRadius: 12, border: '1px solid #ede9fe', fontSize: 12 }}
-                        formatter={(v: number) => [`${v} min`, 'Tempo']}
+                        formatter={(value) => [`${getTooltipNumber(value)} min`, 'Tempo']}
                       />
                       <Area
                         type="monotone"

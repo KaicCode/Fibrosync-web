@@ -149,19 +149,27 @@ export class ExercisesService {
 
     // Extrai datas únicas no formato YYYY-MM-DD e ordena decrescente
     const uniqueDays = Array.from(
-      new Set(dates.map((d) => new Date(d).toISOString().split('T')[0])),
-    ).sort((a, b) => (a > b ? -1 : 1));
+      new Set(dates.map((d) => new Date(d).toISOString().slice(0, 10))),
+    ).sort((a, b) => b.localeCompare(a));
 
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const [latestDay] = uniqueDays;
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
     // Sequência só conta se o usuário exercitou hoje ou ontem
-    if (uniqueDays[0] !== today && uniqueDays[0] !== yesterday) return 0;
+    if (!latestDay || (latestDay !== today && latestDay !== yesterday)) return 0;
 
     let streak = 1;
     for (let i = 1; i < uniqueDays.length; i++) {
-      const prev = new Date(uniqueDays[i - 1]);
-      const curr = new Date(uniqueDays[i]);
+      const previousDay = uniqueDays[i - 1];
+      const currentDay = uniqueDays[i];
+
+      if (!previousDay || !currentDay) {
+        break;
+      }
+
+      const prev = new Date(previousDay);
+      const curr = new Date(currentDay);
       const diffDays = Math.round((prev.getTime() - curr.getTime()) / 86400000);
 
       if (diffDays === 1) {

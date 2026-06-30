@@ -103,6 +103,7 @@ export function AppRouter() {
           <Route path="/app" element={<DashboardPage />} />
           <Route path="/app/ai-active" element={<AiActivePreviewPage />} />
           <Route path="/app/search" element={<WorkspaceSearchPage />} />
+          <Route path="/app/assistant" element={<Navigate to="/app/movement" replace />} />
           <Route path="/app/pain-log" element={<PainLogPage />} />
           <Route path="/app/reports" element={<ReportsPage />} />
           <Route path="/app/movement" element={<MovementPage />} />

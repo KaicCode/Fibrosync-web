@@ -8,6 +8,7 @@
     "node": ">=20.0.0 <23.0.0"
   },
   "scripts": {
+    "prebuild": "prisma generate",
     "build": "nest build && tsc-alias",
     "start": "nest start",
     "start:dev": "nest start --watch",
