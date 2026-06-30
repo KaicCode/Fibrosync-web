@@ -33,7 +33,7 @@ export function AdminAnalyticsPage() {
     { symptom: 'Dor muscular', frequency: 85, avgIntensity: 6.5 },
     { symptom: 'Fadiga', frequency: 72, avgIntensity: 7.2 },
     { symptom: 'Insônia', frequency: 68, avgIntensity: 6.8 },
-    { symptom: 'Cefaleia', frequency: 55, avgIntensity: 5.9 },
+    { symptom: 'Dor de cabeça', frequency: 55, avgIntensity: 5.9 },
     { symptom: 'Dormência', frequency: 42, avgIntensity: 5.1 },
   ]
 
@@ -41,7 +41,7 @@ export function AdminAnalyticsPage() {
     { symptom1: 'Estresse', symptom2: 'Insônia', correlation: 0.87, frequency: 45 },
     { symptom1: 'Insônia', symptom2: 'Fadiga', correlation: 0.92, frequency: 62 },
     { symptom1: 'Atividade Física', symptom2: 'Dor Muscular', correlation: 0.79, frequency: 38 },
-    { symptom1: 'Estresse', symptom2: 'Cefaleia', correlation: 0.65, frequency: 28 },
+    { symptom1: 'Estresse', symptom2: 'Dor de cabeça', correlation: 0.65, frequency: 28 },
     { symptom1: 'Sono Ruim', symptom2: 'Fadiga', correlation: 0.88, frequency: 55 },
   ]
 

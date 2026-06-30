@@ -51,7 +51,7 @@ const defaultSymptoms: Array<{
     isCore: true,
   },
   {
-    name: 'Fibro fog',
+    name: 'Dificuldade de Concentração',
     category: SymptomCategory.COGNITIVE,
     description: 'Dificuldade de concentracao, memoria ou clareza mental.',
     isCore: true,

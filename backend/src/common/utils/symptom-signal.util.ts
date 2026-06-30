@@ -4,13 +4,13 @@ export const symptomCatalogDefinitions = [
   {
     key: 'cognitiveFog',
     levelKey: 'cognitiveFogLevel',
-    label: 'Fibro fog',
+    label: 'Dificuldade de Concentração',
     category: SymptomCategory.COGNITIVE,
   },
   {
     key: 'headache',
     levelKey: 'headacheLevel',
-    label: 'Cefaleia',
+    label: 'Dor de cabeça',
     category: SymptomCategory.OTHER,
   },
   {

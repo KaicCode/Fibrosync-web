@@ -20,11 +20,11 @@ function resolveSymptomHighlights(record: {
 }) {
   const flags: string[] = []
 
-  if (record.cognitiveFog) flags.push('Fibro fog')
+  if (record.cognitiveFog) flags.push('Dificuldade de Concentração')
   if (record.sensitivityLight) flags.push('Luz')
   if (record.sensitivityNoise) flags.push('Ruido')
   if (record.digestiveIssues) flags.push('Digestivo')
-  if (record.headache) flags.push('Cefaleia')
+  if (record.headache) flags.push('Dor de cabeça')
   if (record.anxiety) flags.push('Ansiedade')
   if (record.depression) flags.push('Humor depressivo')
 

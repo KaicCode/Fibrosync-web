@@ -295,13 +295,13 @@ export const symptomSignalCatalog: SymptomSignalConfig[] = [
   {
     key: "cognitiveFog",
     levelKey: "cognitiveFogLevel",
-    label: "Fibro fog",
+    label: "Dificuldade de Concentração",
     description: "Esquecimentos, lentidao mental ou dificuldade de foco.",
   },
   {
     key: "headache",
     levelKey: "headacheLevel",
-    label: "Cefaleia",
+    label: "Dor de cabeça",
     description: "Dor de cabeca ou pressao craniana ao longo do dia.",
   },
   {

@@ -128,11 +128,11 @@ function listActiveFlags(record: Pick<
 >): string[] {
   const labels: string[] = []
 
-  if (record.cognitiveFog) labels.push('Fibro fog')
+  if (record.cognitiveFog) labels.push('Dificuldade de Concentração')
   if (record.sensitivityLight) labels.push('Luz')
   if (record.sensitivityNoise) labels.push('Ruido')
   if (record.digestiveIssues) labels.push('Digestivo')
-  if (record.headache) labels.push('Cefaleia')
+  if (record.headache) labels.push('Dor de cabeça')
   if (record.anxiety) labels.push('Ansiedade')
   if (record.depression) labels.push('Humor depressivo')
 
@@ -563,11 +563,11 @@ export function AdminSymptomsPage() {
                 <p className="text-sm font-semibold text-foreground">Flags observadas</p>
                 <div className="grid gap-3 md:grid-cols-2">
                   {[
-                    ['cognitiveFog', 'Fibro fog'],
+                    ['cognitiveFog', 'Dificuldade de Concentração'],
                     ['sensitivityLight', 'Sensibilidade a luz'],
                     ['sensitivityNoise', 'Sensibilidade a ruido'],
                     ['digestiveIssues', 'Alteracoes digestivas'],
-                    ['headache', 'Cefaleia'],
+                    ['headache', 'Dor de cabeça'],
                     ['anxiety', 'Ansiedade'],
                     ['depression', 'Humor depressivo'],
                   ].map(([key, label]) => (

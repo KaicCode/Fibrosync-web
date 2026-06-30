@@ -847,7 +847,7 @@ export class ReportsService {
       },
       {
         key: 'headache',
-        label: 'Cefaleia',
+        label: 'Dor de cabeça',
         source: 'symptom_signal',
         matcher: (day) => day.headache,
       },
