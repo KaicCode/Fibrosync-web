@@ -14,6 +14,7 @@ import { RequestLoggingInterceptor } from './common/interceptors/request-logging
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.interceptor';
 import { DatabaseModule } from './database/database.module';
 import { AiModule } from './modules/ai/ai.module';
+import { ExercisesModule } from './modules/exercises/exercises.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CommunityPostsModule } from './modules/community-posts/community-posts.module';
 import { CrisisPredictionModule } from './modules/crisis-prediction/crisis-prediction.module';
@@ -44,6 +45,7 @@ import { WeatherModule } from './modules/weather/weather.module';
     NotificationsModule,
     ReportsModule,
     AiModule,
+    ExercisesModule,
   ],
   controllers: [AppController],
   providers: [

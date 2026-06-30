@@ -66,6 +66,11 @@ const AdminSettingsPage = lazy(() =>
     default: module.AdminSettingsPage,
   })),
 )
+const MovementPage = lazy(() =>
+  import('@/pages/patient/movement-page').then((module) => ({
+    default: module.MovementPage,
+  })),
+)
 const AiActivePreviewPage = lazy(() =>
   import('@/pages/shared/ai-active-preview-page').then((module) => ({
     default: module.AiActivePreviewPage,
@@ -100,7 +105,7 @@ export function AppRouter() {
           <Route path="/app/search" element={<WorkspaceSearchPage />} />
           <Route path="/app/pain-log" element={<PainLogPage />} />
           <Route path="/app/reports" element={<ReportsPage />} />
-          <Route path="/app/assistant" element={<AiActivePreviewPage />} />
+          <Route path="/app/movement" element={<MovementPage />} />
           <Route path="/app/calendar" element={<CalendarPage />} />
           <Route path="/app/community" element={<AiActivePreviewPage />} />
           <Route path="/app/profile" element={<ProfilePage />} />
