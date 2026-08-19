@@ -1,9 +1,10 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import { Menu, Search, Sparkles } from 'lucide-react'
+import { type FormEvent, useMemo, useState } from 'react'
+import { LogOut, Menu, Search, Sparkles } from 'lucide-react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
 import { useUser } from '@/hooks/useUser'
 import {
@@ -36,6 +37,7 @@ export function WorkspaceTopbar({
   const config = workspaceConfig[variant]
   const authSession = useAppStore((state) => state.authSession)
   const { user } = useUser()
+  const { logout, isLoggingOut } = useAuth()
   const [searchDraft, setSearchDraft] = useState('')
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const currentUser = user ?? authSession?.user ?? null
@@ -50,10 +52,7 @@ export function WorkspaceTopbar({
         ? 'Administrador'
         : 'Paciente'
     : 'Paciente'
-
-  useEffect(() => {
-    setSearchDraft(searchQueryFromRoute)
-  }, [searchQueryFromRoute])
+  const visibleSearchValue = isSearchFocused ? searchDraft : searchQueryFromRoute
 
   const searchSuggestions = useMemo(
     () =>
@@ -96,7 +95,10 @@ export function WorkspaceTopbar({
 
         <div
           className="relative hidden flex-1 md:block"
-          onFocusCapture={() => setIsSearchFocused(true)}
+          onFocusCapture={() => {
+            setSearchDraft(searchQueryFromRoute)
+            setIsSearchFocused(true)
+          }}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
               setIsSearchFocused(false)
@@ -106,7 +108,7 @@ export function WorkspaceTopbar({
           <form onSubmit={handleSearchSubmit}>
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              value={searchDraft}
+              value={visibleSearchValue}
               onChange={(event) => setSearchDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
@@ -187,6 +189,19 @@ export function WorkspaceTopbar({
           >
             <Sparkles className="h-4 w-4" />
             IA ativa
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            disabled={isLoggingOut}
+            onClick={() => {
+              void logout()
+            }}
+          >
+            <LogOut className="h-4 w-4" />
+            {isLoggingOut ? 'Saindo...' : 'Sair'}
           </Button>
           <div className="hidden items-center gap-3 rounded-full border border-white/80 bg-white/88 px-2 py-1.5 shadow-soft lg:flex">
             <Avatar className="h-9 w-9">

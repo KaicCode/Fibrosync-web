@@ -145,7 +145,7 @@ export const dailyRecordService = {
     const record = await apiCall<DailyRecord>("post", "/daily-records", data);
     const user = useAppStore.getState().authSession?.user ?? null;
 
-    await supabaseSyncService.upsertRecord({
+    void supabaseSyncService.upsertRecord({
       entityId: record.id,
       entityType: "daily-record",
       userId: user?.id ?? null,
@@ -163,7 +163,7 @@ export const dailyRecordService = {
     const record = await apiCall<DailyRecord>("patch", `/daily-records/${id}`, data);
     const user = useAppStore.getState().authSession?.user ?? null;
 
-    await supabaseSyncService.upsertRecord({
+    void supabaseSyncService.upsertRecord({
       entityId: record.id,
       entityType: "daily-record",
       userId: user?.id ?? null,
@@ -178,6 +178,6 @@ export const dailyRecordService = {
     await apiCall<void>("delete", `/daily-records/${id}`);
     const user = useAppStore.getState().authSession?.user ?? null;
 
-    await supabaseSyncService.markAsDeleted("daily-record", id, user);
+    void supabaseSyncService.markAsDeleted("daily-record", id, user);
   },
 };

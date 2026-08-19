@@ -16,6 +16,8 @@ interface CachedWeatherEntry {
   weather: WeatherSnapshot;
 }
 
+const WEATHER_REQUEST_TIMEOUT_MS = 8000;
+
 @Injectable()
 export class WeatherService {
   private readonly logger = new Logger(WeatherService.name);
@@ -32,7 +34,6 @@ export class WeatherService {
     const cached = this.getCachedWeather(cacheKey);
 
     if (cached) {
-      await this.persistUserWeatherRecord(userId, cached);
       return cached;
     }
 
@@ -112,10 +113,19 @@ export class WeatherService {
     );
     url.searchParams.set('wind_speed_unit', 'kmh');
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      WEATHER_REQUEST_TIMEOUT_MS,
+    );
+
     const response = await fetch(url, {
       headers: {
         Accept: 'application/json',
       },
+      signal: controller.signal,
+    }).finally(() => {
+      clearTimeout(timeoutId);
     });
 
     if (!response.ok) {
@@ -265,6 +275,10 @@ export class WeatherService {
   }
 
   private describeError(error: unknown): string {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return `Open-Meteo timed out after ${WEATHER_REQUEST_TIMEOUT_MS}ms.`;
+    }
+
     return error instanceof Error ? error.message : 'Unknown error';
   }
 }

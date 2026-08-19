@@ -2,7 +2,6 @@ function normalizeBaseUrl(value: string): string {
   return value.trim().replace(/\/+$/, '')
 }
 
-const DEFAULT_API_URL = 'http://localhost:3100/api/v1'
 const DEFAULT_API_PATH = '/api/v1'
 
 function isLocalHost(hostname: string): boolean {
@@ -38,11 +37,19 @@ export function resolveApiUrl(): string {
 
   if (typeof window !== 'undefined') {
     if (isLocalHost(window.location.hostname)) {
-      return DEFAULT_API_URL
+      if (import.meta.env.DEV) {
+        return 'http://localhost:3100/api/v1'
+      }
+
+      return `${normalizeBaseUrl(window.location.origin)}${DEFAULT_API_PATH}`
     }
 
     return `${normalizeBaseUrl(window.location.origin)}${DEFAULT_API_PATH}`
   }
 
-  return DEFAULT_API_URL
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3100/api/v1'
+  }
+
+  return DEFAULT_API_PATH
 }

@@ -136,7 +136,7 @@ export class AiService {
 
   async getLatestPredictionForUser(
     userId: string,
-  ): Promise<AiPredictionResponseDto> {
+  ): Promise<AiPredictionResponseDto | null> {
     const prediction = await this.prisma.aiPrediction.findFirst({
       where: {
         userId,
@@ -148,9 +148,7 @@ export class AiService {
     });
 
     if (!prediction) {
-      throw new NotFoundException(
-        'No AI prediction was generated for this user yet.',
-      );
+      return null;
     }
 
     return this.mapPrediction(prediction);

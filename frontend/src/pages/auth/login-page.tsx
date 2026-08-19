@@ -8,6 +8,31 @@ import { Input } from '@/components/ui/input'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useAuth } from '@/hooks/useAuth'
 
+function resolveLoginErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'Nao foi possivel fazer login agora. Tente novamente.'
+  }
+
+  const normalizedMessage = error.message.toLowerCase()
+
+  if (normalizedMessage.includes('invalid email or password')) {
+    return 'Email ou senha incorretos.'
+  }
+
+  if (
+    normalizedMessage.includes('demorou mais do que o esperado') ||
+    normalizedMessage.includes('timeout')
+  ) {
+    return 'A autenticacao demorou demais para responder. Tente novamente.'
+  }
+
+  if (normalizedMessage.includes('nao foi possivel conectar com a api')) {
+    return error.message
+  }
+
+  return error.message || 'Nao foi possivel fazer login agora. Tente novamente.'
+}
+
 export function LoginPage() {
   usePageTitle('Entrar')
 
@@ -16,16 +41,38 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (isLoggingIn) {
+      return
+    }
+
+    setSubmitErrorMessage(null)
+
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setSubmitErrorMessage(
+        'Nao foi possivel conectar com a API. Verifique sua conexao e tente novamente.',
+      )
+      return
+    }
+
     try {
       const session = await login({ email, password })
-      navigate(session.user.role === 'ADMIN' ? '/admin/dashboard' : '/app')
+      navigate(session.user.role === 'ADMIN' ? '/admin/dashboard' : '/app', {
+        replace: true,
+      })
     } catch (error) {
+      setSubmitErrorMessage(resolveLoginErrorMessage(error))
       console.error('Login failed:', error)
     }
   }
+
+  const loginErrorMessage =
+    submitErrorMessage ??
+    (loginError ? resolveLoginErrorMessage(loginError) : null)
 
   return (
     <section className="relative flex min-h-[calc(100vh-2.5rem)] items-center justify-center overflow-hidden py-2 md:py-3">
@@ -56,6 +103,7 @@ export function LoginPage() {
                   <Input
                     type="email"
                     required
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-14 rounded-[1.25rem] border-slate-200 bg-white/92 pl-14 pr-5 text-base text-slate-700 placeholder:text-slate-400"
@@ -69,6 +117,7 @@ export function LoginPage() {
                   <LockKeyhole className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-500" />
                   <Input
                     required
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="h-14 rounded-[1.25rem] border-slate-200 bg-white/92 pl-14 pr-14 text-base text-slate-700 placeholder:text-slate-400"
@@ -86,9 +135,12 @@ export function LoginPage() {
                 </div>
               </label>
 
-              {loginError && (
-                <div className="text-red-500 text-sm text-center">
-                  Email ou senha incorretos
+              {loginErrorMessage && (
+                <div
+                  className="rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-700"
+                  role="alert"
+                >
+                  {loginErrorMessage}
                 </div>
               )}
 

@@ -1,4 +1,8 @@
 import { apiCall } from '@/lib/api-client';
+import {
+  clearStoredAuthTokens,
+  getStoredRefreshToken,
+} from '@/lib/auth-session';
 import type { UserProfile } from './user.service';
 
 export interface LoginDto {
@@ -37,13 +41,16 @@ export const authService = {
   },
 
   logout: async (): Promise<void> => {
+    const refreshToken = getStoredRefreshToken();
+
     try {
-      await apiCall<void>('post', '/auth/logout');
+      await apiCall<void>(
+        'post',
+        '/auth/logout',
+        refreshToken ? { refreshToken } : undefined,
+      );
     } finally {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+      clearStoredAuthTokens();
     }
   },
 };

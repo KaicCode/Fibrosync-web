@@ -1,99 +1,148 @@
-import axios from 'axios';
-import { resolveApiUrl } from '@/lib/resolve-api-url';
+import axios from 'axios'
+import {
+  clearStoredAuthTokens,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  storeAuthTokens,
+} from '@/lib/auth-session'
+import { resolveApiUrl } from '@/lib/resolve-api-url'
+import { useAppStore } from '@/store/app-store'
 
-const API_URL = resolveApiUrl();
+const API_URL = resolveApiUrl()
+const API_REQUEST_TIMEOUT_MS = 15000
+
+function buildConnectivityErrorMessage(): string {
+  return `Nao foi possivel conectar com a API. Verifique se VITE_API_URL aponta para ${API_URL} e se FRONTEND_URL no backend inclui a URL da Vercel.`
+}
+
+function isBrowserOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false
+}
+
+let isRefreshing = false
+let failedQueue: Array<{
+  resolve: (token: string) => void
+  reject: (error: Error) => void
+}> = []
+
+function processQueue(error: Error | null, token: string | null = null): void {
+  failedQueue.forEach((request) => {
+    if (error) {
+      request.reject(error)
+      return
+    }
+
+    request.resolve(token!)
+  })
+
+  failedQueue = []
+  isRefreshing = false
+}
 
 export const api = axios.create({
   baseURL: API_URL,
+  timeout: API_REQUEST_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
-});
+})
 
-// Interceptor to add access token to requests
 api.interceptors.request.use(
   (config) => {
-    const token =
-      localStorage.getItem('accessToken') ??
-      localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (isBrowserOffline()) {
+      return Promise.reject(new Error(buildConnectivityErrorMessage()))
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
-// Interceptor to handle token refresh
+    const token = getStoredAccessToken()
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+
+    return config
+  },
+  (error) => Promise.reject(error),
+)
+
 api.interceptors.response.use(
   (response) => {
-    // If the response contains the { success: true, data: ... } envelope, unwrap it
-    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+    if (
+      response.data &&
+      typeof response.data === 'object' &&
+      'success' in response.data
+    ) {
       if (response.data.success) {
-        response.data = response.data.data;
+        response.data = response.data.data
       } else {
-        return Promise.reject(new Error(response.data.message || 'API Error'));
+        return Promise.reject(
+          new Error(response.data.message || response.data.error || 'API Error'),
+        )
       }
     }
-    return response;
+
+    return response
   },
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config
 
-    // If error is 401 and we haven't retried yet
     if (
       error.response?.status === 401 &&
+      originalRequest &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/refresh')
     ) {
-      originalRequest._retry = true;
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        })
+          .then((token) => {
+            originalRequest.headers = originalRequest.headers ?? {}
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            return api(originalRequest)
+          })
+          .catch((refreshError) => Promise.reject(refreshError))
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
 
       try {
-        const refreshToken =
-          localStorage.getItem('refreshToken') ??
-          localStorage.getItem('refresh_token');
-        
+        const refreshToken = getStoredRefreshToken()
+
         if (!refreshToken) {
-          // No refresh token, trigger logout event or simply throw
-          throw new Error('No refresh token available');
+          throw new Error('No refresh token available')
         }
 
-        // Try to refresh token
         const response = await axios.post(`${API_URL}/auth/refresh`, undefined, {
           headers: {
             Authorization: `Bearer ${refreshToken}`,
           },
-        });
+          timeout: API_REQUEST_TIMEOUT_MS,
+        })
 
-        const { accessToken, refreshToken: nextRefreshToken } = response.data.data;
+        const { accessToken, refreshToken: nextRefreshToken } = response.data.data
 
-        // Save new tokens
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('access_token', accessToken);
-        if (nextRefreshToken) {
-          localStorage.setItem('refreshToken', nextRefreshToken);
-          localStorage.setItem('refresh_token', nextRefreshToken);
-        }
+        storeAuthTokens({
+          accessToken,
+          refreshToken: nextRefreshToken,
+        })
 
-        // Update authorization header
-        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        api.defaults.headers.common.Authorization = `Bearer ${accessToken}`
+        originalRequest.headers = originalRequest.headers ?? {}
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`
 
-        // Retry original request
-        return api(originalRequest);
+        processQueue(null, accessToken)
+
+        return api(originalRequest)
       } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
+        processQueue(refreshError as Error, null)
+        clearStoredAuthTokens()
+        useAppStore.getState().clearAuthSession()
+        window.location.href = '/login'
+        return Promise.reject(refreshError)
       }
     }
 
-    return Promise.reject(error);
-  }
-);
+    return Promise.reject(error)
+  },
+)

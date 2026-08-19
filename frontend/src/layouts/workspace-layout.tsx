@@ -1,14 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { PageLoader } from '@/components/page-loader'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { WorkspaceSidebar } from '@/components/workspace-sidebar'
 import { WorkspaceTopbar } from '@/components/workspace-topbar'
+import {
+  buildAuthSession,
+  clearStoredAuthTokens,
+  getStoredAccessToken,
+  hasStoredAuthTokens,
+} from '@/lib/auth-session'
 import type { WorkspaceVariant } from '@/lib/navigation'
+import { userService } from '@/services/user.service'
 import { useAppStore } from '@/store/app-store'
 
 type WorkspaceLayoutProps = {
   variant: WorkspaceVariant
 }
+
+type GuardStatus = 'checking' | 'ready' | 'unauthenticated'
 
 export function WorkspaceLayout({ variant }: WorkspaceLayoutProps) {
   const [mobileSidebarPath, setMobileSidebarPath] = useState<string | null>(null)
@@ -69,24 +79,95 @@ export function WorkspaceLayout({ variant }: WorkspaceLayoutProps) {
 }
 
 export function PatientLayout() {
-  return <WorkspaceLayout variant="patient" />
+  return <ProtectedWorkspaceLayout variant="patient" />
 }
 
 export function MedicalLayout() {
-  return <WorkspaceLayout variant="medical" />
+  return <ProtectedWorkspaceLayout variant="medical" requireAdmin />
 }
 
 export function AdminLayout() {
+  return <ProtectedWorkspaceLayout variant="admin" requireAdmin />
+}
+
+function ProtectedWorkspaceLayout({
+  variant,
+  requireAdmin = false,
+}: WorkspaceLayoutProps & {
+  requireAdmin?: boolean
+}) {
   const location = useLocation()
   const authSession = useAppStore((state) => state.authSession)
+  const setAuthSession = useAppStore((state) => state.setAuthSession)
+  const clearAuthSession = useAppStore((state) => state.clearAuthSession)
+  const hasAccessToken = Boolean(getStoredAccessToken())
+  const hasTokens = hasStoredAuthTokens()
+  const isAuthenticated = Boolean(authSession && hasAccessToken)
+  const [status, setStatus] = useState<GuardStatus>(() =>
+    isAuthenticated ? 'ready' : hasTokens ? 'checking' : 'unauthenticated',
+  )
 
-  if (!authSession) {
+  useEffect(() => {
+    const accessToken = getStoredAccessToken()
+    const hasStoredTokens = hasStoredAuthTokens()
+
+    if (!hasStoredTokens) {
+      if (authSession) {
+        clearAuthSession()
+      }
+      return
+    }
+
+    if (authSession && accessToken) {
+      return
+    }
+
+    let isCancelled = false
+
+    const restoreSession = async () => {
+      try {
+        setStatus('checking')
+        const user = await userService.getCurrentUser()
+
+        if (isCancelled) {
+          return
+        }
+
+        setAuthSession(buildAuthSession(getStoredAccessToken() ?? '', user))
+        setStatus('ready')
+      } catch {
+        if (isCancelled) {
+          return
+        }
+
+        clearStoredAuthTokens()
+        clearAuthSession()
+        setStatus('unauthenticated')
+      }
+    }
+
+    void restoreSession()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [authSession, clearAuthSession, setAuthSession])
+
+  if (status === 'checking' && hasTokens) {
+    return <PageLoader />
+  }
+
+  if (!hasTokens) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
 
-  if (authSession.user.role !== 'ADMIN') {
+  if (!authSession) {
+    return <PageLoader />
+  }
+
+  if (requireAdmin && authSession.user.role !== 'ADMIN') {
     return <Navigate to="/app" replace />
   }
 
-  return <WorkspaceLayout variant="admin" />
+  return <WorkspaceLayout variant={variant} />
 }

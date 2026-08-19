@@ -14,8 +14,8 @@ import {
 } from 'lucide-react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/page-header'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { usePageTitle } from '@/hooks/use-page-title'
 import { adminService } from '@/services/admin.service'
 import { dailyRecordService, type DailyRecord } from '@/services/daily-record.service'
 import {
@@ -143,6 +143,7 @@ export function WorkspaceSearchPage() {
   const variant = inferRoleFromPath(location.pathname)
   const config = workspaceConfig[variant]
   const query = searchParams.get('q')?.trim() ?? ''
+  usePageTitle(query ? `Busca: ${query}` : 'Busca')
   const dashboardPath = workspaceDashboardPathByVariant[variant]
   const aiPath = workspaceAiActivePathByVariant[variant]
 

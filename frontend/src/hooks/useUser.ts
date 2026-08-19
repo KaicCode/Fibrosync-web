@@ -1,5 +1,9 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  buildAuthSession,
+  hasStoredAuthTokens,
+} from '@/lib/auth-session';
 import { useAppStore } from '@/store/app-store';
 import { supabaseSyncService } from '@/services/supabase-sync.service';
 import { userService } from '../services/user.service';
@@ -13,6 +17,7 @@ export function useUser() {
   const userQuery = useQuery({
     queryKey: ['currentUser'],
     queryFn: userService.getCurrentUser,
+    enabled: Boolean(authSession) || hasStoredAuthTokens(),
     retry: false, // Don't retry if it fails (e.g., 401)
   });
 
@@ -43,25 +48,12 @@ export function useUser() {
       return;
     }
 
+    const nextSession = buildAuthSession(authSession.token, userQuery.data);
     setAuthSession({
-      token: authSession.token,
+      ...nextSession,
       user: {
         ...authSession.user,
-        id: userQuery.data.id,
-        email: userQuery.data.email,
-        name: userQuery.data.fullName,
-        fullName: userQuery.data.fullName,
-        birthDate: userQuery.data.birthDate ?? null,
-        gender: userQuery.data.gender ?? null,
-        heightCm: userQuery.data.heightCm ?? null,
-        weightKg: userQuery.data.weightKg ?? null,
-        countryCode: userQuery.data.countryCode ?? null,
-        timezone: userQuery.data.timezone,
-        role: userQuery.data.role as 'USER' | 'ADMIN',
-        onboardingCompleted: userQuery.data.onboardingCompleted,
-        lastLoginAt: userQuery.data.lastLoginAt ?? null,
-        createdAt: userQuery.data.createdAt,
-        updatedAt: userQuery.data.updatedAt,
+        ...nextSession.user,
       },
     });
   }, [authSession, setAuthSession, userQuery.data]);

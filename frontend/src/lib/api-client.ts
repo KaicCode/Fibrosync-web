@@ -4,14 +4,22 @@ import type {
   AxiosRequestConfig,
   InternalAxiosRequestConfig,
 } from 'axios'
+import {
+  clearStoredAuthTokens,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  storeAuthTokens,
+} from '@/lib/auth-session'
 import { resolveApiUrl } from '@/lib/resolve-api-url'
 import { useAppStore } from '@/store/app-store'
 
 const API_URL = resolveApiUrl()
+const API_REQUEST_TIMEOUT_MS = 15000
 
 // Criar instância do Axios
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
+  timeout: API_REQUEST_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -19,6 +27,14 @@ export const apiClient: AxiosInstance = axios.create({
 
 function buildConnectivityErrorMessage(): string {
   return `Nao foi possivel conectar com a API. Verifique se VITE_API_URL aponta para ${API_URL} e se FRONTEND_URL no backend inclui a URL da Vercel.`
+}
+
+function buildTimeoutErrorMessage(): string {
+  return 'A API demorou mais do que o esperado para responder. Tente novamente em alguns instantes.'
+}
+
+function isBrowserOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false
 }
 
 // Flag para evitar requisições infinitas de refresh
@@ -44,11 +60,11 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 // Request interceptor - adiciona token na requisição
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Compat: o app salva tokens em accessToken/refreshToken (login) e em
-    // access_token/refresh_token (outros clients). Aqui aceitamos ambos.
-    const token =
-      localStorage.getItem('accessToken') ??
-      localStorage.getItem('access_token')
+    if (isBrowserOffline()) {
+      return Promise.reject(new ApiError(buildConnectivityErrorMessage()))
+    }
+
+    const token = getStoredAccessToken()
 
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
@@ -90,9 +106,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const refreshToken =
-          localStorage.getItem('refreshToken') ??
-          localStorage.getItem('refresh_token')
+        const refreshToken = getStoredRefreshToken()
 
         if (!refreshToken) {
           throw new Error('No refresh token available')
@@ -110,16 +124,16 @@ apiClient.interceptors.response.use(
             headers: {
               Authorization: `Bearer ${refreshToken}`,
             },
+            timeout: API_REQUEST_TIMEOUT_MS,
           },
         )
 
         const { accessToken, refreshToken: nextRefreshToken } = response.data.data
 
-        // Salva em ambos os formatos para compatibilidade
-        localStorage.setItem('accessToken', accessToken)
-        localStorage.setItem('refreshToken', nextRefreshToken)
-        localStorage.setItem('access_token', accessToken)
-        localStorage.setItem('refresh_token', nextRefreshToken)
+        storeAuthTokens({
+          accessToken,
+          refreshToken: nextRefreshToken,
+        })
 
         apiClient.defaults.headers.common.Authorization = `Bearer ${accessToken}`
 
@@ -132,12 +146,7 @@ apiClient.interceptors.response.use(
       } catch (err) {
         processQueue(err as Error, null)
 
-        // Limpar tokens e redirecionar para login
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-
+        clearStoredAuthTokens()
         useAppStore.getState().clearAuthSession()
 
         window.location.href = '/login'
@@ -180,6 +189,10 @@ export const apiCall = async <T,>(
   data?: unknown,
   config?: AxiosRequestConfig,
 ): Promise<T> => {
+  if (isBrowserOffline()) {
+    throw new ApiError(buildConnectivityErrorMessage())
+  }
+
   try {
     const requestConfig: AxiosRequestConfig = {
       method,
@@ -202,6 +215,10 @@ export const apiCall = async <T,>(
     return response.data.data
   } catch (error) {
     if (axios.isAxiosError(error)) {
+      if (error.code === 'ECONNABORTED') {
+        throw new ApiError(buildTimeoutErrorMessage(), 408)
+      }
+
       if (error.code === 'ERR_NETWORK' || (error.request && !error.response)) {
         throw new ApiError(buildConnectivityErrorMessage())
       }
