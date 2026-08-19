@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Post,
   Req,
-  Res,
   UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -20,12 +19,12 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Public } from '@/common/decorators/public.decorator';
 import { RefreshTokenGuard } from '@/common/guards/refresh-token.guard';
 import { extractBearerToken } from '@/common/utils/token.util';
-import { AuthService, type AuthPerfSummary } from './auth.service';
+import { AuthService } from './auth.service';
 import { AuthSessionResponseDto } from './dto/auth-session-response.dto';
 import { AuthenticatedUserResponseDto } from './dto/authenticated-user-response.dto';
 import { LoginDto } from './dto/login.dto';
@@ -70,25 +69,12 @@ export class AuthController {
   })
   @ApiOkResponse({ type: AuthSessionResponseDto })
   @ApiUnauthorizedResponse({ description: 'Invalid email or password.' })
-  async login(
-    @Body() dto: LoginDto,
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<unknown> {
-    let perfSummary: AuthPerfSummary | undefined;
-    const session = await this.authService.login(
+  login(@Body() dto: LoginDto, @Req() request: Request): Promise<unknown> {
+    return this.authService.login(
       dto.email,
       dto.password,
       this.buildSessionMetadata(request),
-      this.isAuthPerfEnabled(request)
-        ? (summary) => {
-            perfSummary = summary;
-          }
-        : undefined,
     );
-
-    this.attachAuthPerfHeader(response, perfSummary);
-    return session;
   }
 
   @Public()
@@ -103,10 +89,9 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Refresh token is invalid or expired.',
   })
-  async refreshToken(
+  refreshToken(
     @Headers('authorization') authorization?: string,
     @Req() request?: Request,
-    @Res({ passthrough: true }) response?: Response,
   ): Promise<unknown> {
     const refreshToken = extractBearerToken(authorization);
 
@@ -114,19 +99,10 @@ export class AuthController {
       throw new UnauthorizedException('Missing refresh token.');
     }
 
-    let perfSummary: AuthPerfSummary | undefined;
-    const session = await this.authService.refreshToken(
+    return this.authService.refreshToken(
       refreshToken,
       this.buildSessionMetadata(request),
-      this.isAuthPerfEnabled(request)
-        ? (summary) => {
-            perfSummary = summary;
-          }
-        : undefined,
     );
-
-    this.attachAuthPerfHeader(response, perfSummary);
-    return session;
   }
 
   @Post('logout')
@@ -163,20 +139,5 @@ export class AuthController {
       ipAddress: request?.ip,
       userAgent: request?.get('user-agent'),
     };
-  }
-
-  private isAuthPerfEnabled(request?: Request): boolean {
-    return request?.get('x-auth-perf') === '1';
-  }
-
-  private attachAuthPerfHeader(
-    response: Response | undefined,
-    perfSummary?: AuthPerfSummary,
-  ): void {
-    if (!response || !perfSummary) {
-      return;
-    }
-
-    response.setHeader('x-auth-perf', JSON.stringify(perfSummary));
   }
 }
