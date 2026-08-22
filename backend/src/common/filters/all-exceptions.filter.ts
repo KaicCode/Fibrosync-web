@@ -93,16 +93,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       };
     }
 
-    if (exception instanceof Error) {
-      return {
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-        error: exception.message,
-      };
-    }
-
     return {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
-      error: 'Internal server error.',
+      error: 'An unexpected error occurred. Please try again.',
     };
   }
 }

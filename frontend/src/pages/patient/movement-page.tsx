@@ -139,7 +139,16 @@ export function MovementPage() {
     difficulty: DifficultyReported,
     notes: string,
   ) {
-    await completeExercise({ exerciseId, durationPerformed: duration, difficultyReported: difficulty, notes });
+    try {
+      await completeExercise({ exerciseId, durationPerformed: duration, difficultyReported: difficulty, notes });
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível salvar o exercício. Tente novamente.',
+      );
+      throw error;
+    }
   }
 
   return (

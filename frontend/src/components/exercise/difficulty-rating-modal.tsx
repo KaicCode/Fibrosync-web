@@ -9,6 +9,7 @@ interface DifficultyRatingModalProps {
   open: boolean;
   exerciseTitle: string;
   onConfirm: (difficulty: DifficultyReported, notes: string) => void;
+  onClose: () => void;
   isLoading?: boolean;
 }
 
@@ -38,6 +39,7 @@ export function DifficultyRatingModal({
   open,
   exerciseTitle,
   onConfirm,
+  onClose,
   isLoading = false,
 }: DifficultyRatingModalProps) {
   const [selected, setSelected] = useState<DifficultyReported | null>(null);
@@ -49,7 +51,7 @@ export function DifficultyRatingModal({
   }
 
   return (
-    <Dialog open={open}>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
         <div className="space-y-5">
           <div>

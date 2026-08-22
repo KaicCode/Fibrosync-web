@@ -493,23 +493,40 @@ const defaultExercises: Array<{
 
 async function seedExercises(): Promise<void> {
   for (const exercise of defaultExercises) {
-    // Usa upsert pelo título para evitar duplicatas ao re-executar o seed
-    await prisma.exercise.upsert({
+    // `title` nao e um campo @unique no schema, entao upsert({ where: { title } })
+    // nao e suportado pelo Prisma. Busca manualmente pelo titulo para manter o
+    // seed idempotente ao ser executado novamente.
+    const existing = await prisma.exercise.findFirst({
       where: {
         title: exercise.title,
-      } as never,
-      update: {
-        description: exercise.description,
-        imageUrl: exercise.imageUrl,
-        category: exercise.category,
-        difficulty: exercise.difficulty,
-        durationMinutes: exercise.durationMinutes,
-        instructions: exercise.instructions,
-        benefits: exercise.benefits,
-        precautions: exercise.precautions,
-        isActive: true,
       },
-      create: exercise,
+      select: {
+        id: true,
+      },
+    });
+
+    if (existing) {
+      await prisma.exercise.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          description: exercise.description,
+          imageUrl: exercise.imageUrl,
+          category: exercise.category,
+          difficulty: exercise.difficulty,
+          durationMinutes: exercise.durationMinutes,
+          instructions: exercise.instructions,
+          benefits: exercise.benefits,
+          precautions: exercise.precautions,
+          isActive: true,
+        },
+      });
+      continue;
+    }
+
+    await prisma.exercise.create({
+      data: exercise,
     });
   }
 }

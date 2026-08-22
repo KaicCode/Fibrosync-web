@@ -71,20 +71,6 @@ function resolvePainState(painLevel: number): string {
   return "Dor controlada";
 }
 
-function resolveReliabilityVariant(
-  score: number,
-): "default" | "success" | "warning" {
-  if (score >= 71) {
-    return "success";
-  }
-
-  if (score >= 41) {
-    return "default";
-  }
-
-  return "warning";
-}
-
 export function DashboardPage() {
   usePageTitle("Dashboard");
 
@@ -159,19 +145,6 @@ export function DashboardPage() {
       }, null),
     [aggregates],
   );
-  const averageReliability = useMemo(() => {
-    const scores = aggregates
-      .map((day) => day.reliabilityAverage)
-      .filter((value): value is number => typeof value === "number");
-
-    if (scores.length === 0) {
-      return 0;
-    }
-
-    return Number(
-      (scores.reduce((sum, value) => sum + value, 0) / scores.length).toFixed(1),
-    );
-  }, [aggregates]);
 
   const isLoading = isLoadingRecords || isLoadingLatest;
 
@@ -224,7 +197,7 @@ export function DashboardPage() {
         }
       />
 
-      <div className="metric-grid grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="metric-grid grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label="Dor mais recente"
           value={`${latestRecord?.painLevel ?? 0}/10`}
@@ -232,26 +205,20 @@ export function DashboardPage() {
           icon={HeartPulse}
         />
         <StatCard
-          label="Media recente"
+          label="Sua media de sintomas"
           value={`${formatNumber(averagePain)}/10`}
-          hint={`Media diaria dos ultimos ${rangeDays} dias`}
+          hint={`Media dos seus registros nos ultimos ${rangeDays} dias`}
           icon={TrendingUp}
         />
         <StatCard
-          label="Pico recente"
+          label="Maior nivel registrado"
           value={`${peakDay?.painPeak ?? 0}/10`}
-          hint={peakDay ? formatLongDate(peakDay.date) : "Sem historico"}
-          icon={Activity}
-        />
-        <StatCard
-          label="Confiabilidade"
-          value={`${formatNumber(averageReliability)}%`}
           hint={
-            latestRecord?.dataReliabilityLabel ??
-            "Sem confiabilidade calculada ainda"
+            peakDay
+              ? formatLongDate(peakDay.date)
+              : "Voce ainda nao tem registros suficientes"
           }
-          icon={ShieldAlert}
-          tone={resolveReliabilityVariant(averageReliability)}
+          icon={Activity}
         />
       </div>
 
@@ -611,17 +578,13 @@ export function DashboardPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                Cobertura do periodo
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Dias com registro valido dentro da janela escolhida.
+                Dias acompanhados
               </p>
             </div>
           </div>
           <Progress value={Math.min((aggregates.length / rangeDays) * 100, 100)} />
           <p className="mt-3 text-sm text-muted-foreground">
-            {aggregates.length} dias com dados entre {windowRange.dateFrom} e{" "}
-            {windowRange.dateTo}.
+            {aggregates.length} de {rangeDays} dias com registros.
           </p>
         </div>
 

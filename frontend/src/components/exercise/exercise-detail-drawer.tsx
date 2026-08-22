@@ -14,7 +14,7 @@ interface ExerciseDetailDrawerProps {
   completedToday: boolean;
   open: boolean;
   onClose: () => void;
-  onComplete: (exerciseId: string, duration: number, difficulty: DifficultyReported, notes: string) => void;
+  onComplete: (exerciseId: string, duration: number, difficulty: DifficultyReported, notes: string) => Promise<void>;
   isCompleting: boolean;
 }
 
@@ -44,10 +44,15 @@ export function ExerciseDetailDrawer({
     setView('rating');
   }
 
-  function handleRatingConfirm(difficulty: DifficultyReported, notes: string) {
+  async function handleRatingConfirm(difficulty: DifficultyReported, notes: string) {
     if (!exercise) return;
-    onComplete(exercise.id, elapsedMinutes, difficulty, notes);
-    handleClose();
+
+    try {
+      await onComplete(exercise.id, elapsedMinutes, difficulty, notes);
+      handleClose();
+    } catch {
+      // Falha ao salvar: mantém o modal de avaliação aberto para o usuário tentar novamente.
+    }
   }
 
   if (!exercise) return null;
@@ -184,6 +189,7 @@ export function ExerciseDetailDrawer({
         open={view === 'rating'}
         exerciseTitle={exercise.title}
         onConfirm={handleRatingConfirm}
+        onClose={handleClose}
         isLoading={isCompleting}
       />
     </>
