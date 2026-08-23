@@ -81,30 +81,30 @@ export function resolveWeatherImpactMessage(
   weather: WeatherData | null | undefined,
 ): string {
   if (!weather) {
-    return "Sem leitura climática suficiente no momento.";
+    return "Ainda nao temos informacao suficiente sobre o clima neste momento.";
   }
 
   if (weather.temperature < 20 && weather.humidity > 70) {
-    return "Frio e umidade alta podem aumentar rigidez e dor hoje.";
+    return "Tempo frio e umido pode estar associado a mais rigidez ou desconforto em algumas pessoas.";
   }
 
   if (weather.pressure < 1000) {
-    return "Queda de pressão pode deixar o corpo mais sensível hoje.";
+    return "Mudancas na pressao atmosferica podem estar associadas a maior sensibilidade a dor em algumas pessoas.";
   }
 
   if (weather.precipitation > 0 && weather.humidity >= 70) {
-    return "Chuva e ar úmido podem aumentar fadiga e sensação de peso.";
+    return "Chuva e umidade podem influenciar cansaco ou sensacao de peso ao longo do dia.";
   }
 
   if (weather.humidity >= 70) {
-    return "Alta umidade pode aumentar fadiga hoje.";
+    return "A umidade mais alta pode influenciar como algumas pessoas se sentem hoje.";
   }
 
   if (weather.apparentTemperature > 32) {
-    return "Calor e sensação térmica elevada podem pedir mais pausas e hidratação.";
+    return "Calor e sensacao termica elevada podem pedir mais pausas e hidratacao.";
   }
 
-  return "Clima relativamente estável para acompanhar sintomas com mais clareza.";
+  return "O clima de hoje parece mais estavel para acompanhar como voce esta se sentindo.";
 }
 
 export function resolveWeatherSourceLabel(
@@ -132,7 +132,7 @@ export function useCurrentLocation(enabled = true) {
           reject(
             new GeolocationRequestError(
               "unsupported",
-              "Seu navegador não oferece geolocalização para cruzar clima e sintomas.",
+              "Seu navegador nao oferece geolocalizacao para mostrar o clima no dashboard.",
             ),
           );
           return;
@@ -150,7 +150,7 @@ export function useCurrentLocation(enabled = true) {
               reject(
                 new GeolocationRequestError(
                   "permission",
-                  "Você pode continuar usando o app normalmente. Quando quiser, habilite o GPS para conectarmos clima e sintomas.",
+                  "Voce pode continuar usando o app normalmente. Quando quiser, habilite o GPS para mostrarmos o clima da sua regiao.",
                 ),
               );
               return;
@@ -159,7 +159,7 @@ export function useCurrentLocation(enabled = true) {
             reject(
               new GeolocationRequestError(
                 "position",
-                "Não conseguimos acessar sua localização agora. Tente novamente em instantes.",
+                "Nao conseguimos acessar sua localizacao agora. Tente novamente em instantes.",
               ),
             );
           },
@@ -200,7 +200,7 @@ export function useCurrentLocation(enabled = true) {
   const resolvedErrorMessage = !enabled
     ? null
     : !supportsGeolocation
-      ? "Seu navegador não oferece geolocalização para cruzar clima e sintomas."
+      ? "Seu navegador nao oferece geolocalizacao para mostrar o clima no dashboard."
       : locationQuery.error?.message ?? null;
 
   return {

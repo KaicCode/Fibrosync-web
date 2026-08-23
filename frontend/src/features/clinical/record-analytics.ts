@@ -66,6 +66,53 @@ export function normalizeDateKey(value: string | Date): string {
     .slice(0, 10);
 }
 
+function parseDateKey(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
+}
+
+export function formatShortDateLabel(value: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(parseDateKey(value));
+}
+
+export function formatLongDateLabel(value: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "long",
+  }).format(parseDateKey(value));
+}
+
+export function buildTimelineSeries<T extends Record<string, unknown>>(
+  dateFrom: string,
+  dateTo: string,
+  mapPoint: (dateKey: string, index: number) => T,
+): Array<T & { date: string; label: string; tooltipLabel: string }> {
+  const points: Array<T & { date: string; label: string; tooltipLabel: string }> = [];
+  const startDate = parseDateKey(dateFrom);
+  const endDate = parseDateKey(dateTo);
+
+  for (
+    let current = new Date(startDate), index = 0;
+    current <= endDate;
+    current = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1),
+      index += 1
+  ) {
+    const dateKey = normalizeDateKey(current);
+
+    points.push({
+      date: dateKey,
+      label: formatShortDateLabel(dateKey),
+      tooltipLabel: formatLongDateLabel(dateKey),
+      ...mapPoint(dateKey, index),
+    });
+  }
+
+  return points;
+}
+
 export function resolveDateWindow(days: DashboardRangeDays): {
   dateFrom: string;
   dateTo: string;

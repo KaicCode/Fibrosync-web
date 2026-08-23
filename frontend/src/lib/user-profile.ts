@@ -26,6 +26,26 @@ const countryLabels: Record<string, string> = {
   US: 'Estados Unidos',
 }
 
+const timezoneLabels: Record<string, string> = {
+  'America/Araguaina': 'Araguaina',
+  'America/Argentina/Buenos_Aires': 'Buenos Aires',
+  'America/Bahia': 'Salvador',
+  'America/Belem': 'Belem',
+  'America/Chicago': 'Chicago',
+  'America/Denver': 'Denver',
+  'America/Fortaleza': 'Fortaleza',
+  'America/Los_Angeles': 'Los Angeles',
+  'America/Manaus': 'Manaus',
+  'America/New_York': 'Nova York',
+  'America/Noronha': 'Fernando de Noronha',
+  'America/Recife': 'Recife',
+  'America/Santiago': 'Santiago',
+  'America/Sao_Paulo': 'Sao Paulo',
+  'Europe/Lisbon': 'Lisboa',
+  'Europe/London': 'Londres',
+  UTC: 'UTC',
+}
+
 export function resolveUserDisplayName(user?: BasicUser | null): string {
   const fullName = user?.fullName?.trim()
 
@@ -96,6 +116,24 @@ export function formatDateTimeValue(value?: string | null): string {
   }).format(new Date(value))
 }
 
+export function formatDateTimeWithAtValue(value?: string | null): string {
+  if (!value) {
+    return 'Nao informado'
+  }
+
+  const date = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(value))
+  const time = new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+
+  return `${date} às ${time}`
+}
+
 export function formatHeightValue(value?: number | null): string {
   if (value === null || value === undefined) {
     return 'Nao informado'
@@ -116,6 +154,21 @@ export function formatWeightValue(value?: number | null): string {
     minimumFractionDigits: value % 1 === 0 ? 0 : 1,
     maximumFractionDigits: 2,
   })} kg`
+}
+
+export function resolveTimezoneLabel(timezone?: string | null): string {
+  if (!timezone) {
+    return 'Nao informado'
+  }
+
+  if (timezoneLabels[timezone]) {
+    return timezoneLabels[timezone]
+  }
+
+  return timezone
+    .split('/')
+    .at(-1)
+    ?.replaceAll('_', ' ') ?? timezone
 }
 
 export function calculateProfileCompletion(user?: BasicUser | null): number {

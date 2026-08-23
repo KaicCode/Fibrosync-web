@@ -4,12 +4,10 @@ import {
   Download,
   HeartPulse,
   LoaderCircle,
-  MoonStar,
   ShieldAlert,
   Sparkles,
   TriangleAlert,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { RingChart } from "@/components/charts/ring-chart";
 import { TrendLineChart } from "@/components/charts/trend-line-chart";
 import { PageHeader } from "@/components/page-header";
@@ -18,6 +16,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { resolvePainDescriptor } from "@/features/clinical/clinical-model";
+import {
+  buildDailyAggregates,
+  buildTimelineSeries,
+  resolveDateWindow,
+  type DashboardRangeDays,
+} from "@/features/clinical/record-analytics";
+import { useDailyRecords } from "@/hooks/useDailyRecords";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useReports } from "@/hooks/useReports";
 import type {
@@ -27,7 +33,7 @@ import type {
   ReportStructuredData,
   ReportTrend,
 } from "@/services/report.service";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const chartColors = [
   "#7B4DFF",
@@ -47,22 +53,6 @@ function formatDecimal(value: number, digits = 1): string {
 
 function formatPercentage(value: number): string {
   return `${Math.round(value)}%`;
-}
-
-function formatChartLabel(value: string): string {
-  const date = new Date(value);
-  const hasTime = value.includes("T");
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    ...(hasTime
-      ? {
-          hour: "2-digit",
-          minute: "2-digit",
-        }
-      : {}),
-  }).format(date);
 }
 
 function formatLongDate(value: string): string {
@@ -96,7 +86,7 @@ function resolveTrendLabel(trend: ReportTrend): string {
     return "Em piora";
   }
 
-  return "Estavel";
+  return "Sem mudanca relevante";
 }
 
 function resolveTrendVariant(
@@ -125,16 +115,102 @@ function resolvePeriodLabel(period: ReportPeriod): string {
   return "Mes";
 }
 
-function resolveSourceLabel(source: string | null): string {
-  if (source === "ai_prediction") {
-    return "IA";
+function resolvePeriodDays(period: ReportPeriod): DashboardRangeDays {
+  if (period === "weekly") {
+    return 7;
   }
 
-  if (source === "rule_engine") {
-    return "Motor clinico";
+  if (period === "quarterly") {
+    return 90;
   }
 
-  return "Sem fonte dominante";
+  return 30;
+}
+
+function resolvePainTrendSummary(trend: ReportTrend): string {
+  if (trend === "improving") {
+    return "A dor diminuiu neste periodo.";
+  }
+
+  if (trend === "worsening") {
+    return "A dor aumentou neste periodo.";
+  }
+
+  return "Sem mudanca relevante neste periodo.";
+}
+
+function formatCount(value: number, singular: string, plural: string): string {
+  return `${value} ${value === 1 ? singular : plural}`;
+}
+
+function formatTrackedDaysSummary(recordedDays: number, expectedDays: number): string {
+  return `Voce registrou informacoes em ${recordedDays} dos ultimos ${expectedDays} dias.`;
+}
+
+function formatPointChange(change: number): string {
+  const absoluteChange = Math.abs(change);
+  const unit = absoluteChange > 1 ? "pontos" : "ponto";
+
+  return `${formatDecimal(absoluteChange)} ${unit}`;
+}
+
+function resolveAttentionLevel(score: number): {
+  label: string;
+  description: string;
+  variant: "default" | "success" | "warning";
+} {
+  if (score >= 85) {
+    return {
+      label: "Muito elevada",
+      description:
+        "Seus registros mostram um periodo que pede mais cuidado, pausas e observacao dos sintomas.",
+      variant: "warning",
+    };
+  }
+
+  if (score >= 65) {
+    return {
+      label: "Elevada",
+      description:
+        "Seus registros indicam que seus sintomas merecem mais atencao neste periodo.",
+      variant: "warning",
+    };
+  }
+
+  if (score >= 40) {
+    return {
+      label: "Moderada",
+      description:
+        "Seus registros mostram sinais que valem acompanhamento ao longo deste periodo.",
+      variant: "default",
+    };
+  }
+
+  return {
+    label: "Baixa",
+    description:
+      "Seus registros sugerem um periodo mais estavel, mantendo o acompanhamento habitual.",
+    variant: "success",
+  };
+}
+
+function resolvePeakAttentionSummary(score: number): string {
+  return `O maior nivel de atencao identificado neste periodo foi ${resolveAttentionLevel(score).label.toLowerCase()}.`;
+}
+
+function resolveHighAttentionDaysLabel(highRiskDays: number): string {
+  if (highRiskDays === 0) {
+    return "Nenhum dia com atencao elevada";
+  }
+
+  return `${formatCount(highRiskDays, "dia", "dias")} com atencao elevada`;
+}
+
+function formatReadableNumber(value: number, digits = 1): string {
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: value % 1 === 0 ? 0 : digits,
+    maximumFractionDigits: digits,
+  });
 }
 
 function resolveMetricLabel(metric: string): string {
@@ -146,7 +222,7 @@ function resolveMetricLabel(metric: string): string {
     moodLevel: "Humor",
     hydration: "Hidratacao",
     physicalActivity: "Atividade",
-    crisisProbability: "Risco de crise",
+    crisisProbability: "Atencao aos sintomas",
     symptomLoad: "Carga de sintomas",
     temperature: "Temperatura",
     humidity: "Umidade",
@@ -159,25 +235,63 @@ function resolveMetricLabel(metric: string): string {
   return labels[metric] ?? metric;
 }
 
-function buildTrendSeries(
-  series: Array<{ date: string; value: number }>,
-  comparison?: number,
-) {
-  return series.map((point) => ({
-    label: formatChartLabel(point.date),
-    value: point.value,
-    comparison,
-  }));
+function average(values: number[]): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function buildProbabilitySeries(reportData: ReportStructuredData) {
-  return reportData.crisisProbability.dailySeries
-    .filter((point) => point.combinedProbabilityScore !== null)
-    .map((point) => ({
-      label: formatChartLabel(point.date),
-      value: point.combinedProbabilityScore ?? 0,
-      comparison: reportData.crisisProbability.averageProbabilityScore,
-    }));
+function analyzeMetricTrend(
+  points: Array<{ value: number | null }>,
+  higherIsBetter: boolean,
+  stableThreshold: number,
+): { change: number | null; trend: ReportTrend | null } {
+  const values = points
+    .map((point) => point.value)
+    .filter((value): value is number => typeof value === "number");
+
+  if (values.length < 2) {
+    return {
+      change: null,
+      trend: null,
+    };
+  }
+
+  const midpoint = Math.ceil(values.length / 2);
+  const firstHalf = values.slice(0, midpoint);
+  const secondHalf = values.slice(midpoint);
+  const baseline = average(firstHalf);
+  const comparisonBase = average(secondHalf);
+
+  if (baseline === null || comparisonBase === null) {
+    return {
+      change: null,
+      trend: null,
+    };
+  }
+
+  const change = Number((comparisonBase - baseline).toFixed(1));
+
+  if (Math.abs(change) < stableThreshold) {
+    return {
+      change,
+      trend: "stable",
+    };
+  }
+
+  if (higherIsBetter) {
+    return {
+      change,
+      trend: change > 0 ? "improving" : "worsening",
+    };
+  }
+
+  return {
+    change,
+    trend: change < 0 ? "improving" : "worsening",
+  };
 }
 
 function buildRingData(items: ReportPatternItem[]) {
@@ -229,6 +343,10 @@ function openPrintableReport(report: ReportResponse) {
 
   const reportData = report.data;
   const distribution = resolveDistribution(reportData);
+  const painDescriptor = resolvePainDescriptor(reportData.overview.averagePainLevel);
+  const attentionLevel = resolveAttentionLevel(
+    reportData.overview.averageProbabilityScore,
+  );
   const printWindow = window.open("", "_blank", "noopener,noreferrer");
 
   if (!printWindow) {
@@ -236,17 +354,16 @@ function openPrintableReport(report: ReportResponse) {
   }
 
   const metrics = [
-    ["Dor media", `${formatDecimal(reportData.overview.averagePainLevel)}/10`],
-    ["Registros", `${reportData.overview.recordedEntries}`],
-    ["Cobertura", formatPercentage(reportData.overview.dataCoverageRate)],
     [
-      "Confiabilidade",
-      `${formatDecimal(reportData.overview.averageDataReliabilityScore)}%`,
+      "Dor media no periodo",
+      `${formatDecimal(reportData.overview.averagePainLevel)}/10 (${painDescriptor.label})`,
     ],
+    ["Dias registrados", `${reportData.overview.recordedDays}`],
     [
-      "Risco medio",
-      formatPercentage(reportData.overview.averageProbabilityScore),
+      "Acompanhamento no periodo",
+      `${reportData.metadata.window.capturedDays} de ${reportData.metadata.window.expectedDays} dias`,
     ],
+    ["Atencao aos sintomas", attentionLevel.label],
   ];
 
   const listToHtml = (items: string[]) =>
@@ -293,9 +410,9 @@ function openPrintableReport(report: ReportResponse) {
         </style>
       </head>
       <body>
-        <h1>Relatorio visual com clareza clinica</h1>
+        <h1>Relatorio do seu acompanhamento</h1>
         <p class="muted">
-          Janela ${escapeHtml(resolvePeriodLabel(report.period))} | ${escapeHtml(formatLongDate(report.periodStart))} ate ${escapeHtml(formatLongDate(report.periodEnd))}
+          Periodo ${escapeHtml(resolvePeriodLabel(report.period))} | ${escapeHtml(formatLongDate(report.periodStart))} ate ${escapeHtml(formatLongDate(report.periodEnd))}
         </p>
         <p class="muted">Gerado em ${escapeHtml(formatDateTime(report.generatedAt))}</p>
 
@@ -308,7 +425,7 @@ function openPrintableReport(report: ReportResponse) {
             .join("")}
         </div>
 
-        <h2>Padroes de dor</h2>
+        <h2>Padroes mais frequentes</h2>
         ${listToHtml(
           distribution.items.map(
             (item) =>
@@ -320,11 +437,11 @@ function openPrintableReport(report: ReportResponse) {
         ${listToHtml(
           reportData.recurringTriggers.map(
             (item) =>
-              `${item.label}: ${formatPercentage(item.highRiskRate)} dos dias de alto risco`,
+              `${item.label}: ${formatPercentage(item.highRiskRate)} dos dias com atencao elevada`,
           ),
         )}
 
-        <h2>Correlacoes clinicas</h2>
+        <h2>Relacoes percebidas nos registros</h2>
         ${listToHtml(
           reportData.correlations.map(
             (item) =>
@@ -344,35 +461,121 @@ export function ReportsPage() {
   usePageTitle("Relatorios");
   const [period, setPeriod] = useState<ReportPeriod>("weekly");
   const { report, error, isLoading, isFetching, refetch } = useReports(period);
+  const periodDays = useMemo(() => resolvePeriodDays(period), [period]);
+  const fallbackWindow = useMemo(() => resolveDateWindow(periodDays), [periodDays]);
+  const reportWindow = useMemo(
+    () => ({
+      dateFrom: report?.periodStart ?? fallbackWindow.dateFrom,
+      dateTo: report?.periodEnd ?? fallbackWindow.dateTo,
+    }),
+    [fallbackWindow.dateFrom, fallbackWindow.dateTo, report?.periodEnd, report?.periodStart],
+  );
+  const { records: reportRecords, isLoading: isLoadingTimelineRecords } =
+    useDailyRecords({
+      ...reportWindow,
+      includeAll: true,
+    });
 
   const reportData = report?.data ?? null;
   const hasEntries = (reportData?.overview.recordedEntries ?? 0) > 0;
+  const recordAggregates = useMemo(
+    () => buildDailyAggregates(reportRecords),
+    [reportRecords],
+  );
+  const aggregatesByDate = useMemo(
+    () => new Map(recordAggregates.map((day) => [day.date, day])),
+    [recordAggregates],
+  );
+  const probabilityByDate = useMemo(
+    () =>
+      new Map(
+        (reportData?.crisisProbability.dailySeries ?? []).map((point) => [
+          point.date,
+          point,
+        ]),
+      ),
+    [reportData?.crisisProbability.dailySeries],
+  );
   const distribution = reportData ? resolveDistribution(reportData) : null;
   const distributionData = distribution
     ? buildRingData(distribution.items)
     : [];
-  const painTrendData = reportData
-    ? buildTrendSeries(
-        reportData.painEvolution.series,
-        reportData.painEvolution.average,
-      )
-    : [];
-  const sleepTrendData = reportData
-    ? buildTrendSeries(
-        reportData.sleepEvolution.hours.series,
-        reportData.sleepEvolution.hours.average,
-      )
-    : [];
-  const probabilityTrendData = reportData
-    ? buildProbabilitySeries(reportData)
-    : [];
+  const painTrendData = useMemo(
+    () =>
+      buildTimelineSeries(reportWindow.dateFrom, reportWindow.dateTo, (dateKey) => {
+        const day = aggregatesByDate.get(dateKey);
+
+        return {
+          value: day?.painAverage ?? null,
+        };
+      }),
+    [aggregatesByDate, reportWindow.dateFrom, reportWindow.dateTo],
+  );
+  const sleepTrendData = useMemo(
+    () =>
+      buildTimelineSeries(reportWindow.dateFrom, reportWindow.dateTo, (dateKey) => {
+        const day = aggregatesByDate.get(dateKey);
+
+        return {
+          value: day?.sleepHoursAverage ?? null,
+        };
+      }),
+    [aggregatesByDate, reportWindow.dateFrom, reportWindow.dateTo],
+  );
+  const probabilityTrendData = useMemo(
+    () =>
+      buildTimelineSeries(reportWindow.dateFrom, reportWindow.dateTo, (dateKey) => {
+        const point = probabilityByDate.get(dateKey);
+
+        return {
+          value: point?.combinedProbabilityScore ?? null,
+        };
+      }),
+    [probabilityByDate, reportWindow.dateFrom, reportWindow.dateTo],
+  );
+  const averagePainLevel = useMemo(
+    () => average(recordAggregates.map((day) => day.painAverage)),
+    [recordAggregates],
+  );
+  const averageSleepHours = useMemo(
+    () =>
+      average(
+        recordAggregates
+          .map((day) => day.sleepHoursAverage)
+          .filter((value): value is number => typeof value === "number"),
+      ),
+    [recordAggregates],
+  );
+  const painTrend = useMemo(
+    () => analyzeMetricTrend(painTrendData, false, 0.4),
+    [painTrendData],
+  );
+  const sleepTrend = useMemo(
+    () => analyzeMetricTrend(sleepTrendData, true, 0.35),
+    [sleepTrendData],
+  );
+  const hasAttentionData = useMemo(
+    () =>
+      probabilityTrendData.some((point) => typeof point.value === "number"),
+    [probabilityTrendData],
+  );
+  const attentionAverage = hasAttentionData
+    ? reportData?.overview.averageProbabilityScore ?? null
+    : null;
+  const attentionLevel = attentionAverage !== null
+    ? resolveAttentionLevel(attentionAverage)
+    : null;
+  const painDescriptor = averagePainLevel !== null
+    ? resolvePainDescriptor(averagePainLevel)
+    : null;
+  const isPageLoading = isLoading || isLoadingTimelineRecords;
 
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Analytics premium"
-        title="Relatorios visuais com clareza clinica"
-        description="Acompanhe intensidade, risco, padrões e correlacoes para conversar com mais precisao sobre a sua dor."
+        eyebrow="Seus registros"
+        title="Relatorio do seu acompanhamento"
+        description="Veja como sua dor e outros sinais apareceram ao longo do periodo com base no que voce registrou."
         actions={
           <Button
             variant="secondary"
@@ -400,13 +603,13 @@ export function ReportsPage() {
             <TabsTrigger value="quarterly">90 dias</TabsTrigger>
           </TabsList>
 
-          {isFetching && !isLoading ? (
-            <Badge>Atualizando analise...</Badge>
+          {isFetching && !isPageLoading ? (
+            <Badge>Atualizando relatorio...</Badge>
           ) : null}
         </div>
 
         <TabsContent value={period} className="space-y-6">
-          {isLoading ? (
+          {isPageLoading ? (
             <div className="flex h-64 items-center justify-center">
               <LoaderCircle className="h-8 w-8 animate-spin text-brand-500" />
             </div>
@@ -419,11 +622,10 @@ export function ReportsPage() {
                 <div className="space-y-3">
                   <div>
                     <h2 className="text-xl font-semibold text-foreground">
-                      Nao foi possivel gerar o relatorio
+                      Nao foi possivel abrir seu relatorio
                     </h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Tente novamente para recarregar as analises clinicas deste
-                      periodo.
+                      Tente novamente para recarregar o resumo deste periodo.
                     </p>
                   </div>
                   <Button variant="outline" onClick={() => void refetch()}>
@@ -432,67 +634,114 @@ export function ReportsPage() {
                 </div>
               </div>
             </div>
-          ) : !reportData || !hasEntries ? (
+          ) : !reportData ? (
             <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-6 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-2">
-                  <Badge variant="neutral">
-                    Sem dados clinicos suficientes
-                  </Badge>
+                  <Badge variant="neutral">Relatorio indisponivel</Badge>
                   <h2 className="text-xl font-semibold text-foreground">
-                    Registre algumas dores para liberar os relatorios visuais
+                    Nao foi possivel carregar os dados deste periodo
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Assim que houver registros neste periodo, o sistema vai
-                    montar evolucao da dor, distribuicao por area, risco de
-                    crise e correlacoes clinicas.
+                    Tente novamente em alguns instantes para atualizar seu
+                    acompanhamento.
                   </p>
                 </div>
-                <Button asChild>
-                  <Link to="/app/pain-log">Registrar dor</Link>
+                <Button variant="outline" onClick={() => void refetch()}>
+                  Tentar de novo
                 </Button>
               </div>
             </div>
           ) : (
             <>
-              <div className="metric-grid grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+              {!hasEntries ? (
+                <div className="rounded-[1.4rem] border border-dashed border-violet-200 bg-violet-50/70 px-4 py-3 text-sm text-violet-950">
+                  Ainda nao ha registros neste periodo. Os graficos abaixo
+                  continuam visiveis para mostrar como seu acompanhamento vai
+                  aparecer quando voce comecar a registrar.
+                </div>
+              ) : null}
+
+              <div className="metric-grid grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <StatCard
-                  label="Dor media"
-                  value={`${formatDecimal(reportData.overview.averagePainLevel)}/10`}
-                  hint={`${resolveTrendLabel(reportData.painEvolution.trend)} no periodo`}
-                  trend={`${formatDecimal(reportData.painEvolution.change)} pts`}
-                  tone={resolveTrendVariant(reportData.painEvolution.trend)}
+                  label="Dor media no periodo"
+                  value={
+                    averagePainLevel !== null
+                      ? `${formatDecimal(averagePainLevel)}/10`
+                      : "--"
+                  }
+                  hint={
+                    painDescriptor?.label ??
+                    "Ainda nao ha registros de dor neste periodo."
+                  }
+                  footer={
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      {averagePainLevel !== null ? (
+                        <>
+                          {painTrend.trend !== null ? (
+                            <>
+                              <p>{resolvePainTrendSummary(painTrend.trend)}</p>
+                              <p>
+                                Variacao: {formatPointChange(painTrend.change ?? 0)}
+                              </p>
+                            </>
+                          ) : (
+                            <p>
+                              Voce possui apenas 1 registro neste periodo.
+                              Continue registrando para acompanhar sua evolucao.
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p>
+                          Registre como voce esta se sentindo para visualizar sua
+                          evolucao.
+                        </p>
+                      )}
+                    </div>
+                  }
                   icon={HeartPulse}
                 />
                 <StatCard
-                  label="Registros capturados"
-                  value={reportData.overview.recordedEntries.toString()}
-                  hint={`${reportData.overview.recordedDays} dias com diario clinico`}
+                  label="Dias registrados"
+                  value={reportData.overview.recordedDays.toString()}
+                  hint={formatTrackedDaysSummary(
+                    reportData.overview.recordedDays,
+                    reportData.metadata.window.expectedDays,
+                  )}
                   icon={Activity}
                 />
                 <StatCard
-                  label="Cobertura da janela"
-                  value={formatPercentage(reportData.overview.dataCoverageRate)}
-                  hint={`${reportData.metadata.window.capturedDays}/${reportData.metadata.window.expectedDays} dias com dados`}
+                  label="Acompanhamento no periodo"
+                  value={`${reportData.metadata.window.capturedDays} de ${reportData.metadata.window.expectedDays} dias`}
+                  hint="Dias em que voce registrou como estava se sentindo."
+                  footer={
+                    <div className="space-y-3">
+                      <Progress value={reportData.overview.dataCoverageRate} />
+                      <p className="text-sm text-muted-foreground">
+                        Quanto mais dias voce registrar, mais completo fica seu
+                        acompanhamento.
+                      </p>
+                    </div>
+                  }
                   icon={Brain}
                 />
                 <StatCard
-                  label="Risco medio de crise"
-                  value={formatPercentage(
-                    reportData.overview.averageProbabilityScore,
-                  )}
-                  hint={resolveSourceLabel(
-                    reportData.crisisProbability.latestRiskSource,
-                  )}
+                  label="Atencao aos sintomas"
+                  value={attentionLevel?.label ?? "Sem dados"}
+                  hint={
+                    attentionLevel?.description ??
+                    "Registre como voce esta se sentindo para acompanhar este indicador."
+                  }
+                  tone={attentionLevel?.variant ?? "default"}
+                  footer={
+                    <p className="text-sm text-muted-foreground">
+                      {attentionLevel
+                        ? "Leitura baseada no que voce registrou neste periodo."
+                        : "O nivel de atencao aparece conforme seus registros forem surgindo."}
+                    </p>
+                  }
                   icon={ShieldAlert}
-                />
-                <StatCard
-                  label="Confiabilidade media"
-                  value={`${formatDecimal(
-                    reportData.overview.averageDataReliabilityScore,
-                  )}%`}
-                  hint={reportData.overview.dataReliabilityLabel}
-                  icon={Sparkles}
                 />
               </div>
 
@@ -504,40 +753,46 @@ export function ReportsPage() {
                         Linha do tempo
                       </p>
                       <h2 className="mt-2 text-xl font-semibold md:text-2xl">
-                        Evolucao diaria da dor
+                        Como sua dor variou no periodo
                       </h2>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        Cada ponto representa um dia agregado do periodo, sem
-                        repetir artificialmente multiplos registros no mesmo
-                        dia.
+                        Cada ponto resume um dia em que voce registrou como
+                        estava se sentindo.
                       </p>
                     </div>
-                    <Badge
-                      variant={resolveTrendVariant(
-                        reportData.painEvolution.trend,
-                      )}
-                    >
-                      {resolveTrendLabel(reportData.painEvolution.trend)}
-                    </Badge>
+                    {painTrend.trend !== null ? (
+                      <Badge variant={resolveTrendVariant(painTrend.trend)}>
+                        {resolveTrendLabel(painTrend.trend)}
+                      </Badge>
+                    ) : (
+                      <Badge variant="neutral">Ainda conhecendo</Badge>
+                    )}
                   </div>
 
-                  {painTrendData.length > 0 ? (
-                    <TrendLineChart
-                      data={painTrendData}
-                      secondaryKey="comparison"
-                      height={290}
-                    />
-                  ) : (
-                    <div className="flex h-[290px] items-center justify-center text-slate-400">
-                      Sem registros suficientes para o grafico de dor.
-                    </div>
-                  )}
+                  <TrendLineChart
+                    data={painTrendData}
+                    height={290}
+                    primaryLabel="Dor"
+                    yDomain={[0, 10]}
+                    yTicks={[0, 2, 4, 6, 8, 10]}
+                    valueFormatter={(value) => `${formatDecimal(value)}/10`}
+                    emptyState={{
+                      title: "Ainda nao ha registros neste periodo.",
+                      description:
+                        "Registre como voce esta se sentindo para acompanhar sua evolucao ao longo do tempo.",
+                    }}
+                    singleRecordState={{
+                      title: "Voce possui apenas 1 registro neste periodo.",
+                      description:
+                        "Continue registrando para visualizar melhor sua evolucao.",
+                    }}
+                  />
                 </div>
 
                 <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
                   <div className="mb-5">
                     <p className="text-sm font-medium text-brand-500">
-                      Distribuicao clinica
+                      Padroes dos seus registros
                     </p>
                     <h2 className="mt-2 text-xl font-semibold md:text-2xl">
                       {distribution?.title}
@@ -594,75 +849,102 @@ export function ReportsPage() {
                         Sono no periodo
                       </h2>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        Media de{" "}
-                        {formatDecimal(reportData.sleepEvolution.hours.average)}{" "}
-                        horas por registro.
+                        {averageSleepHours !== null
+                          ? `Media de ${formatReadableNumber(averageSleepHours)} horas por dia com registro.`
+                          : "Quando houver registros de sono, voce vera sua evolucao aqui."}
                       </p>
                     </div>
-                    <Badge
-                      variant={resolveTrendVariant(
-                        reportData.sleepEvolution.hours.trend,
-                      )}
-                    >
-                      {resolveTrendLabel(reportData.sleepEvolution.hours.trend)}
-                    </Badge>
+                    {sleepTrend.trend !== null ? (
+                      <Badge variant={resolveTrendVariant(sleepTrend.trend)}>
+                        {resolveTrendLabel(sleepTrend.trend)}
+                      </Badge>
+                    ) : (
+                      <Badge variant="neutral">Ainda conhecendo</Badge>
+                    )}
                   </div>
 
-                  {sleepTrendData.length > 0 ? (
-                    <TrendLineChart
-                      data={sleepTrendData}
-                      secondaryKey="comparison"
-                      height={240}
-                      color="#53A2FF"
-                    />
-                  ) : (
-                    <div className="flex h-[240px] items-center justify-center text-slate-400">
-                      Sem dados suficientes de sono.
-                    </div>
-                  )}
+                  <TrendLineChart
+                    data={sleepTrendData}
+                    height={240}
+                    color="#3A8DFF"
+                    primaryLabel="Sono"
+                    yDomain={[0, 24]}
+                    yTicks={[0, 4, 8, 12, 16, 20, 24]}
+                    yTickFormatter={(value) => `${value}h`}
+                    yAxisWidth={40}
+                    valueFormatter={(value) => `${formatReadableNumber(value)}h`}
+                    emptyState={{
+                      title: "Ainda nao ha registros de sono neste periodo.",
+                      description:
+                        "Assim que voce registrar seu sono, este grafico mostrara a evolucao das horas dormidas.",
+                    }}
+                    singleRecordState={{
+                      title:
+                        "Voce possui apenas 1 registro de sono neste periodo.",
+                      description:
+                        "Continue registrando para comparar melhor suas horas de sono ao longo do tempo.",
+                    }}
+                  />
                 </div>
 
                 <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
                   <div className="mb-5 flex items-start justify-between gap-4">
                     <div>
                       <p className="text-sm font-medium text-brand-500">
-                        Risco
+                        Acompanhamento
                       </p>
                       <h2 className="mt-2 text-xl font-semibold md:text-2xl">
-                        Probabilidade de crise
+                        Atencao aos sintomas ao longo do periodo
                       </h2>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        Pico recente de{" "}
-                        {formatPercentage(
-                          reportData.crisisProbability.maxProbabilityScore,
-                        )}
-                        .
+                        {hasAttentionData
+                          ? resolvePeakAttentionSummary(
+                              reportData.crisisProbability.maxProbabilityScore,
+                            )
+                          : "Ainda nao ha registros suficientes para identificar um nivel de atencao neste periodo."}
                       </p>
                     </div>
                     <Badge
                       variant={
-                        reportData.crisisProbability.maxProbabilityScore >= 70
+                        !hasAttentionData
+                          ? "neutral"
+                          : reportData.crisisProbability.maxProbabilityScore >= 70
                           ? "warning"
                           : "default"
                       }
                     >
-                      {reportData.crisisProbability.highRiskDays} dias de alto
-                      risco
+                      {hasAttentionData
+                        ? resolveHighAttentionDaysLabel(
+                            reportData.crisisProbability.highRiskDays,
+                          )
+                        : "Sem dados suficientes"}
                     </Badge>
                   </div>
 
-                  {probabilityTrendData.length > 0 ? (
-                    <TrendLineChart
-                      data={probabilityTrendData}
-                      secondaryKey="comparison"
-                      height={240}
-                      color="#F46EA3"
-                    />
-                  ) : (
-                    <div className="flex h-[240px] items-center justify-center text-slate-400">
-                      Sem dados suficientes de probabilidade.
-                    </div>
-                  )}
+                  <TrendLineChart
+                    data={probabilityTrendData}
+                    height={240}
+                    color="#E2558F"
+                    primaryLabel="Nivel de atencao"
+                    yDomain={[0, 100]}
+                    yTicks={[0, 25, 50, 75, 100]}
+                    yTickFormatter={(value) => `${value}%`}
+                    yAxisWidth={40}
+                    valueFormatter={(value) => `${formatPercentage(value)}`}
+                    tooltipValueFormatter={(value) =>
+                      `${resolveAttentionLevel(value).label} (${formatPercentage(value)})`
+                    }
+                    emptyState={{
+                      title: "Ainda nao ha registros neste periodo.",
+                      description:
+                        "Quando seus registros aparecerem, este grafico vai mostrar como o nivel de atencao mudou ao longo dos dias.",
+                    }}
+                    singleRecordState={{
+                      title: "Voce possui apenas 1 registro neste periodo.",
+                      description:
+                        "Continue registrando para acompanhar melhor a variacao deste indicador.",
+                    }}
+                  />
                 </div>
               </div>
 
@@ -822,155 +1104,8 @@ export function ReportsPage() {
                 </div>
               </div>
 
-              <div className="card-surface rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_32px_84px_rgba(121,95,180,0.12)]">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-brand-500">
-                      Camada personalizada
-                    </p>
-                    <h2 className="mt-2 text-xl font-semibold md:text-2xl">
-                      Perfil de risco individual
-                    </h2>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Leitura derivada do historico recente para destacar o que
-                      mais pesa no seu caso.
-                    </p>
-                  </div>
-
-                  <Badge
-                    variant={
-                      reportData.personalizedRiskProfile.available
-                        ? "success"
-                        : "neutral"
-                    }
-                  >
-                    {reportData.personalizedRiskProfile.available
-                      ? "Analise disponivel"
-                      : "Aguardando mais dados"}
-                  </Badge>
-                </div>
-
-                {reportData.personalizedRiskProfile.available ? (
-                  <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <StatCard
-                          label="Score atual"
-                          value={formatPercentage(
-                            reportData.personalizedRiskProfile
-                              .currentPersonalizedScore ?? 0,
-                          )}
-                          icon={ShieldAlert}
-                        />
-                        <StatCard
-                          label="Baseline"
-                          value={formatPercentage(
-                            reportData.personalizedRiskProfile.baselineScore ??
-                              0,
-                          )}
-                          icon={MoonStar}
-                        />
-                        <StatCard
-                          label="Ultima analise"
-                          value={formatDateTime(
-                            reportData.personalizedRiskProfile.lastAnalyzedAt,
-                          )}
-                          icon={Brain}
-                        />
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-                        <p className="text-sm font-medium text-foreground">
-                          Resumo personalizado
-                        </p>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          {reportData.personalizedRiskProfile.summary ??
-                            "A IA ainda esta consolidando um resumo individual com base no seu historico."}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-5 md:grid-cols-2">
-                      <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-                        <p className="text-sm font-medium text-foreground">
-                          Padroes antes de crise
-                        </p>
-                        <div className="mt-4 space-y-3">
-                          {reportData.personalizedRiskProfile.triggerPatterns
-                            .length > 0 ? (
-                            reportData.personalizedRiskProfile.triggerPatterns.map(
-                              (item) => (
-                                <div key={item.key} className="space-y-2">
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span>{item.label}</span>
-                                    <span className="text-muted-foreground">
-                                      {formatPercentage(
-                                        item.occurrenceRateBeforeCrisis,
-                                      )}
-                                    </span>
-                                  </div>
-                                  <Progress
-                                    value={item.occurrenceRateBeforeCrisis}
-                                  />
-                                </div>
-                              ),
-                            )
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              Ainda nao foram detectados padroes personalizados
-                              antes de crise.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-                        <p className="text-sm font-medium text-foreground">
-                          Pesos mais relevantes
-                        </p>
-                        <div className="mt-4 space-y-3">
-                          {reportData.personalizedRiskProfile.topWeights
-                            .length > 0 ? (
-                            reportData.personalizedRiskProfile.topWeights.map(
-                              (item) => (
-                                <div key={item.key} className="space-y-2">
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span>{item.label}</span>
-                                    <span className="text-muted-foreground">
-                                      x
-                                      {formatDecimal(
-                                        item.personalizedWeight,
-                                        2,
-                                      )}
-                                    </span>
-                                  </div>
-                                  <Progress
-                                    value={Math.min(
-                                      item.personalizedWeight * 100,
-                                      100,
-                                    )}
-                                  />
-                                </div>
-                              ),
-                            )
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              Ainda nao ha pesos personalizados suficientes para
-                              exibir.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-5 text-sm text-muted-foreground">
-                    O perfil personalizado aparece automaticamente quando o
-                    sistema acumula historico clinico suficiente para aprender o
-                    comportamento individual da dor e dos gatilhos.
-                  </div>
-                )}
-              </div>
+              {/* Secao personalizada ocultada temporariamente ate termos uma
+              versao mais clara para pacientes. */}
             </>
           )}
         </TabsContent>

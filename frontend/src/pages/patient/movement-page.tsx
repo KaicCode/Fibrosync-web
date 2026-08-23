@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useExercises, useExerciseStats } from '@/hooks/useExercises';
 import { useExerciseHistory } from '@/hooks/useExerciseHistory';
+import { resolvePatientActionError } from '@/lib/patient-feedback';
 import {
   CATEGORY_LABELS,
   DIFFICULTY_LABELS,
@@ -36,6 +37,7 @@ import {
   type Exercise,
   type ExerciseCategory,
 } from '@/services/exercise.service';
+import { toast } from '@/store/toast-store';
 
 // ─── Helpers de formatação ─────────────────────────────────────────────────
 
@@ -142,11 +144,8 @@ export function MovementPage() {
     try {
       await completeExercise({ exerciseId, durationPerformed: duration, difficultyReported: difficulty, notes });
     } catch (error) {
-      window.alert(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível salvar o exercício. Tente novamente.',
-      );
+      const feedback = resolvePatientActionError(error, 'save-exercise');
+      toast.error(feedback.title, feedback.description);
       throw error;
     }
   }

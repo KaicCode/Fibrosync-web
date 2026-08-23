@@ -16,10 +16,11 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useCommunity } from '@/hooks/useCommunity'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useUser } from '@/hooks/useUser'
-import { ApiError } from '@/lib/api-client'
+import { resolvePatientActionError } from '@/lib/patient-feedback'
 import { resolveUserAvatar, resolveUserDisplayName } from '@/lib/user-profile'
 import type { CommunityPostType } from '@/services/community.service'
 import { useAppStore } from '@/store/app-store'
+import { toast } from '@/store/toast-store'
 
 const feedFilterMap: Record<string, CommunityPostType | undefined> = {
   Feed: undefined,
@@ -56,6 +57,7 @@ export function CommunityPage() {
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [postType, setPostType] = useState<CommunityPostType>('FEED')
   const [draft, setDraft] = useState('')
+  const [composerError, setComposerError] = useState<string | null>(null)
   const deferredSearch = useDeferredValue(search)
   const currentUser = user ?? authSessionUser
   const { posts, isLoading, createPost, isCreating } = useCommunity({
@@ -93,13 +95,25 @@ export function CommunityPage() {
   const authorName = resolveUserDisplayName(currentUser)
   const authorAvatar = resolveUserAvatar(currentUser)
 
+  function handleComposerOpenChange(open: boolean) {
+    setIsComposerOpen(open)
+
+    if (!open) {
+      setComposerError(null)
+    }
+  }
+
   async function handleCreatePost() {
     const content = draft.trim()
 
     if (content.length < 3) {
-      window.alert('Escreva pelo menos 3 caracteres para publicar um post.')
+      const validationMessage = 'Escreva pelo menos 3 caracteres para publicar um post.'
+      setComposerError(validationMessage)
+      toast.error('Verifique as informacoes', validationMessage)
       return
     }
+
+    setComposerError(null)
 
     try {
       await createPost({
@@ -109,14 +123,13 @@ export function CommunityPage() {
       setDraft('')
       setPostType('FEED')
       setIsComposerOpen(false)
-      window.alert('Post publicado com sucesso.')
+      toast.success(
+        'Post publicado com sucesso',
+        'Sua mensagem ja esta visivel na comunidade.',
+      )
     } catch (error) {
-      if (error instanceof ApiError) {
-        window.alert(`Erro ao publicar: ${error.message}`)
-        return
-      }
-
-      window.alert('Nao foi possível publicar o post agora.')
+      const feedback = resolvePatientActionError(error, 'publish-post')
+      toast.error(feedback.title, feedback.description)
     }
   }
 
@@ -227,7 +240,7 @@ export function CommunityPage() {
         </div>
       </div>
 
-      <Dialog open={isComposerOpen} onOpenChange={setIsComposerOpen}>
+      <Dialog open={isComposerOpen} onOpenChange={handleComposerOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Novo post da comunidade</DialogTitle>
@@ -280,7 +293,13 @@ export function CommunityPage() {
               <p className="text-sm font-medium text-foreground">Mensagem</p>
               <Textarea
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => {
+                  setDraft(event.target.value)
+
+                  if (composerError) {
+                    setComposerError(null)
+                  }
+                }}
                 placeholder="Escreva o que você quer compartilhar. Se quiser, use hashtags como #sono ou #fadiga."
                 className="min-h-[180px]"
                 maxLength={1200}
@@ -289,6 +308,9 @@ export function CommunityPage() {
                 <span>Minimo de 3 caracteres.</span>
                 <span>{draft.trim().length}/1200</span>
               </div>
+              {composerError ? (
+                <p className="text-sm text-rose-700">{composerError}</p>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">

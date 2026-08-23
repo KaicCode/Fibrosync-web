@@ -1,12 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
   Brain,
   CloudSun,
   HeartPulse,
-  LoaderCircle,
   MoonStar,
-  ShieldAlert,
   Sparkles,
   TrendingUp,
   TriangleAlert,
@@ -21,32 +19,21 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  buildTimelineSeries,
   buildDailyAggregates,
   buildFrequency,
+  formatLongDateLabel,
   resolveDateWindow,
   type DashboardRangeDays,
 } from "@/features/clinical/record-analytics";
+import { useDailyRoutine } from "@/hooks/useDailyRoutine";
 import { useDailyRecords } from "@/hooks/useDailyRecords";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { usePrediction } from "@/hooks/usePrediction";
 import { useUser } from "@/hooks/useUser";
 import { useCurrentLocation, useWeather } from "@/hooks/useWeather";
+import { toast } from "@/store/toast-store";
 
 const rangeOptions: DashboardRangeDays[] = [7, 30, 90];
-
-function formatChartLabel(value: string): string {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-  }).format(new Date(value));
-}
-
-function formatLongDate(value: string): string {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "long",
-  }).format(new Date(value));
-}
 
 function formatNumber(value: number, digits = 1): string {
   return value.toLocaleString("pt-BR", {
@@ -71,22 +58,87 @@ function resolvePainState(painLevel: number): string {
   return "Dor controlada";
 }
 
+function formatTrackedDaysSummary(recordedDays: number, rangeDays: number): string {
+  return `${recordedDays} de ${rangeDays} dias`;
+}
+
+function buildDashboardTrendSeries(
+  aggregates: ReturnType<typeof buildDailyAggregates>,
+  dateFrom: string,
+  dateTo: string,
+) {
+  const daysByDate = new Map(aggregates.map((day) => [day.date, day]));
+  return buildTimelineSeries(dateFrom, dateTo, (dateKey) => {
+    const day = daysByDate.get(dateKey);
+
+    return {
+      value: day ? day.painAverage : null,
+      comparison: day ? day.stressAverage : null,
+    };
+  });
+}
+
+function RoutineHighlightCard({
+  title,
+  message,
+  description,
+  icon: Icon,
+  badge,
+  actions,
+}: {
+  title: string;
+  message: string;
+  description: string;
+  icon: typeof Sparkles;
+  badge: string;
+  actions: ReactNode;
+}) {
+  return (
+    <div className="panel-surface p-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+              <Icon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{title}</p>
+              <Badge variant="neutral" className="mt-1">
+                {badge}
+              </Badge>
+            </div>
+          </div>
+          <p className="mt-4 text-base font-medium leading-7 text-foreground">
+            {message}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 md:w-auto md:justify-end">
+          {actions}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   usePageTitle("Dashboard");
 
   const { user } = useUser();
+  const {
+    dailySummary,
+    dailyReminder,
+    dismissDailySummary,
+    snoozeDailyReminder,
+  } = useDailyRoutine(user);
   const [rangeDays, setRangeDays] = useState<DashboardRangeDays>(30);
   const windowRange = useMemo(() => resolveDateWindow(rangeDays), [rangeDays]);
   const { records, isLoading: isLoadingRecords } = useDailyRecords({
     ...windowRange,
     includeAll: true,
   });
-  const {
-    latestRulePrediction,
-    latestAiPrediction,
-    isLoadingLatest,
-    isLoadingLatestAi,
-  } = usePrediction();
   const {
     coordinates,
     status: locationStatus,
@@ -108,12 +160,12 @@ export function DashboardPage() {
   const latestRecord = latestDay?.latestRecord ?? null;
   const trendSeries = useMemo(
     () =>
-      aggregates.map((day) => ({
-        label: formatChartLabel(day.date),
-        value: day.painAverage,
-        comparison: day.stressAverage,
-      })),
-    [aggregates],
+      buildDashboardTrendSeries(
+        aggregates,
+        windowRange.dateFrom,
+        windowRange.dateTo,
+      ),
+    [aggregates, windowRange.dateFrom, windowRange.dateTo],
   );
 
   const topAreas = useMemo(
@@ -146,18 +198,18 @@ export function DashboardPage() {
     [aggregates],
   );
 
-  const isLoading = isLoadingRecords || isLoadingLatest;
+  const isLoading = isLoadingRecords;
 
   if (isLoading) {
     return (
       <div className="space-y-5">
         <PageHeader
           eyebrow={`Ola, ${user?.fullName?.split(" ")[0] || "Paciente"}`}
-          title="Panorama clinico da sua rotina"
-          description="Estamos reunindo dor, contexto e sinais do corpo para montar o painel mais recente."
+          title="Como voce tem se sentido"
+          description="Estamos preparando um resumo simples dos seus registros mais recentes."
         />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
             <Skeleton key={index} className="h-36 w-full" />
           ))}
         </div>
@@ -176,8 +228,8 @@ export function DashboardPage() {
     <div className="space-y-5">
       <PageHeader
         eyebrow={`Ola, ${user?.fullName?.split(" ")[0] || "Paciente"}`}
-        title="Panorama clinico da sua fibromialgia"
-        description="Os indicadores abaixo usam agregacao diaria por periodo para mostrar comportamento recente da dor, confiabilidade do dado e contexto corporal real."
+        title="Como voce tem se sentido"
+        description="Aqui voce acompanha seus registros recentes e observa mudancas nos seus sintomas ao longo do tempo."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {rangeOptions.map((option) => (
@@ -197,6 +249,60 @@ export function DashboardPage() {
         }
       />
 
+      {dailySummary || dailyReminder ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {dailySummary ? (
+            <RoutineHighlightCard
+              title={dailySummary.title}
+              message={dailySummary.message}
+              description={dailySummary.description}
+              icon={Sparkles}
+              badge="Resumo diario"
+              actions={
+                <>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to={dailySummary.actionTo}>{dailySummary.actionLabel}</Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={dismissDailySummary}>
+                    Fechar
+                  </Button>
+                </>
+              }
+            />
+          ) : null}
+
+          {dailyReminder ? (
+            <RoutineHighlightCard
+              title={dailyReminder.title}
+              message={dailyReminder.message}
+              description="Assim que voce registrar seu dia, este lembrete deixa de aparecer."
+              icon={MoonStar}
+              badge="Lembrete do fim do dia"
+              actions={
+                <>
+                  <Button asChild size="sm">
+                    <Link to={dailyReminder.actionTo}>{dailyReminder.actionLabel}</Link>
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      snoozeDailyReminder();
+                      toast.info(
+                        "Vamos lembrar voce mais tarde",
+                        "Este lembrete vai reaparecer em cerca de 1 hora.",
+                      );
+                    }}
+                  >
+                    {dailyReminder.secondaryLabel}
+                  </Button>
+                </>
+              }
+            />
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="metric-grid grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label="Dor mais recente"
@@ -205,18 +311,18 @@ export function DashboardPage() {
           icon={HeartPulse}
         />
         <StatCard
-          label="Sua media de sintomas"
+          label="Media da dor"
           value={`${formatNumber(averagePain)}/10`}
           hint={`Media dos seus registros nos ultimos ${rangeDays} dias`}
           icon={TrendingUp}
         />
         <StatCard
-          label="Maior nivel registrado"
+          label="Maior nivel de dor"
           value={`${peakDay?.painPeak ?? 0}/10`}
           hint={
             peakDay
-              ? formatLongDate(peakDay.date)
-              : "Voce ainda nao tem registros suficientes"
+              ? `Maior valor registrado nos ultimos ${rangeDays} dias`
+              : "Voce ainda nao possui registros suficientes."
           }
           icon={Activity}
         />
@@ -229,30 +335,37 @@ export function DashboardPage() {
               <div>
                 <p className="section-label">Evolucao diaria</p>
                 <h2 className="mt-2 text-2xl font-semibold">
-                  Evolucao das ultimas ocorrencias
+                  Como a dor variou ao longo do tempo
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Linha principal: media diaria da dor. Linha de comparacao:
-                  estresse medio do mesmo dia.
+                  A linha principal mostra a media da dor em cada dia. A outra
+                  linha mostra o estresse registrado no mesmo dia.
                 </p>
               </div>
-              <Badge variant="neutral">
-                {windowRange.dateFrom} ate {windowRange.dateTo}
-              </Badge>
+              <Badge variant="neutral">{`Ultimos ${rangeDays} dias`}</Badge>
             </div>
 
-            {trendSeries.length > 0 ? (
-              <TrendLineChart
-                data={trendSeries}
-                secondaryKey="comparison"
-                height={300}
-              />
-            ) : (
-              <div className="flex h-[18rem] items-center justify-center rounded-[1.6rem] border border-dashed border-violet-200 bg-white/72 px-6 text-center text-sm text-muted-foreground">
-                Ainda nao ha registros suficientes nesse periodo para montar a
-                evolucao diaria.
-              </div>
-            )}
+            <TrendLineChart
+              data={trendSeries}
+              secondaryKey="comparison"
+              height={300}
+              primaryLabel="Dor"
+              secondaryLabel="Estresse"
+              showLegend
+              yDomain={[0, 10]}
+              yTicks={[0, 2, 4, 6, 8, 10]}
+              valueFormatter={(value) => `${formatNumber(value)}/10`}
+              emptyState={{
+                title: "Ainda nao ha registros neste periodo.",
+                description:
+                  "Comece a registrar como voce esta se sentindo para acompanhar sua evolucao ao longo do tempo.",
+              }}
+              singleRecordState={{
+                title: "Voce possui apenas 1 registro neste periodo.",
+                description:
+                  "Continue registrando para acompanhar melhor a evolucao dos seus sintomas.",
+              }}
+            />
           </div>
 
           <div className="grid gap-5 lg:grid-cols-2">
@@ -266,7 +379,7 @@ export function DashboardPage() {
                     Areas mais citadas
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Frequencia considerando todos os registros do periodo.
+                    Com base no que voce registrou nesse periodo.
                   </p>
                 </div>
               </div>
@@ -287,7 +400,8 @@ export function DashboardPage() {
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Sem areas suficientes para ranking neste recorte.
+                    Ainda nao ha informacoes suficientes para mostrar as areas
+                    mais citadas.
                   </p>
                 )}
               </div>
@@ -303,7 +417,7 @@ export function DashboardPage() {
                     Gatilhos mais citados
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Ranking baseado no que voce realmente marcou.
+                    Com base no que voce registrou nesse periodo.
                   </p>
                 </div>
               </div>
@@ -324,7 +438,7 @@ export function DashboardPage() {
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Nenhum gatilho foi citado nesse periodo.
+                    Nenhum gatilho apareceu nos seus registros mais recentes.
                   </p>
                 )}
               </div>
@@ -340,10 +454,11 @@ export function DashboardPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">
-                  Como o tempo pode afetar hoje
+                  Clima de hoje
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Leitura do clima atual separada do motor clinico.
+                  O clima pode influenciar como algumas pessoas se sentem ao
+                  longo do dia.
                 </p>
               </div>
             </div>
@@ -371,7 +486,7 @@ export function DashboardPage() {
                           isWeatherRiskElevated ? "warning" : "success"
                         }
                       >
-                        {isWeatherRiskElevated ? "Maior impacto" : "Impacto menor"}
+                        {isWeatherRiskElevated ? "Mais atencao" : "Menor impacto"}
                       </Badge>
                       {sourceLabel ? (
                         <Badge variant="neutral">{sourceLabel}</Badge>
@@ -393,7 +508,7 @@ export function DashboardPage() {
                   <div className="space-y-3">
                     <p className="text-sm leading-6 text-muted-foreground">
                       {locationError ??
-                        "Nao conseguimos carregar o clima agora. O dashboard continua funcional mesmo sem essa leitura."}
+                        "Nao conseguimos carregar o clima agora. Voce pode continuar usando o dashboard normalmente mesmo sem essa informacao."}
                     </p>
                     <Button variant="secondary" size="sm" onClick={requestLocation}>
                       Tentar novamente
@@ -411,10 +526,11 @@ export function DashboardPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">
-                  Contexto atual
+                  Seu ultimo registro
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Ultimo registro real que alimenta risco e relatorios.
+                  Essas informacoes ajudam a acompanhar como voce estava se
+                  sentindo no registro mais recente.
                 </p>
               </div>
             </div>
@@ -457,11 +573,11 @@ export function DashboardPage() {
                 </div>
                 <div className="rounded-[1.3rem] border border-white/80 bg-white/82 p-4">
                   <p className="text-sm font-semibold text-foreground">
-                    Resumo real da ultima dor
+                    Como voce se sentiu nesse registro
                   </p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
                     {latestRecord.notes?.trim() ||
-                      "Sem resumo livre neste registro. O sistema usara areas, gatilhos e escalas preenchidas para contextualizar a ocorrencia."}
+                      "Voce nao adicionou uma observacao nesse registro. As informacoes marcadas abaixo continuam ajudando no seu acompanhamento."}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {latestRecord.painAreas.map((area) => (
@@ -479,94 +595,12 @@ export function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Ainda nao ha um registro recente dentro do periodo selecionado.
+                Ainda nao ha um registro recente nos ultimos {rangeDays} dias.
               </p>
             )}
           </div>
 
-          <div className="panel-surface p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
-                <ShieldAlert className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Motor clinico x IA
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Fontes separadas para evitar confusao entre regra e inferencia.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="rounded-[1.4rem] border border-white/80 bg-white/82 p-4 shadow-soft">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      Rule Engine
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Calculado a partir dos seus inputs clinicos reais.
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      latestRulePrediction?.riskLevel === "HIGH" ||
-                      latestRulePrediction?.riskLevel === "CRITICAL"
-                        ? "warning"
-                        : "default"
-                    }
-                  >
-                    {latestRulePrediction
-                      ? `${latestRulePrediction.probabilityScore}%`
-                      : "Sem calculo"}
-                  </Badge>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  {latestRulePrediction?.explanation ??
-                    "Ainda nao existe um calculo recente do motor clinico para mostrar aqui."}
-                </p>
-              </div>
-
-              <div className="rounded-[1.4rem] border border-white/80 bg-white/82 p-4 shadow-soft">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      AI Prediction
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Insight armazenado da camada de IA, quando disponivel.
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      latestAiPrediction?.riskLevel === "HIGH"
-                        ? "warning"
-                        : "default"
-                    }
-                  >
-                    {isLoadingLatestAi ? (
-                      <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                    ) : latestAiPrediction ? (
-                      `${latestAiPrediction.probabilityScore}%`
-                    ) : (
-                      "Sem IA"
-                    )}
-                  </Badge>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  {latestAiPrediction?.explanation ??
-                    "Nenhuma previsao de IA foi armazenada ainda para este paciente."}
-                </p>
-                {latestAiPrediction?.suggestedAction ? (
-                  <div className="mt-3 rounded-[1.2rem] bg-violet-50/80 px-4 py-3 text-sm text-violet-900">
-                    {latestAiPrediction.suggestedAction}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
+          {/* Analise dos sintomas ocultada temporariamente a pedido do usuario. */}
         </div>
       </div>
 
@@ -580,11 +614,14 @@ export function DashboardPage() {
               <p className="text-sm font-semibold text-foreground">
                 Dias acompanhados
               </p>
+              <p className="text-sm text-muted-foreground">
+                Dias em que voce registrou como estava se sentindo.
+              </p>
             </div>
           </div>
           <Progress value={Math.min((aggregates.length / rangeDays) * 100, 100)} />
           <p className="mt-3 text-sm text-muted-foreground">
-            {aggregates.length} de {rangeDays} dias com registros.
+            {formatTrackedDaysSummary(aggregates.length, rangeDays)}
           </p>
         </div>
 
@@ -595,10 +632,10 @@ export function DashboardPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                Carga de sintomas recente
+                Nivel recente dos sintomas
               </p>
               <p className="text-sm text-muted-foreground">
-                Media diaria baseada em sinais independentes registrados.
+                Media dos sintomas no dia mais recente com registros.
               </p>
             </div>
           </div>
@@ -612,8 +649,8 @@ export function DashboardPage() {
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {latestDay
-                  ? `Ultimo dia observado: ${formatLongDate(latestDay.date)}`
-                  : "Sem sinais recentes"}
+                  ? `Ultimo dia acompanhado: ${formatLongDateLabel(latestDay.date)}`
+                  : "Sem registros recentes"}
               </p>
             </div>
             <Badge variant="neutral">{rangeDays} dias</Badge>

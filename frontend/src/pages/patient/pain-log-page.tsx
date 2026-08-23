@@ -37,6 +37,8 @@ import {
 import { useDailyRecords } from "@/hooks/useDailyRecords";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useCurrentLocation, useWeather } from "@/hooks/useWeather";
+import { resolvePatientActionError } from "@/lib/patient-feedback";
+import { toast } from "@/store/toast-store";
 import { cn } from "@/lib/utils";
 
 type SymptomState = {
@@ -242,25 +244,31 @@ function ToggleChip({
   onClick,
   size = "md",
   showCheck = true,
+  shape = "pill",
+  className,
 }: {
   active: boolean;
   label: string;
   onClick: () => void;
   size?: "lg" | "md" | "sm";
   showCheck?: boolean;
+  shape?: "pill" | "soft-rect";
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center rounded-full border font-semibold transition-all duration-200",
-        size === "lg" && "gap-2 px-4 py-2 text-sm",
-        size === "md" && "gap-1.5 px-3.5 py-2 text-sm",
-        size === "sm" && "gap-1.5 px-3 py-1.5 text-xs",
+        "inline-flex min-h-11 items-center justify-center border font-semibold transition-all duration-200",
+        shape === "pill" ? "rounded-full" : "rounded-[1rem]",
+        size === "lg" && "gap-2.5 px-5 py-3 text-sm",
+        size === "md" && "gap-2 px-4.5 py-2.5 text-sm",
+        size === "sm" && "gap-2 px-4 py-2.5 text-sm",
         active
-          ? "border-violet-300 bg-[linear-gradient(135deg,#8b5cf6,#7c3aed)] text-white shadow-[0_12px_28px_rgba(124,58,237,0.26)]"
-          : "border-slate-200/80 bg-white/92 text-slate-800 shadow-[0_8px_18px_rgba(148,163,184,0.08)] hover:border-violet-200 hover:bg-violet-50/90 hover:text-violet-800",
+          ? "border-violet-300 bg-[linear-gradient(135deg,#8b5cf6,#7c3aed)] text-white shadow-[0_14px_32px_rgba(124,58,237,0.28)]"
+          : "border-slate-200/80 bg-white/92 text-slate-800 shadow-[0_10px_24px_rgba(148,163,184,0.08)] hover:border-violet-200 hover:bg-violet-50/90 hover:text-violet-800",
+        className,
       )}
       aria-pressed={active}
     >
@@ -274,19 +282,35 @@ function SelectionGroup({
   title,
   description,
   children,
+  eyebrow,
+  headerAdornment,
+  className,
 }: {
   title: string;
   description: string;
   children: ReactNode;
+  eyebrow?: string;
+  headerAdornment?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="space-y-3 rounded-[1.35rem] border border-white/85 bg-white/84 p-4 shadow-soft">
-      <div className="space-y-1">
-        <h3 className="text-base font-semibold text-slate-950">{title}</h3>
-        <p className="text-sm leading-5 text-slate-500">{description}</p>
+    <div
+      className={cn(
+        "rounded-[1.35rem] border border-white/85 bg-white/86 p-4 shadow-soft md:p-5",
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          {eyebrow ? <p className="section-label">{eyebrow}</p> : null}
+          <h3 className="text-lg font-semibold text-slate-950">{title}</h3>
+          <p className="max-w-2xl text-sm leading-5 text-slate-500">
+            {description}
+          </p>
+        </div>
+        {headerAdornment}
       </div>
-      <div className="h-px bg-[linear-gradient(90deg,rgba(139,92,246,0.2),rgba(203,213,225,0.72),transparent)]" />
-      {children}
+      <div className="mt-4 space-y-4">{children}</div>
     </div>
   );
 }
@@ -387,16 +411,16 @@ function SymptomPill({
     <motion.div
       layout
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-1.5 transition-all duration-200",
+        "inline-flex min-h-11 items-center gap-2 rounded-[1rem] border px-3 py-2.5 transition-all duration-200",
         active
-          ? "border-violet-300 bg-[linear-gradient(135deg,rgba(139,92,246,0.96),rgba(124,58,237,0.92))] text-white shadow-[0_12px_24px_rgba(124,58,237,0.18)]"
-          : "border-white/85 bg-white/90 text-slate-800 shadow-[0_8px_18px_rgba(148,163,184,0.08)]",
+          ? "border-violet-300 bg-[linear-gradient(135deg,rgba(139,92,246,0.96),rgba(124,58,237,0.92))] text-white shadow-[0_14px_28px_rgba(124,58,237,0.18)]"
+          : "border-white/85 bg-white/90 text-slate-800 shadow-[0_10px_24px_rgba(148,163,184,0.08)]",
       )}
     >
       <button
         type="button"
         onClick={onToggle}
-        className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-semibold"
+        className="inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm font-semibold"
         aria-pressed={active}
         aria-label={`${config.label} ${active ? "ativo" : "inativo"}`}
       >
@@ -405,13 +429,13 @@ function SymptomPill({
       </button>
       {active ? (
         <>
-          <span className="rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-violet-900">
+          <span className="rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-violet-900">
             {level}/10
           </span>
           <button
             type="button"
             onClick={() => onAdjust(-1)}
-            className="rounded-full border border-violet-200 bg-white p-1 text-violet-700 transition hover:bg-violet-100"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-200 bg-white text-violet-700 transition hover:bg-violet-100"
             aria-label={`Reduzir ${config.label}`}
           >
             <Minus className="h-3 w-3" />
@@ -419,7 +443,7 @@ function SymptomPill({
           <button
             type="button"
             onClick={() => onAdjust(1)}
-            className="rounded-full border border-violet-200 bg-white p-1 text-violet-700 transition hover:bg-violet-100"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-200 bg-white text-violet-700 transition hover:bg-violet-100"
             aria-label={`Aumentar ${config.label}`}
           >
             <Plus className="h-3 w-3" />
@@ -428,34 +452,6 @@ function SymptomPill({
       ) : null}
     </motion.div>
   );
-}
-
-function resolveWeatherSummary(
-  weather:
-    | {
-        temperature: number;
-        humidity: number;
-        pressure: number;
-        precipitation: number;
-      }
-    | null
-    | undefined,
-): string {
-  if (!weather) {
-    return "Sem leitura automatica no momento";
-  }
-
-  let condition = "Clima estavel";
-
-  if (weather.pressure < 1000) {
-    condition = "Pressao baixa detectada";
-  } else if (weather.precipitation > 0) {
-    condition = "Chuva em andamento";
-  } else if (weather.humidity >= 70) {
-    condition = "Umidade alta";
-  }
-
-  return `${Math.round(weather.temperature)}°C • Umidade ${Math.round(weather.humidity)}% • ${condition}`;
 }
 
 export function PainLogPage() {
@@ -477,6 +473,7 @@ export function PainLogPage() {
   } = useCurrentLocation(isCurrentDayRecord);
   const {
     weather,
+    conditionLabel,
     impactMessage,
     sourceLabel,
     isWeatherRiskElevated,
@@ -618,6 +615,7 @@ export function PainLogPage() {
 
     if (validationError) {
       setSubmitError(validationError);
+      toast.error("Verifique as informacoes", validationError);
       return;
     }
 
@@ -680,13 +678,17 @@ export function PainLogPage() {
         },
       });
 
-      window.alert("Registro multidimensional salvo com sucesso.");
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Nao foi possivel salvar o registro agora.",
+      toast.success(
+        "Registro salvo com sucesso",
+        "Suas informacoes foram adicionadas ao seu acompanhamento.",
       );
+    } catch (error) {
+      const feedback = resolvePatientActionError(error, "save-record");
+
+      setSubmitError(
+        feedback.description,
+      );
+      toast.error(feedback.title, feedback.description);
     }
   }
 
@@ -885,11 +887,13 @@ export function PainLogPage() {
                 <ToggleChip
                   active={form.medicationTaken}
                   label="Sim"
+                  className="min-w-[4.75rem]"
                   onClick={() => updateField("medicationTaken", true)}
                 />
                 <ToggleChip
                   active={!form.medicationTaken}
                   label="Nao"
+                  className="min-w-[4.75rem]"
                   onClick={() => updateField("medicationTaken", false)}
                 />
               </div>
@@ -898,21 +902,22 @@ export function PainLogPage() {
         </div>
       </div>
 
-      <div className="panel-surface p-4">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(18rem,0.92fr)]">
-          <div className="space-y-4">
+      <div className="panel-surface p-4 md:p-5">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.96fr)]">
+          <div className="space-y-5">
             <div>
               <p className="section-label">Contexto rapido</p>
               <h2 className="mt-1 text-lg font-semibold text-slate-950">
-                Tipo de dor, gatilhos e sinais associados
+                Informacoes que ajudam a entender o seu dia
               </h2>
               <p className="mt-1 text-sm leading-5 text-slate-500">
-                Escolha por grupos para enxergar rapido o que faz parte do dia.
+                Organize o contexto da dor com a mesma clareza da etapa
+                inicial.
               </p>
             </div>
 
             <SelectionGroup
-              title="1. Tipo de dor"
+              title="Tipo de dor"
               description="Escolha a sensacao principal que melhor descreve a dor agora."
             >
               <div className="flex flex-wrap gap-3">
@@ -931,14 +936,16 @@ export function PainLogPage() {
             </SelectionGroup>
 
             <SelectionGroup
-              title="2. Gatilhos"
+              title="Gatilhos"
               description="Marque o que pareceu influenciar mais o seu corpo hoje."
             >
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-3">
                 {painTriggers.map((trigger) => (
                   <ToggleChip
                     key={trigger}
                     size="md"
+                    shape="soft-rect"
+                    className="min-w-[11rem] px-5 text-center leading-5"
                     active={form.painTriggers.includes(trigger)}
                     label={trigger}
                     onClick={() => toggleTrigger(trigger)}
@@ -948,16 +955,19 @@ export function PainLogPage() {
             </SelectionGroup>
 
             <SelectionGroup
-              title="3. Sintomas associados"
+              title="Sintomas associados"
               description="Ative os sinais que acompanharam a dor e ajuste a intensidade quando precisar."
+              headerAdornment={<Badge variant="neutral">{activeSymptomCount} ativos</Badge>}
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Sinais do dia
                 </p>
-                <Badge variant="neutral">{activeSymptomCount} ativos</Badge>
+                <span className="text-sm text-slate-500">
+                  Ajuste a intensidade quando quiser.
+                </span>
               </div>
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-3">
                 {quickSymptomConfigs.map((signal) => {
                   const levelKey = signal.levelKey as keyof SymptomState;
                   const level = Number(form.symptomSignal[levelKey]) || 0;
@@ -977,29 +987,45 @@ export function PainLogPage() {
             </SelectionGroup>
           </div>
 
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-900">
-                  Clima do dia
-                </p>
-                <Badge variant="neutral">Contexto auxiliar</Badge>
-              </div>
+          <div className="space-y-5">
+            <div>
+              <p className="section-label">Contexto complementar</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-950">
+                Clima e observacoes do dia
+              </h2>
+              <p className="mt-1 text-sm leading-5 text-slate-500">
+                Complete com informacoes que ajudam a dar mais contexto ao seu
+                registro.
+              </p>
+            </div>
+
+            <SelectionGroup
+              title="Clima de hoje"
+              description="O clima aparece como um contexto complementar para este registro."
+              headerAdornment={<Badge variant="neutral">Contexto auxiliar</Badge>}
+            >
               {isCurrentDayRecord &&
               (locationStatus === "loading" ||
                 (locationStatus === "ready" && isLoadingWeather)) ? (
-                <div className="mt-2 space-y-2">
+                <div className="space-y-3">
                   <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-24 w-full" />
                 </div>
               ) : (
-                <div className="mt-2 rounded-[1.05rem] border border-slate-200/80 bg-slate-50/78 px-3.5 py-3 shadow-[0_10px_24px_rgba(148,163,184,0.08)]">
+                <div className="rounded-[1.35rem] border border-white/80 bg-slate-50/78 p-4 shadow-soft">
                   {weather ? (
                     <>
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                        <div className="flex items-center gap-2 text-slate-800">
-                          <CloudSun className="h-4 w-4 text-slate-500" />
-                          <span>{resolveWeatherSummary(weather)}</span>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-slate-800">
+                            <CloudSun className="h-4.5 w-4.5 text-slate-500" />
+                            <p className="text-lg font-semibold text-slate-950">
+                              {Math.round(weather.temperature)}°C - {conditionLabel}
+                            </p>
+                          </div>
+                          <p className="text-sm text-slate-500">
+                            Umidade: {Math.round(weather.humidity)}%
+                          </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Badge
@@ -1016,9 +1042,18 @@ export function PainLogPage() {
                           ) : null}
                         </div>
                       </div>
-                      <p className="mt-2 text-sm leading-5 text-slate-600">
+                      <p className="mt-4 text-sm leading-6 text-slate-600">
                         {impactMessage}
                       </p>
+                      <div className="mt-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void refetchWeather()}
+                        >
+                          Atualizar clima
+                        </Button>
+                      </div>
                     </>
                   ) : (
                     <div className="flex items-start gap-3">
@@ -1044,29 +1079,17 @@ export function PainLogPage() {
                   )}
                 </div>
               )}
-            </div>
-
-            {weather ? (
-              <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void refetchWeather()}
-                >
-                  Atualizar clima
-                </Button>
-              </div>
-            ) : null}
+            </SelectionGroup>
 
             <SelectionGroup
-              title="Percepcao corporal e observacoes"
-              description="Adicione um ultimo contexto rapido antes de salvar."
+              title="Como seu corpo esta se sentindo?"
+              description="Adicione algumas informacoes antes de salvar."
             >
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className="text-sm font-semibold text-slate-950">
-                  Temperatura corporal percebida
+                  Temperatura percebida
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                   {["Frio", "Neutro", "Quente"].map((option) => (
                     <ToggleChip
                       key={option}
@@ -1086,20 +1109,31 @@ export function PainLogPage() {
                 </div>
               </div>
 
-              <Input
-                value={form.weatherImpact}
-                onChange={(event) =>
-                  updateField("weatherImpact", event.target.value)
-                }
-                placeholder="Como o tempo pareceu afetar seu corpo hoje?"
-                aria-label="Impacto percebido do clima"
-              />
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-slate-950">
+                  O clima pareceu influenciar voce hoje?
+                </p>
+                <Input
+                  value={form.weatherImpact}
+                  onChange={(event) =>
+                    updateField("weatherImpact", event.target.value)
+                  }
+                  className="h-11 w-full"
+                  placeholder="Conte em poucas palavras como o clima afetou voce."
+                  aria-label="Impacto percebido do clima"
+                />
+              </div>
+            </SelectionGroup>
 
+            <SelectionGroup
+              title="Quer adicionar alguma observacao?"
+              description="Conte algo importante sobre como voce se sentiu hoje."
+            >
               <Textarea
                 value={form.notes}
                 onChange={(event) => updateField("notes", event.target.value)}
-                className="min-h-[92px]"
-                placeholder="Resumo curto da ultima dor: onde pegou mais, o que piorou e o que ajudou."
+                className="min-h-[128px]"
+                placeholder="Conte algo que voce considera importante sobre como se sentiu hoje."
               />
             </SelectionGroup>
           </div>
@@ -1121,7 +1155,7 @@ export function PainLogPage() {
           {isCreating ? (
             <>
               <LoaderCircle className="h-4 w-4 animate-spin" />
-              Salvando
+              Salvando...
             </>
           ) : (
             <>
