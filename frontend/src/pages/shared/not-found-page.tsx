@@ -17,6 +17,7 @@ import {
   inferRoleFromPath,
   workspaceDashboardPathByVariant,
 } from '@/lib/navigation'
+import { resolveWorkspaceRole } from '@/lib/user-role'
 import { useAppStore } from '@/store/app-store'
 
 const safeAreaItems = [
@@ -123,8 +124,8 @@ export function NotFoundPage() {
   const dashboardVariant =
     location.pathname.startsWith('/admin') || location.pathname.startsWith('/medical')
       ? routeVariant
-      : authSession?.user.role === 'ADMIN'
-        ? 'admin'
+      : authSession
+        ? resolveWorkspaceRole(authSession.user.role)
         : currentRole
 
   const dashboardPath = authSession

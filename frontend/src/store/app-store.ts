@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { resolveWorkspaceRole, type ApiUserRole, type WorkspaceRole } from '@/lib/user-role'
 
-export type AppRole = 'patient' | 'medical' | 'admin'
+export type AppRole = WorkspaceRole
 
 export type AuthUser = {
   id: string
@@ -14,7 +15,13 @@ export type AuthUser = {
   weightKg?: number | null
   countryCode?: string | null
   timezone?: string | null
-  role: 'USER' | 'ADMIN'
+  role: ApiUserRole
+  accountStatus?: 'PENDING_PROFILE' | 'ACTIVE' | 'SUSPENDED'
+  specialty?: string | null
+  professionalCouncilType?: string | null
+  professionalCouncilNumber?: string | null
+  professionalCouncilState?: string | null
+  professionalPhone?: string | null
   onboardingCompleted?: boolean
   lastLoginAt?: string | null
   createdAt?: string
@@ -73,7 +80,7 @@ export const useAppStore = create<AppStore>()(
       setAuthSession: (authSession) =>
         set({
           authSession,
-          role: authSession?.user.role === 'ADMIN' ? 'admin' : 'patient',
+          role: authSession ? resolveWorkspaceRole(authSession.user.role) : 'patient',
         }),
       clearAuthSession: () => set({ authSession: null, role: 'patient' }),
     }),

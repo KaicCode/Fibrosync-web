@@ -4,7 +4,7 @@ import { adminService } from '../services/admin.service';
 export function useAdmin() {
   const dashboardQuery = useQuery({
     queryKey: ['adminDashboard'],
-    queryFn: adminService.getDashboardAnalytics,
+    queryFn: () => adminService.getDashboardOverview(30),
   });
 
   const usersQuery = useQuery({

@@ -1,5 +1,6 @@
 import type { UserProfile } from '@/services/user.service'
 import type { AuthSession, AuthUser } from '@/store/app-store'
+import type { ApiUserRole } from '@/lib/user-role'
 
 const ACCESS_TOKEN_KEYS = ['accessToken', 'access_token'] as const
 const REFRESH_TOKEN_KEYS = ['refreshToken', 'refresh_token'] as const
@@ -80,7 +81,13 @@ export function mapUserToSessionUser(user: UserProfile): AuthUser {
     weightKg: user.weightKg ?? null,
     countryCode: user.countryCode ?? null,
     timezone: user.timezone,
-    role: user.role as 'USER' | 'ADMIN',
+    role: user.role as ApiUserRole,
+    accountStatus: user.accountStatus ?? 'ACTIVE',
+    specialty: user.specialty ?? null,
+    professionalCouncilType: user.professionalCouncilType ?? null,
+    professionalCouncilNumber: user.professionalCouncilNumber ?? null,
+    professionalCouncilState: user.professionalCouncilState ?? null,
+    professionalPhone: user.professionalPhone ?? null,
     onboardingCompleted: user.onboardingCompleted,
     lastLoginAt: user.lastLoginAt ?? null,
     createdAt: user.createdAt,

@@ -11,6 +11,12 @@ import {
   hasStoredAuthTokens,
 } from '@/lib/auth-session'
 import type { WorkspaceVariant } from '@/lib/navigation'
+import {
+  canAccessAdminWorkspace,
+  canAccessMedicalWorkspace,
+  canAccessPatientWorkspace,
+  resolveHomePathByRole,
+} from '@/lib/user-role'
 import { userService } from '@/services/user.service'
 import { useAppStore } from '@/store/app-store'
 
@@ -79,22 +85,37 @@ export function WorkspaceLayout({ variant }: WorkspaceLayoutProps) {
 }
 
 export function PatientLayout() {
-  return <ProtectedWorkspaceLayout variant="patient" />
+  return (
+    <ProtectedWorkspaceLayout
+      variant="patient"
+      canAccessVariant={canAccessPatientWorkspace}
+    />
+  )
 }
 
 export function MedicalLayout() {
-  return <ProtectedWorkspaceLayout variant="medical" requireAdmin />
+  return (
+    <ProtectedWorkspaceLayout
+      variant="medical"
+      canAccessVariant={canAccessMedicalWorkspace}
+    />
+  )
 }
 
 export function AdminLayout() {
-  return <ProtectedWorkspaceLayout variant="admin" requireAdmin />
+  return (
+    <ProtectedWorkspaceLayout
+      variant="admin"
+      canAccessVariant={canAccessAdminWorkspace}
+    />
+  )
 }
 
 function ProtectedWorkspaceLayout({
   variant,
-  requireAdmin = false,
+  canAccessVariant,
 }: WorkspaceLayoutProps & {
-  requireAdmin?: boolean
+  canAccessVariant: (role?: string | null) => boolean
 }) {
   const location = useLocation()
   const authSession = useAppStore((state) => state.authSession)
@@ -165,8 +186,10 @@ function ProtectedWorkspaceLayout({
     return <PageLoader />
   }
 
-  if (requireAdmin && authSession.user.role !== 'ADMIN') {
-    return <Navigate to="/app" replace />
+  if (!canAccessVariant(authSession.user.role)) {
+    return (
+      <Navigate to={resolveHomePathByRole(authSession.user.role)} replace />
+    )
   }
 
   return <WorkspaceLayout variant={variant} />

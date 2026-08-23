@@ -17,6 +17,7 @@ import { PageHeader } from '@/components/page-header'
 import { useDailyRecords } from '@/hooks/useDailyRecords'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useUser } from '@/hooks/useUser'
+import { resolveRoleLabel } from '@/lib/user-role'
 import {
   calculateProfileCompletion,
   formatDateTimeWithAtValue,
@@ -186,7 +187,7 @@ export function ProfilePage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-2xl font-semibold leading-tight break-words">{displayName}</h2>
                 <Badge variant={currentUser?.role === 'ADMIN' ? 'warning' : 'default'}>
-                  {currentUser?.role === 'ADMIN' ? 'Administrador' : 'Paciente'}
+                  {resolveRoleLabel(currentUser?.role)}
                 </Badge>
               </div>
 

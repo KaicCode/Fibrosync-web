@@ -25,6 +25,7 @@ import {
   workspaceConfig,
   workspaceDashboardPathByVariant,
 } from '@/lib/navigation'
+import { resolveRoleLabel } from '@/lib/user-role'
 
 type SearchCardResult = {
   id: string
@@ -196,7 +197,7 @@ export function WorkspaceSearchPage() {
         ? (adminUsersQuery.data?.items ?? []).map((user) => ({
             id: user.id,
             title: user.fullName,
-            description: `${user.email} • ${user.role === 'ADMIN' ? 'Administrador' : 'Paciente'}`,
+            description: `${user.email} • ${resolveRoleLabel(user.role)}`,
             to: '/admin/users',
             icon: Users,
             eyebrow: 'Usuario',

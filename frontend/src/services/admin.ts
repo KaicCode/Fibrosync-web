@@ -14,6 +14,7 @@ import type {
   SymptomCorrelationStat,
   RecurringPatternStat,
 } from '@/types/admin'
+import type { ApiUserRole } from '@/lib/user-role'
 import { resolveApiUrl } from '@/lib/resolve-api-url'
 
 const API_URL = resolveApiUrl()
@@ -87,7 +88,7 @@ export async function getUserDetails(userId: number): Promise<AdminUser> {
 
 export async function updateUserRole(
   userId: number,
-  role: 'USER' | 'ADMIN',
+  role: ApiUserRole,
 ): Promise<AdminUser> {
   return authenticatedFetch<AdminUser>(`/admin/users/${userId}`, {
     method: 'PATCH',

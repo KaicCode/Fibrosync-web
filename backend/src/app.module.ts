@@ -14,6 +14,7 @@ import { RequestLoggingInterceptor } from './common/interceptors/request-logging
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.interceptor';
 import { DatabaseModule } from './database/database.module';
 import { AiModule } from './modules/ai/ai.module';
+import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module';
 import { ExercisesModule } from './modules/exercises/exercises.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CommunityPostsModule } from './modules/community-posts/community-posts.module';
@@ -36,6 +37,7 @@ import { WeatherModule } from './modules/weather/weather.module';
     }),
     DatabaseModule,
     AuthModule,
+    AdminDashboardModule,
     UsersModule,
     CommunityPostsModule,
     SymptomsModule,

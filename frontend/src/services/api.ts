@@ -11,8 +11,16 @@ import { useAppStore } from '@/store/app-store'
 const API_URL = resolveApiUrl()
 const API_REQUEST_TIMEOUT_MS = 15000
 
+function resolveCurrentFrontendOrigin(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin
+  }
+
+  return 'a URL atual do frontend'
+}
+
 function buildConnectivityErrorMessage(): string {
-  return `Nao foi possivel conectar com a API. Verifique se VITE_API_URL aponta para ${API_URL} e se FRONTEND_URL no backend inclui a URL da Vercel.`
+  return `Nao foi possivel conectar com a API. Verifique se VITE_API_URL aponta para ${API_URL} e se FRONTEND_URL no backend inclui ${resolveCurrentFrontendOrigin()}.`
 }
 
 function isBrowserOffline(): boolean {

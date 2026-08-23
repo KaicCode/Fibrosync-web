@@ -14,6 +14,7 @@ import {
   matchesNavigationItem,
   type WorkspaceVariant,
 } from '@/lib/navigation'
+import { resolveRoleLabel } from '@/lib/user-role'
 import {
   resolveCountryLabel,
   resolveUserAvatar,
@@ -48,9 +49,7 @@ export function WorkspaceTopbar({
   const userSubtitle = currentUser
     ? currentUser.countryCode
       ? `${resolveCountryLabel(currentUser.countryCode)}`
-      : currentUser.role === 'ADMIN'
-        ? 'Administrador'
-        : 'Paciente'
+      : resolveRoleLabel(currentUser.role)
     : 'Paciente'
   const visibleSearchValue = isSearchFocused ? searchDraft : searchQueryFromRoute
 

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { AccountStatus, Role } from '@prisma/client';
 
 export class AuthenticatedUserResponseDto {
   @ApiProperty()
@@ -31,6 +31,24 @@ export class AuthenticatedUserResponseDto {
 
   @ApiProperty({ enum: Role })
   role!: Role;
+
+  @ApiProperty({ enum: AccountStatus })
+  accountStatus!: AccountStatus;
+
+  @ApiPropertyOptional()
+  specialty?: string | null;
+
+  @ApiPropertyOptional()
+  professionalCouncilType?: string | null;
+
+  @ApiPropertyOptional()
+  professionalCouncilNumber?: string | null;
+
+  @ApiPropertyOptional()
+  professionalCouncilState?: string | null;
+
+  @ApiPropertyOptional()
+  professionalPhone?: string | null;
 
   @ApiProperty()
   onboardingCompleted!: boolean;

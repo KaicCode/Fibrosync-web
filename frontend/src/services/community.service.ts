@@ -1,11 +1,12 @@
 import { apiCall } from '@/lib/api-client'
+import type { ApiUserRole } from '@/lib/user-role'
 
 export type CommunityPostType = 'FEED' | 'QUESTION' | 'INSIGHT'
 
 export interface CommunityPostAuthor {
   id: string
   fullName: string
-  role: 'USER' | 'ADMIN'
+  role: ApiUserRole
 }
 
 export interface CommunityPost {

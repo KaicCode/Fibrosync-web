@@ -14,7 +14,9 @@ function normalizeOriginPattern(value: string): string {
 }
 
 const DEFAULT_ALLOWED_ORIGINS = [
-  'http://localhost:5173',
+  'http://localhost:*',
+  'http://127.0.0.1:*',
+  'http://0.0.0.0:*',
   'https://fibrosync.com',
   'https://www.fibrosync.com',
   'https://*.vercel.app',

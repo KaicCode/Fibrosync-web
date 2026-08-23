@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useAuth } from '@/hooks/useAuth'
+import { resolveHomePathByRole } from '@/lib/user-role'
 
 function resolveLoginErrorMessage(error: unknown): string {
   if (!(error instanceof Error)) {
@@ -61,7 +62,7 @@ export function LoginPage() {
 
     try {
       const session = await login({ email, password })
-      navigate(session.user.role === 'ADMIN' ? '/admin/dashboard' : '/app', {
+      navigate(resolveHomePathByRole(session.user.role), {
         replace: true,
       })
     } catch (error) {

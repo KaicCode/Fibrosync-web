@@ -1,4 +1,5 @@
 import { apiCall } from '@/lib/api-client'
+import type { ApiUserRole } from '@/lib/user-role'
 import type { AuthUser } from '@/store/app-store'
 
 export type LoginPayload = {
@@ -276,7 +277,7 @@ export type AdminUser = {
   id: number
   name: string
   email: string
-  role: 'USER' | 'ADMIN'
+  role: ApiUserRole
   createdAt: string
   lastLogin?: string
 }

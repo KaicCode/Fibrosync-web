@@ -18,6 +18,12 @@ model User {
   countryCode         String?            @map("country_code") @db.VarChar(2)
   timezone            String             @default("America/Sao_Paulo") @db.VarChar(100)
   role                Role               @default(USER)
+  accountStatus       AccountStatus      @default(ACTIVE) @map("account_status")
+  specialty           String?            @db.VarChar(120)
+  professionalCouncilType   String?      @map("professional_council_type") @db.VarChar(40)
+  professionalCouncilNumber String?      @map("professional_council_number") @db.VarChar(40)
+  professionalCouncilState  String?      @map("professional_council_state") @db.VarChar(2)
+  professionalPhone   String?            @map("professional_phone") @db.VarChar(32)
   onboardingCompleted Boolean            @default(false) @map("onboarding_completed")
   lastLoginAt         DateTime?          @map("last_login_at")
   deletedAt           DateTime?          @map("deleted_at")
@@ -38,8 +44,10 @@ model User {
   exerciseHistories   ExerciseHistory[]
 
   @@index([createdAt])
+  @@index([accountStatus], map: "users_account_status_idx")
   @@index([deletedAt])
   @@index([role])
+  @@unique([professionalCouncilType, professionalCouncilNumber, professionalCouncilState], map: "users_professional_council_identity_key")
   @@map("users")
 }
 
@@ -360,7 +368,14 @@ model AiPrediction {
 
 enum Role {
   USER
+  MEDICAL
   ADMIN
+}
+
+enum AccountStatus {
+  PENDING_PROFILE
+  ACTIVE
+  SUSPENDED
 }
 
 enum SymptomCategory {

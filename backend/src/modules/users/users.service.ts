@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Prisma, Role, User } from '@prisma/client';
+import { AccountStatus, type Prisma, Role, type User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@/database/prisma.service';
 import { normalizeDateOnly } from '@/common/utils/date.util';
@@ -26,17 +26,23 @@ import {
   userSettingsSelect,
 } from './users-settings.select';
 
-interface CreatePatientInput {
+interface CreateUserRecordInput {
   email: string;
   passwordHash: string;
   fullName: string;
-  birthDate?: string;
-  gender?: string;
+  birthDate?: string | null;
+  gender?: string | null;
   heightCm?: number;
   weightKg?: number;
-  countryCode?: string;
-  timezone?: string;
+  countryCode?: string | null;
+  timezone?: string | null;
   role?: Role;
+  accountStatus?: AccountStatus;
+  specialty?: string | null;
+  professionalCouncilType?: string | null;
+  professionalCouncilNumber?: string | null;
+  professionalCouncilState?: string | null;
+  professionalPhone?: string | null;
   onboardingCompleted?: boolean;
 }
 
@@ -54,15 +60,15 @@ export class UsersService {
     );
   }
 
-  async createPatient(input: CreatePatientInput): Promise<PublicUser> {
+  async createPatient(input: CreateUserRecordInput): Promise<PublicUser> {
     const email = this.normalizeEmail(input.email);
     await this.ensureEmailAvailable(email);
 
     return this.createUserRecord({
       ...input,
       email,
-      role: input.role,
-      onboardingCompleted: input.onboardingCompleted,
+      role: input.role ?? Role.USER,
+      accountStatus: AccountStatus.ACTIVE,
     });
   }
 
@@ -108,7 +114,18 @@ export class UsersService {
 
   async createAdminUser(dto: CreateAdminUserDto): Promise<PublicUser> {
     const email = this.normalizeEmail(dto.email);
+    const role = dto.role ?? Role.USER;
+
     await this.ensureEmailAvailable(email);
+    this.validateRoleSpecificPayload(role, dto);
+
+    if (role === Role.MEDICAL) {
+      await this.ensureProfessionalIdentityAvailable(
+        dto.professionalCouncilType ?? null,
+        dto.professionalCouncilNumber ?? null,
+        dto.professionalCouncilState ?? null,
+      );
+    }
 
     const passwordHash = await this.hashPassword(dto.password);
 
@@ -122,8 +139,17 @@ export class UsersService {
       weightKg: dto.weightKg ?? undefined,
       countryCode: dto.countryCode ?? undefined,
       timezone: dto.timezone,
-      role: dto.role,
-      onboardingCompleted: dto.onboardingCompleted,
+      role,
+      accountStatus: this.resolveAccountStatus(role, dto.onboardingCompleted),
+      specialty: dto.specialty ?? undefined,
+      professionalCouncilType: dto.professionalCouncilType ?? undefined,
+      professionalCouncilNumber: dto.professionalCouncilNumber ?? undefined,
+      professionalCouncilState: dto.professionalCouncilState ?? undefined,
+      professionalPhone: dto.professionalPhone ?? undefined,
+      onboardingCompleted: this.resolveOnboardingCompleted(
+        role,
+        dto.onboardingCompleted,
+      ),
     });
   }
 
@@ -171,6 +197,7 @@ export class UsersService {
     dto: UpdateAdminUserDto,
   ): Promise<PublicUser> {
     const existing = await this.findPublicById(userId);
+    const nextRole = dto.role ?? existing.role;
     const nextEmail =
       dto.email !== undefined ? this.normalizeEmail(dto.email) : undefined;
 
@@ -178,36 +205,106 @@ export class UsersService {
       await this.ensureEmailAvailable(nextEmail, userId);
     }
 
+    const effectiveDoctorIdentity = {
+      specialty:
+        dto.specialty !== undefined ? dto.specialty : existing.specialty,
+      professionalCouncilType:
+        dto.professionalCouncilType !== undefined
+          ? dto.professionalCouncilType
+          : existing.professionalCouncilType,
+      professionalCouncilNumber:
+        dto.professionalCouncilNumber !== undefined
+          ? dto.professionalCouncilNumber
+          : existing.professionalCouncilNumber,
+      professionalCouncilState:
+        dto.professionalCouncilState !== undefined
+          ? dto.professionalCouncilState
+          : existing.professionalCouncilState,
+    };
+
+    this.validateRoleSpecificPayload(nextRole, effectiveDoctorIdentity);
+
+    if (nextRole === Role.MEDICAL) {
+      await this.ensureProfessionalIdentityAvailable(
+        effectiveDoctorIdentity.professionalCouncilType ?? null,
+        effectiveDoctorIdentity.professionalCouncilNumber ?? null,
+        effectiveDoctorIdentity.professionalCouncilState ?? null,
+        userId,
+      );
+    }
+
     const passwordHash =
       dto.password !== undefined
         ? await this.hashPassword(dto.password)
         : undefined;
 
+    const shouldUsePatientFields = nextRole === Role.USER;
+    const shouldUseMedicalFields = nextRole === Role.MEDICAL;
+    const onboardingCompletedUpdate = this.resolveOnboardingCompleted(
+      nextRole,
+      dto.onboardingCompleted,
+    );
+    const effectiveOnboardingCompleted =
+      onboardingCompletedUpdate ?? existing.onboardingCompleted;
+
     const data: Prisma.UserUpdateInput = {
       email: nextEmail,
       passwordHash,
       fullName: dto.fullName?.trim(),
-      birthDate:
-        dto.birthDate === undefined
+      birthDate: shouldUsePatientFields
+        ? dto.birthDate === undefined
           ? undefined
           : dto.birthDate === null
             ? null
-            : normalizeDateOnly(dto.birthDate),
-      gender:
-        dto.gender === undefined
+            : normalizeDateOnly(dto.birthDate)
+        : null,
+      gender: shouldUsePatientFields
+        ? dto.gender === undefined
           ? undefined
-          : this.normalizeNullableText(dto.gender),
-      heightCm: dto.heightCm,
-      weightKg: dto.weightKg,
+          : this.normalizeNullableText(dto.gender)
+        : null,
+      heightCm: shouldUsePatientFields ? dto.heightCm : null,
+      weightKg: shouldUsePatientFields ? dto.weightKg : null,
       countryCode:
         dto.countryCode === undefined
           ? undefined
           : dto.countryCode
             ? dto.countryCode.toUpperCase()
             : null,
-      timezone: dto.timezone?.trim(),
-      role: dto.role,
-      onboardingCompleted: dto.onboardingCompleted,
+      timezone:
+        dto.timezone === undefined ? undefined : (dto.timezone?.trim() ?? null),
+      role: nextRole,
+      accountStatus: this.resolveAccountStatus(
+        nextRole,
+        effectiveOnboardingCompleted,
+        existing.accountStatus,
+      ),
+      specialty: shouldUseMedicalFields
+        ? dto.specialty === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.specialty)
+        : null,
+      professionalCouncilType: shouldUseMedicalFields
+        ? dto.professionalCouncilType === undefined
+          ? undefined
+          : this.normalizeNullableUppercaseText(dto.professionalCouncilType)
+        : null,
+      professionalCouncilNumber: shouldUseMedicalFields
+        ? dto.professionalCouncilNumber === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.professionalCouncilNumber)
+        : null,
+      professionalCouncilState: shouldUseMedicalFields
+        ? dto.professionalCouncilState === undefined
+          ? undefined
+          : this.normalizeNullableUppercaseText(dto.professionalCouncilState)
+        : null,
+      professionalPhone: shouldUseMedicalFields
+        ? dto.professionalPhone === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.professionalPhone)
+        : null,
+      onboardingCompleted: onboardingCompletedUpdate,
     };
 
     return this.prisma.user.update({
@@ -392,6 +489,18 @@ export class UsersService {
     return trimmed ? trimmed : null;
   }
 
+  private normalizeNullableUppercaseText(
+    value?: string | null,
+  ): string | null | undefined {
+    const normalized = this.normalizeNullableText(value);
+
+    if (normalized === undefined || normalized === null) {
+      return normalized;
+    }
+
+    return normalized.toUpperCase();
+  }
+
   private normalizeNullableTime(
     value?: string | null,
   ): string | null | undefined {
@@ -421,30 +530,163 @@ export class UsersService {
     });
 
     if (existingUser && existingUser.id !== currentUserId) {
-      throw new ConflictException('A user with this email already exists.');
+      throw new ConflictException(
+        'Ja existe uma conta cadastrada com este e-mail.',
+      );
     }
+  }
+
+  private async ensureProfessionalIdentityAvailable(
+    professionalCouncilType?: string | null,
+    professionalCouncilNumber?: string | null,
+    professionalCouncilState?: string | null,
+    currentUserId?: string,
+  ): Promise<void> {
+    const councilType = this.normalizeNullableUppercaseText(
+      professionalCouncilType,
+    );
+    const councilNumber = this.normalizeNullableText(professionalCouncilNumber);
+    const councilState = this.normalizeNullableUppercaseText(
+      professionalCouncilState,
+    );
+
+    if (!councilType || !councilNumber || !councilState) {
+      return;
+    }
+
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        deletedAt: null,
+        professionalCouncilType: councilType,
+        professionalCouncilNumber: councilNumber,
+        professionalCouncilState: councilState,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingUser && existingUser.id !== currentUserId) {
+      throw new ConflictException(
+        'Ja existe um profissional cadastrado com este registro.',
+      );
+    }
+  }
+
+  private validateRoleSpecificPayload(
+    role: Role,
+    input: {
+      specialty?: string | null;
+      professionalCouncilType?: string | null;
+      professionalCouncilNumber?: string | null;
+      professionalCouncilState?: string | null;
+    },
+  ): void {
+    if (role !== Role.MEDICAL) {
+      return;
+    }
+
+    const specialty = this.normalizeNullableText(input.specialty);
+    const councilType = this.normalizeNullableUppercaseText(
+      input.professionalCouncilType,
+    );
+    const councilNumber = this.normalizeNullableText(
+      input.professionalCouncilNumber,
+    );
+    const councilState = this.normalizeNullableUppercaseText(
+      input.professionalCouncilState,
+    );
+
+    if (!specialty || !councilType || !councilNumber || !councilState) {
+      throw new BadRequestException(
+        'Preencha especialidade, conselho profissional, numero do registro e UF do conselho para criar uma conta medica.',
+      );
+    }
+  }
+
+  private resolveOnboardingCompleted(
+    role: Role,
+    onboardingCompleted?: boolean,
+  ): boolean | undefined {
+    if (role === Role.ADMIN) {
+      return true;
+    }
+
+    return onboardingCompleted;
+  }
+
+  private resolveAccountStatus(
+    role: Role,
+    onboardingCompleted?: boolean,
+    currentStatus?: AccountStatus,
+  ): AccountStatus {
+    if (role !== Role.MEDICAL) {
+      return AccountStatus.ACTIVE;
+    }
+
+    if (currentStatus === AccountStatus.SUSPENDED) {
+      return AccountStatus.SUSPENDED;
+    }
+
+    return onboardingCompleted
+      ? AccountStatus.ACTIVE
+      : AccountStatus.PENDING_PROFILE;
   }
 
   private async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, this.bcryptSaltRounds);
   }
 
-  private createUserRecord(input: CreatePatientInput): Promise<PublicUser> {
+  private createUserRecord(input: CreateUserRecordInput): Promise<PublicUser> {
+    const role = input.role ?? Role.USER;
+    const isPatient = role === Role.USER;
+    const isMedical = role === Role.MEDICAL;
+
     return this.prisma.user.create({
       data: {
         email: input.email,
         passwordHash: input.passwordHash,
         fullName: input.fullName.trim(),
-        birthDate: input.birthDate
-          ? normalizeDateOnly(input.birthDate)
+        birthDate:
+          isPatient && input.birthDate
+            ? normalizeDateOnly(input.birthDate)
+            : undefined,
+        gender: isPatient
+          ? (this.normalizeNullableText(input.gender) ?? undefined)
           : undefined,
-        gender: this.normalizeNullableText(input.gender) ?? undefined,
-        heightCm: input.heightCm,
-        weightKg: input.weightKg,
-        countryCode: input.countryCode?.toUpperCase(),
+        heightCm: isPatient ? input.heightCm : undefined,
+        weightKg: isPatient ? input.weightKg : undefined,
+        countryCode:
+          this.normalizeNullableUppercaseText(input.countryCode) ?? undefined,
         timezone: input.timezone?.trim() ?? 'America/Sao_Paulo',
-        role: input.role,
-        onboardingCompleted: input.onboardingCompleted,
+        role,
+        accountStatus:
+          input.accountStatus ??
+          this.resolveAccountStatus(role, input.onboardingCompleted),
+        specialty: isMedical
+          ? (this.normalizeNullableText(input.specialty) ?? undefined)
+          : undefined,
+        professionalCouncilType: isMedical
+          ? (this.normalizeNullableUppercaseText(
+              input.professionalCouncilType,
+            ) ?? undefined)
+          : undefined,
+        professionalCouncilNumber: isMedical
+          ? (this.normalizeNullableText(input.professionalCouncilNumber) ??
+            undefined)
+          : undefined,
+        professionalCouncilState: isMedical
+          ? (this.normalizeNullableUppercaseText(
+              input.professionalCouncilState,
+            ) ?? undefined)
+          : undefined,
+        professionalPhone: isMedical
+          ? (this.normalizeNullableText(input.professionalPhone) ?? undefined)
+          : undefined,
+        onboardingCompleted: this.resolveOnboardingCompleted(
+          role,
+          input.onboardingCompleted,
+        ),
       },
       select: userPublicSelect,
     });

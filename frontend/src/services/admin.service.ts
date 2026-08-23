@@ -2,6 +2,7 @@ import { api } from './api'
 import type {
   AdminCreateSymptomInput,
   AdminCreateUserInput,
+  AdminDashboardPeriodOption,
   AdminDashboardSummary,
   AdminSymptomRecord,
   AdminSymptomsListResponse,
@@ -15,7 +16,7 @@ type ListUsersParams = {
   page?: number
   limit?: number
   search?: string
-  role?: 'USER' | 'ADMIN'
+  role?: 'USER' | 'MEDICAL' | 'ADMIN'
 }
 
 type ListSymptomsParams = {
@@ -32,14 +33,25 @@ function toUser(input: AdminUser): AdminUser {
     ...input,
     name: input.fullName,
     lastLogin: input.lastLoginAt ?? null,
-    status: 'active',
   }
 }
 
 export const adminService = {
-  getDashboardAnalytics: async (): Promise<AdminDashboardSummary> => {
-    const response = await api.get<AdminDashboardSummary>('/analytics/dashboard')
+  getDashboardOverview: async (
+    periodDays: AdminDashboardPeriodOption = 30,
+  ): Promise<AdminDashboardSummary> => {
+    const response = await api.get<AdminDashboardSummary>('/admin/dashboard', {
+      params: {
+        periodDays,
+      },
+    })
     return response.data
+  },
+
+  getDashboardAnalytics: async (
+    periodDays: AdminDashboardPeriodOption = 30,
+  ): Promise<AdminDashboardSummary> => {
+    return adminService.getDashboardOverview(periodDays)
   },
 
   getUsers: async (params?: ListUsersParams): Promise<AdminUsersListResponse> => {

@@ -1,5 +1,9 @@
 import { ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import {
+  resolveAccountStatusLabel,
+  resolveRoleLabel,
+} from '@/lib/user-role'
 import type { AdminUser } from '@/types/admin'
 
 type UsersTableProps = {
@@ -122,11 +126,11 @@ export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) 
               </th>
               <th
                 className="px-4 py-3 text-left font-semibold text-foreground cursor-pointer hover:bg-muted/50"
-                onClick={() => handleSort('status')}
+                onClick={() => handleSort('accountStatus')}
               >
                 <div className="flex items-center gap-2">
                   Status
-                  <SortIcon column="status" sortConfig={sortConfig} />
+                  <SortIcon column="accountStatus" sortConfig={sortConfig} />
                 </div>
               </th>
               <th
@@ -155,21 +159,25 @@ export function UsersTable({ users, isLoading, onSelectUser }: UsersTableProps) 
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       user.role === 'ADMIN'
                         ? 'bg-purple-100 text-purple-700'
+                        : user.role === 'MEDICAL'
+                          ? 'bg-amber-100 text-amber-700'
                         : 'bg-blue-100 text-blue-700'
                     }`}
                   >
-                    {user.role === 'ADMIN' ? 'Administrador' : 'Usuário'}
+                    {resolveRoleLabel(user.role)}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.status === 'active'
+                      user.accountStatus === 'ACTIVE'
                         ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
+                        : user.accountStatus === 'PENDING_PROFILE'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-rose-100 text-rose-700'
                     }`}
                   >
-                    {user.status === 'active' ? 'Ativo' : 'Inativo'}
+                    {resolveAccountStatusLabel(user.accountStatus)}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">

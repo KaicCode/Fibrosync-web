@@ -1,6 +1,7 @@
 import { Heart, MessageSquare, MoreHorizontal } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { resolveRoleLabel } from '@/lib/user-role'
 import { resolveUserAvatar } from '@/lib/user-profile'
 import type { CommunityPost } from '@/services/community.service'
 
@@ -88,7 +89,7 @@ export function CommunityPostCard({ post }: CommunityPostCardProps) {
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Badge className="w-fit">{typeLabel[post.type]}</Badge>
         <Badge variant={post.author.role === 'ADMIN' ? 'warning' : 'neutral'}>
-          {post.author.role === 'ADMIN' ? 'Administrador' : 'Paciente'}
+          {resolveRoleLabel(post.author.role)}
         </Badge>
       </div>
       <p className="mt-3 text-sm leading-7 text-foreground/86 whitespace-pre-wrap break-words">

@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { AccountStatus, ApiUserRole } from '@/lib/user-role';
 
 export interface UserProfile {
   id: string;
@@ -10,7 +11,13 @@ export interface UserProfile {
   weightKg?: number | null;
   countryCode?: string | null;
   timezone: string;
-  role: string;
+  role: ApiUserRole;
+  accountStatus: AccountStatus;
+  specialty?: string | null;
+  professionalCouncilType?: string | null;
+  professionalCouncilNumber?: string | null;
+  professionalCouncilState?: string | null;
+  professionalPhone?: string | null;
   onboardingCompleted: boolean;
   lastLoginAt?: string | null;
   createdAt: string;
