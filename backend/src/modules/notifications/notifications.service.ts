@@ -11,6 +11,12 @@ import {
   resolvePagination,
 } from '@/common/utils/pagination.util';
 import { PrismaService } from '@/database/prisma.service';
+import {
+  resolveSymptomNotificationType,
+  shouldExposeInAppNotifications,
+  shouldGenerateSymptomNotification,
+} from '@/modules/system-settings/system-settings.helpers';
+import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 import type { NotificationListResponseDto } from './dto/notification-list-response.dto';
 import type { NotificationQueryDto } from './dto/notification-query.dto';
 import type { NotificationResponseDto } from './dto/notification-response.dto';
@@ -39,18 +45,36 @@ interface AiAlertInput {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly systemSettingsService: SystemSettingsService,
+  ) {}
 
   async createOrRefreshCrisisAlert(
     prediction: CrisisPrediction,
   ): Promise<void> {
     const riskScore = Math.round(prediction.probability * 100);
+    const settings = await this.systemSettingsService.getRuntimeSettings();
 
-    if (riskScore < 70) {
+    if (!shouldGenerateSymptomNotification(riskScore, settings)) {
       return;
     }
 
-    const alertType = this.resolveAlertType(riskScore);
+    const canExposeNotification = await this.canExposeInAppNotifications(
+      prediction.userId,
+      settings.inAppNotificationsEnabled,
+    );
+
+    if (!canExposeNotification) {
+      return;
+    }
+
+    const alertType = resolveSymptomNotificationType(riskScore, settings);
+
+    if (!alertType) {
+      return;
+    }
+
     const factorLabels = this.extractCrisisFactorLabels(prediction.riskFactors);
     const message = this.composeCrisisMessage(
       alertType,
@@ -101,11 +125,30 @@ export class NotificationsService {
   }
 
   async createOrRefreshAiPredictionAlert(input: AiAlertInput): Promise<void> {
-    if (input.probabilityScore < 70) {
+    const settings = await this.systemSettingsService.getRuntimeSettings();
+
+    if (!shouldGenerateSymptomNotification(input.probabilityScore, settings)) {
       return;
     }
 
-    const alertType = this.resolveAlertType(input.probabilityScore);
+    const canExposeNotification = await this.canExposeInAppNotifications(
+      input.userId,
+      settings.inAppNotificationsEnabled,
+    );
+
+    if (!canExposeNotification) {
+      return;
+    }
+
+    const alertType = resolveSymptomNotificationType(
+      input.probabilityScore,
+      settings,
+    );
+
+    if (!alertType) {
+      return;
+    }
+
     const factorLabels =
       input.triggerPatternLabels?.slice(0, 3) ??
       input.repeatedCycles?.slice(0, 2) ??
@@ -164,6 +207,19 @@ export class NotificationsService {
     userId: string,
     query: NotificationQueryDto,
   ): Promise<NotificationListResponseDto> {
+    const settings = await this.systemSettingsService.getRuntimeSettings();
+    const canExposeNotification = await this.canExposeInAppNotifications(
+      userId,
+      settings.inAppNotificationsEnabled,
+    );
+
+    if (!canExposeNotification) {
+      return {
+        items: [],
+        meta: buildPaginationMeta(0, query.page ?? 1, query.limit ?? 10),
+      };
+    }
+
     const { page, limit, skip } = resolvePagination(query.page, query.limit);
     const where: Prisma.NotificationWhereInput = {
       userId,
@@ -223,18 +279,6 @@ export class NotificationsService {
     });
 
     return this.mapNotification(updated);
-  }
-
-  private resolveAlertType(riskScore: number): NotificationType {
-    if (riskScore >= 90) {
-      return NotificationType.URGENT;
-    }
-
-    if (riskScore >= 80) {
-      return NotificationType.WARNING;
-    }
-
-    return NotificationType.PREVENTIVE;
   }
 
   private composeCrisisMessage(
@@ -339,6 +383,25 @@ export class NotificationsService {
     }
 
     return `${values.slice(0, -1).join(', ')} e ${values.at(-1)!}`;
+  }
+
+  private async canExposeInAppNotifications(
+    userId: string,
+    globalEnabled: boolean,
+  ): Promise<boolean> {
+    const userSettings = await this.prisma.userSettings.findUnique({
+      where: {
+        userId,
+      },
+      select: {
+        inAppNotificationsEnabled: true,
+      },
+    });
+
+    return shouldExposeInAppNotifications(
+      globalEnabled,
+      userSettings?.inAppNotificationsEnabled ?? true,
+    );
   }
 
   private mapNotification(

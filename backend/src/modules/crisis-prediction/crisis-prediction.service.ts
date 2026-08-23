@@ -14,6 +14,8 @@ import {
 import { averageSymptomBurden } from '@/common/utils/symptom-signal.util';
 import { PrismaService } from '@/database/prisma.service';
 import { NotificationsService } from '@/modules/notifications/notifications.service';
+import { resolveRuleRiskLevelFromProbability } from '@/modules/system-settings/system-settings.helpers';
+import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 import { WeatherService } from '@/modules/weather/weather.service';
 import {
   parseWeatherSnapshotFromMetadata,
@@ -32,6 +34,7 @@ export class CrisisPredictionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly systemSettingsService: SystemSettingsService,
     private readonly weatherService: WeatherService,
   ) {}
 
@@ -71,6 +74,7 @@ export class CrisisPredictionService {
       recommendationSummary,
     } = this.calculateRisk(
       record,
+      await this.systemSettingsService.getRuntimeSettings(),
       parseWeatherSnapshotFromMetadata(record.metadata) ??
         (await this.weatherService.findLatestSnapshotForUserDate(
           userId,
@@ -225,6 +229,11 @@ export class CrisisPredictionService {
       }>;
       symptomEntries: Array<{ severity: number; symptom: { name: string } }>;
     },
+    settings: {
+      attentionModerateThreshold: number;
+      attentionHighThreshold: number;
+      attentionCriticalThreshold: number;
+    },
     weatherSnapshot: WeatherSnapshot | null,
   ): {
     probability: number;
@@ -321,14 +330,14 @@ export class CrisisPredictionService {
       Math.min(Math.max(reliability.score / 100, 0.45), 0.98).toFixed(4),
     );
 
-    let riskLevel: RiskLevel = RiskLevel.LOW;
-    if (probability >= 0.85) {
-      riskLevel = RiskLevel.CRITICAL;
-    } else if (probability >= 0.65) {
-      riskLevel = RiskLevel.HIGH;
-    } else if (probability >= 0.4) {
-      riskLevel = RiskLevel.MODERATE;
-    }
+    const riskLevel = resolveRuleRiskLevelFromProbability(probability, {
+      aiEnabled: true,
+      inAppNotificationsEnabled: true,
+      symptomNotificationsEnabled: true,
+      attentionModerateThreshold: settings.attentionModerateThreshold,
+      attentionHighThreshold: settings.attentionHighThreshold,
+      attentionCriticalThreshold: settings.attentionCriticalThreshold,
+    });
 
     const baseRecommendation =
       riskLevel === RiskLevel.CRITICAL

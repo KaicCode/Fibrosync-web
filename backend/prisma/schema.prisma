@@ -42,6 +42,8 @@ model User {
   userSettings        UserSettings?
   weatherRecords      WeatherRecord[]
   exerciseHistories   ExerciseHistory[]
+  systemSettingsUpdates SystemSettings[] @relation("SystemSettingsUpdatedBy")
+  systemSettingsAuditLogs SystemSettingsAuditLog[] @relation("SystemSettingsAuditChangedBy")
 
   @@index([createdAt])
   @@index([accountStatus], map: "users_account_status_idx")
@@ -49,6 +51,41 @@ model User {
   @@index([role])
   @@unique([professionalCouncilType, professionalCouncilNumber, professionalCouncilState], map: "users_professional_council_identity_key")
   @@map("users")
+}
+
+model SystemSettings {
+  id                          String                   @id @db.VarChar(32)
+  aiEnabled                   Boolean                  @default(true) @map("ai_enabled")
+  inAppNotificationsEnabled   Boolean                  @default(true) @map("in_app_notifications_enabled")
+  symptomNotificationsEnabled Boolean                  @default(true) @map("symptom_notifications_enabled")
+  attentionModerateThreshold  Int                      @default(40) @map("attention_moderate_threshold")
+  attentionHighThreshold      Int                      @default(65) @map("attention_high_threshold")
+  attentionCriticalThreshold  Int                      @default(85) @map("attention_critical_threshold")
+  updatedByUserId             String?                  @map("updated_by_user_id") @db.Uuid
+  createdAt                   DateTime                 @default(now()) @map("created_at")
+  updatedAt                   DateTime                 @updatedAt @map("updated_at")
+  updatedByUser               User?                    @relation("SystemSettingsUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  auditLogs                   SystemSettingsAuditLog[]
+
+  @@index([updatedAt])
+  @@map("system_settings")
+}
+
+model SystemSettingsAuditLog {
+  id               String         @id @default(uuid()) @db.Uuid
+  systemSettingsId String         @map("system_settings_id") @db.VarChar(32)
+  key              String         @db.VarChar(120)
+  oldValue         String?        @map("old_value")
+  newValue         String?        @map("new_value")
+  changedByUserId  String?        @map("changed_by_user_id") @db.Uuid
+  changedByName    String?        @map("changed_by_name") @db.VarChar(120)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  systemSettings   SystemSettings @relation(fields: [systemSettingsId], references: [id], onDelete: Cascade)
+  changedByUser    User?          @relation("SystemSettingsAuditChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([systemSettingsId, createdAt])
+  @@index([changedByUserId])
+  @@map("system_settings_audit_logs")
 }
 
 model UserSettings {

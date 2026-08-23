@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificationsModule } from '@/modules/notifications/notifications.module';
+import { SystemSettingsModule } from '@/modules/system-settings/system-settings.module';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { PatternAnalysisService } from './pattern-analysis.service';
@@ -8,7 +9,7 @@ import { GeminiAiPredictionProvider } from './prediction-providers/gemini-ai-pre
 import { AI_PREDICTION_PROVIDER } from './prediction-providers/ai-prediction-provider.token';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, SystemSettingsModule],
   controllers: [AiController],
   providers: [
     AiService,

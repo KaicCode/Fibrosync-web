@@ -14,6 +14,7 @@ import { RequestLoggingInterceptor } from './common/interceptors/request-logging
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.interceptor';
 import { DatabaseModule } from './database/database.module';
 import { AiModule } from './modules/ai/ai.module';
+import { AdminAnalyticsModule } from './modules/admin-analytics/admin-analytics.module';
 import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module';
 import { ExercisesModule } from './modules/exercises/exercises.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -22,6 +23,7 @@ import { CrisisPredictionModule } from './modules/crisis-prediction/crisis-predi
 import { DailyRecordsModule } from './modules/daily-records/daily-records.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { SystemSettingsModule } from './modules/system-settings/system-settings.module';
 import { SymptomsModule } from './modules/symptoms/symptoms.module';
 import { UsersModule } from './modules/users/users.module';
 import { WeatherModule } from './modules/weather/weather.module';
@@ -37,6 +39,7 @@ import { WeatherModule } from './modules/weather/weather.module';
     }),
     DatabaseModule,
     AuthModule,
+    AdminAnalyticsModule,
     AdminDashboardModule,
     UsersModule,
     CommunityPostsModule,
@@ -45,6 +48,7 @@ import { WeatherModule } from './modules/weather/weather.module';
     WeatherModule,
     CrisisPredictionModule,
     NotificationsModule,
+    SystemSettingsModule,
     ReportsModule,
     AiModule,
     ExercisesModule,

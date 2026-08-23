@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InsightStatus, InsightType, type Prisma } from '@prisma/client';
 import { addDays, normalizeDateOnly } from '@/common/utils/date.util';
@@ -8,6 +13,7 @@ import {
 } from '@/common/utils/pagination.util';
 import { PrismaService } from '@/database/prisma.service';
 import { NotificationsService } from '@/modules/notifications/notifications.service';
+import { SystemSettingsService } from '@/modules/system-settings/system-settings.service';
 import { parseWeatherSnapshotFromMetadata } from '@/modules/weather/weather.types';
 import {
   aiPredictionResponseSelect,
@@ -87,6 +93,7 @@ export class AiService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly notificationsService: NotificationsService,
+    private readonly systemSettingsService: SystemSettingsService,
     private readonly patternAnalysisService: PatternAnalysisService,
     @Inject(AI_PREDICTION_PROVIDER)
     private readonly aiPredictionProvider: AiPredictionProvider,
@@ -96,6 +103,8 @@ export class AiService {
     userId: string,
     dto: PredictAiDto,
   ): Promise<AiPredictionResponseDto> {
+    await this.assertAiEnabled();
+
     const context = await this.buildPredictionContext(userId, dto.lookbackDays);
     const result = await this.aiPredictionProvider.predict(context);
 
@@ -158,6 +167,8 @@ export class AiService {
     userId: string,
     dto: GenerateAiInsightDto,
   ): Promise<unknown> {
+    await this.assertAiEnabled();
+
     const context = dto.dailyRecordId
       ? await this.getSingleRecordContext(userId, dto.dailyRecordId)
       : await this.getRollingContext(userId);
@@ -176,6 +187,16 @@ export class AiService {
         metadata: generated.metadata as Prisma.InputJsonValue,
       },
     });
+  }
+
+  private async assertAiEnabled(): Promise<void> {
+    const settings = await this.systemSettingsService.getRuntimeSettings();
+
+    if (!settings.aiEnabled) {
+      throw new ServiceUnavailableException(
+        'As análises com inteligência artificial estão desativadas nas configurações do sistema.',
+      );
+    }
   }
 
   async listForUser(

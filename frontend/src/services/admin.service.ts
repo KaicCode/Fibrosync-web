@@ -1,15 +1,19 @@
 import { api } from './api'
 import type {
+  AdminAnalyticsResponse,
   AdminCreateSymptomInput,
   AdminCreateUserInput,
   AdminDashboardPeriodOption,
   AdminDashboardSummary,
+  AdminSystemSettingsSummary,
   AdminSymptomRecord,
   AdminSymptomsListResponse,
   AdminUpdateSymptomInput,
+  ResetAdminSystemSettingsInput,
   AdminUpdateUserInput,
   AdminUser,
   AdminUsersListResponse,
+  UpdateAdminSystemSettingsInput,
 } from '@/types/admin'
 
 type ListUsersParams = {
@@ -26,6 +30,11 @@ type ListSymptomsParams = {
   userId?: string
   dateFrom?: string
   dateTo?: string
+}
+
+type GetAdminAnalyticsParams = {
+  startDate?: string
+  endDate?: string
 }
 
 function toUser(input: AdminUser): AdminUser {
@@ -52,6 +61,40 @@ export const adminService = {
     periodDays: AdminDashboardPeriodOption = 30,
   ): Promise<AdminDashboardSummary> => {
     return adminService.getDashboardOverview(periodDays)
+  },
+
+  getAnalytics: async (
+    params?: GetAdminAnalyticsParams,
+  ): Promise<AdminAnalyticsResponse> => {
+    const response = await api.get<AdminAnalyticsResponse>('/admin/analytics', {
+      params,
+    })
+    return response.data
+  },
+
+  getSystemSettings: async (): Promise<AdminSystemSettingsSummary> => {
+    const response = await api.get<AdminSystemSettingsSummary>('/admin/settings')
+    return response.data
+  },
+
+  updateSystemSettings: async (
+    payload: UpdateAdminSystemSettingsInput,
+  ): Promise<AdminSystemSettingsSummary> => {
+    const response = await api.patch<AdminSystemSettingsSummary>(
+      '/admin/settings',
+      payload,
+    )
+    return response.data
+  },
+
+  resetSystemSettings: async (
+    payload: ResetAdminSystemSettingsInput,
+  ): Promise<AdminSystemSettingsSummary> => {
+    const response = await api.post<AdminSystemSettingsSummary>(
+      '/admin/settings/reset',
+      payload,
+    )
+    return response.data
   },
 
   getUsers: async (params?: ListUsersParams): Promise<AdminUsersListResponse> => {

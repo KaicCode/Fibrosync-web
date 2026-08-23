@@ -1,4 +1,4 @@
-import { Loader } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type ContentSectionProps = {
   title: string
@@ -22,11 +22,10 @@ export function AdminContentSection({
 
       <div className="card-surface p-6">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center gap-3">
-              <Loader className="w-8 h-8 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Carregando dados...</p>
-            </div>
+          <div className="space-y-4 py-1">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-52 w-full rounded-[1.25rem]" />
           </div>
         ) : (
           children
