@@ -5,6 +5,8 @@ import {
 } from '@/lib/auth-session';
 import type { UserProfile } from './user.service';
 
+const INITIAL_AUTH_TIMEOUT_MS = 45000;
+
 export interface LoginDto {
   email: string;
   password: string;
@@ -33,11 +35,15 @@ export interface AuthResponse {
 
 export const authService = {
   login: async (data: LoginDto): Promise<AuthResponse> => {
-    return apiCall<AuthResponse>('post', '/auth/login', data);
+    return apiCall<AuthResponse>('post', '/auth/login', data, {
+      timeout: INITIAL_AUTH_TIMEOUT_MS,
+    });
   },
 
   signup: async (data: SignupDto): Promise<AuthResponse> => {
-    return apiCall<AuthResponse>('post', '/auth/signup', data);
+    return apiCall<AuthResponse>('post', '/auth/signup', data, {
+      timeout: INITIAL_AUTH_TIMEOUT_MS,
+    });
   },
 
   logout: async (): Promise<void> => {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Eye, LockKeyhole, Mail } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthHeroLogo } from '@/components/auth-hero-logo'
@@ -7,42 +7,36 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useAuth } from '@/hooks/useAuth'
+import {
+  buildConnectivityErrorMessage,
+  normalizeLoginError,
+} from '@/lib/http-errors'
 import { resolveHomePathByRole } from '@/lib/user-role'
-
-function resolveLoginErrorMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return 'Nao foi possivel fazer login agora. Tente novamente.'
-  }
-
-  const normalizedMessage = error.message.toLowerCase()
-
-  if (normalizedMessage.includes('invalid email or password')) {
-    return 'Email ou senha incorretos.'
-  }
-
-  if (
-    normalizedMessage.includes('demorou mais do que o esperado') ||
-    normalizedMessage.includes('timeout')
-  ) {
-    return 'A autenticacao demorou demais para responder. Tente novamente.'
-  }
-
-  if (normalizedMessage.includes('nao foi possivel conectar com a api')) {
-    return error.message
-  }
-
-  return error.message || 'Nao foi possivel fazer login agora. Tente novamente.'
-}
 
 export function LoginPage() {
   usePageTitle('Entrar')
 
   const navigate = useNavigate()
-  const { login, isLoggingIn, loginError } = useAuth()
+  const { login, isLoggingIn } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null)
+  const [showSlowAccessHint, setShowSlowAccessHint] = useState(false)
+
+  useEffect(() => {
+    if (!isLoggingIn) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowSlowAccessHint(true)
+    }, 6000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [isLoggingIn])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,11 +46,10 @@ export function LoginPage() {
     }
 
     setSubmitErrorMessage(null)
+    setShowSlowAccessHint(false)
 
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      setSubmitErrorMessage(
-        'Nao foi possivel conectar com a API. Verifique sua conexao e tente novamente.',
-      )
+      setSubmitErrorMessage(buildConnectivityErrorMessage())
       return
     }
 
@@ -66,14 +59,12 @@ export function LoginPage() {
         replace: true,
       })
     } catch (error) {
-      setSubmitErrorMessage(resolveLoginErrorMessage(error))
+      const normalizedError = normalizeLoginError(error)
+      setSubmitErrorMessage(normalizedError.message)
+
       console.error('Login failed:', error)
     }
   }
-
-  const loginErrorMessage =
-    submitErrorMessage ??
-    (loginError ? resolveLoginErrorMessage(loginError) : null)
 
   return (
     <section className="relative flex min-h-[calc(100vh-2.5rem)] items-center justify-center overflow-hidden py-2 md:py-3">
@@ -136,14 +127,20 @@ export function LoginPage() {
                 </div>
               </label>
 
-              {loginErrorMessage && (
+              {submitErrorMessage && (
                 <div
                   className="rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-700"
                   role="alert"
                 >
-                  {loginErrorMessage}
+                  {submitErrorMessage}
                 </div>
               )}
+
+              {showSlowAccessHint && !submitErrorMessage ? (
+                <div className="rounded-[1rem] border border-brand-100 bg-brand-50/75 px-4 py-3 text-center text-sm text-brand-700">
+                  Estamos conectando ao FibroSync. Isso pode levar um pouco mais de tempo no primeiro acesso.
+                </div>
+              ) : null}
 
               <Button disabled={isLoggingIn} type="submit" className="h-14 w-full rounded-[1.25rem] text-base font-semibold">
                 {isLoggingIn ? 'Entrando...' : 'Entrar'}

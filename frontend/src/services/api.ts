@@ -1,39 +1,36 @@
 import axios from 'axios'
+import type { InternalAxiosRequestConfig } from 'axios'
 import {
-  clearStoredAuthTokens,
   getStoredAccessToken,
   getStoredRefreshToken,
   storeAuthTokens,
 } from '@/lib/auth-session'
+import {
+  clearExpiredSession,
+  createOfflineError,
+  hasRefreshSession,
+  isBrowserOffline,
+  normalizeHttpError,
+  shouldAttemptTokenRefresh,
+} from '@/lib/auth-http'
+import { ApiError } from '@/lib/http-errors'
 import { resolveApiUrl } from '@/lib/resolve-api-url'
-import { useAppStore } from '@/store/app-store'
 
 const API_URL = resolveApiUrl()
-const API_REQUEST_TIMEOUT_MS = 15000
-
-function resolveCurrentFrontendOrigin(): string {
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin
-  }
-
-  return 'a URL atual do frontend'
-}
-
-function buildConnectivityErrorMessage(): string {
-  return `Nao foi possivel conectar com a API. Verifique se VITE_API_URL aponta para ${API_URL} e se FRONTEND_URL no backend inclui ${resolveCurrentFrontendOrigin()}.`
-}
-
-function isBrowserOffline(): boolean {
-  return typeof navigator !== 'undefined' && navigator.onLine === false
-}
+const API_REQUEST_TIMEOUT_MS = 30000
+const REFRESH_REQUEST_TIMEOUT_MS = 30000
 
 let isRefreshing = false
 let failedQueue: Array<{
   resolve: (token: string) => void
-  reject: (error: Error) => void
+  reject: (error: ApiError) => void
 }> = []
 
-function processQueue(error: Error | null, token: string | null = null): void {
+type RetriableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean
+}
+
+function processQueue(error: ApiError | null, token: string | null = null): void {
   failedQueue.forEach((request) => {
     if (error) {
       request.reject(error)
@@ -58,7 +55,7 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (isBrowserOffline()) {
-      return Promise.reject(new Error(buildConnectivityErrorMessage()))
+      return Promise.reject(createOfflineError())
     }
 
     const token = getStoredAccessToken()
@@ -91,24 +88,45 @@ api.interceptors.response.use(
     return response
   },
   async (error) => {
-    const originalRequest = error.config
+    const originalRequest = error.config as RetriableRequestConfig | undefined
 
     if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/refresh')
+      shouldAttemptTokenRefresh({
+        statusCode: error.response?.status,
+        url: originalRequest?.url,
+        hasRetried: originalRequest?._retry,
+        hasAccessToken: Boolean(getStoredAccessToken()),
+        hasRefreshToken: Boolean(getStoredRefreshToken()),
+      })
     ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         })
           .then((token) => {
+            if (!originalRequest) {
+              return Promise.reject(
+                new ApiError('Sua sessao expirou. Entre novamente.', {
+                  code: 'SESSION_EXPIRED',
+                  statusCode: 401,
+                }),
+              )
+            }
+
             originalRequest.headers = originalRequest.headers ?? {}
             originalRequest.headers.Authorization = `Bearer ${token}`
             return api(originalRequest)
-          })
+        })
           .catch((refreshError) => Promise.reject(refreshError))
+      }
+
+      if (!originalRequest) {
+        return Promise.reject(
+          new ApiError('Sua sessao expirou. Entre novamente.', {
+            code: 'SESSION_EXPIRED',
+            statusCode: 401,
+          }),
+        )
       }
 
       originalRequest._retry = true
@@ -118,14 +136,17 @@ api.interceptors.response.use(
         const refreshToken = getStoredRefreshToken()
 
         if (!refreshToken) {
-          throw new Error('No refresh token available')
+          throw new ApiError('Sua sessao expirou. Entre novamente.', {
+            code: 'SESSION_EXPIRED',
+            statusCode: 401,
+          })
         }
 
         const response = await axios.post(`${API_URL}/auth/refresh`, undefined, {
           headers: {
             Authorization: `Bearer ${refreshToken}`,
           },
-          timeout: API_REQUEST_TIMEOUT_MS,
+          timeout: REFRESH_REQUEST_TIMEOUT_MS,
         })
 
         const { accessToken, refreshToken: nextRefreshToken } = response.data.data
@@ -143,14 +164,29 @@ api.interceptors.response.use(
 
         return api(originalRequest)
       } catch (refreshError) {
-        processQueue(refreshError as Error, null)
-        clearStoredAuthTokens()
-        useAppStore.getState().clearAuthSession()
-        window.location.href = '/login'
-        return Promise.reject(refreshError)
+        const normalizedError = normalizeHttpError(refreshError)
+        processQueue(normalizedError, null)
+        clearExpiredSession(normalizedError.code === 'SESSION_EXPIRED')
+        return Promise.reject(normalizedError)
       }
     }
 
-    return Promise.reject(error)
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !hasRefreshSession() &&
+      !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/signup')
+    ) {
+      const sessionExpiredError = new ApiError('Sua sessao expirou. Entre novamente.', {
+        code: 'SESSION_EXPIRED',
+        statusCode: 401,
+      })
+
+      clearExpiredSession()
+      return Promise.reject(sessionExpiredError)
+    }
+
+    return Promise.reject(normalizeHttpError(error))
   },
 )

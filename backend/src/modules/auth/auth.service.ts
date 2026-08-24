@@ -1,11 +1,12 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { Prisma } from '@prisma/client';
+import { AccountStatus, type Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import type { JwtPayload } from '@/common/types/jwt-payload.type';
@@ -112,13 +113,17 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw this.createInvalidCredentialsException();
+    }
+
+    if (user.accountStatus === AccountStatus.SUSPENDED) {
+      throw this.createAccountUnavailableException();
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw this.createInvalidCredentialsException();
     }
 
     await this.usersService.markLastLogin(user.id);
@@ -138,7 +143,7 @@ export class AuthService {
     const payload = await this.verifyRefreshToken(rawRefreshToken);
 
     if (!payload.tokenId) {
-      throw new UnauthorizedException('Invalid refresh token.');
+      throw this.createSessionExpiredException('Invalid refresh token.');
     }
 
     const storedToken = await this.prisma.refreshToken.findFirst({
@@ -153,7 +158,9 @@ export class AuthService {
       storedToken.revokedAt ||
       storedToken.expiresAt <= new Date()
     ) {
-      throw new UnauthorizedException('Refresh token is no longer valid.');
+      throw this.createSessionExpiredException(
+        'Refresh token is no longer valid.',
+      );
     }
 
     const tokenMatches = await bcrypt.compare(
@@ -163,7 +170,9 @@ export class AuthService {
 
     if (!tokenMatches) {
       await this.revokeAllTokens(payload.sub);
-      throw new UnauthorizedException('Refresh token is no longer valid.');
+      throw this.createSessionExpiredException(
+        'Refresh token is no longer valid.',
+      );
     }
 
     const publicUser = await this.usersService.findPublicById(payload.sub);
@@ -327,7 +336,30 @@ export class AuthService {
         secret: this.refreshTokenSecret,
       });
     } catch {
-      throw new UnauthorizedException('Invalid refresh token.');
+      throw this.createSessionExpiredException('Invalid refresh token.');
     }
+  }
+
+  private createInvalidCredentialsException(): UnauthorizedException {
+    return new UnauthorizedException({
+      code: 'INVALID_CREDENTIALS',
+      message: 'Invalid email or password.',
+    });
+  }
+
+  private createAccountUnavailableException(): ForbiddenException {
+    return new ForbiddenException({
+      code: 'ACCOUNT_UNAVAILABLE',
+      message: 'This account is not available for access at the moment.',
+    });
+  }
+
+  private createSessionExpiredException(
+    message: string,
+  ): UnauthorizedException {
+    return new UnauthorizedException({
+      code: 'SESSION_EXPIRED',
+      message,
+    });
   }
 }

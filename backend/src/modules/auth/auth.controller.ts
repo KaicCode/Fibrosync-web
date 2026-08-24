@@ -96,7 +96,10 @@ export class AuthController {
     const refreshToken = extractBearerToken(authorization);
 
     if (!refreshToken) {
-      throw new UnauthorizedException('Missing refresh token.');
+      throw new UnauthorizedException({
+        code: 'SESSION_EXPIRED',
+        message: 'Missing refresh token.',
+      });
     }
 
     return this.authService.refreshToken(

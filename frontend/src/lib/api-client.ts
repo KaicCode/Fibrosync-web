@@ -5,24 +5,24 @@ import type {
   InternalAxiosRequestConfig,
 } from 'axios'
 import {
-  clearStoredAuthTokens,
   getStoredAccessToken,
   getStoredRefreshToken,
   storeAuthTokens,
 } from '@/lib/auth-session'
+import {
+  clearExpiredSession,
+  createOfflineError,
+  hasRefreshSession,
+  isBrowserOffline,
+  normalizeHttpError,
+  shouldAttemptTokenRefresh,
+} from '@/lib/auth-http'
+import { ApiError } from '@/lib/http-errors'
 import { resolveApiUrl } from '@/lib/resolve-api-url'
-import { useAppStore } from '@/store/app-store'
 
 const API_URL = resolveApiUrl()
-const API_REQUEST_TIMEOUT_MS = 15000
-
-function resolveCurrentFrontendOrigin(): string {
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin
-  }
-
-  return 'a URL atual do frontend'
-}
+const API_REQUEST_TIMEOUT_MS = 30000
+const REFRESH_REQUEST_TIMEOUT_MS = 30000
 
 // Criar instância do Axios
 export const apiClient: AxiosInstance = axios.create({
@@ -33,26 +33,18 @@ export const apiClient: AxiosInstance = axios.create({
   },
 })
 
-function buildConnectivityErrorMessage(): string {
-  return `Nao foi possivel conectar com a API. Verifique se VITE_API_URL aponta para ${API_URL} e se FRONTEND_URL no backend inclui ${resolveCurrentFrontendOrigin()}.`
-}
-
-function buildTimeoutErrorMessage(): string {
-  return 'A API demorou mais do que o esperado para responder. Tente novamente em alguns instantes.'
-}
-
-function isBrowserOffline(): boolean {
-  return typeof navigator !== 'undefined' && navigator.onLine === false
-}
-
 // Flag para evitar requisições infinitas de refresh
 let isRefreshing = false
 let failedQueue: Array<{
   resolve: (token: string) => void
-  reject: (err: Error) => void
+  reject: (err: ApiError) => void
 }> = []
 
-const processQueue = (error: Error | null, token: string | null = null) => {
+type RetriableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean
+}
+
+const processQueue = (error: ApiError | null, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error)
@@ -69,7 +61,7 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (isBrowserOffline()) {
-      return Promise.reject(new ApiError(buildConnectivityErrorMessage()))
+      return Promise.reject(createOfflineError())
     }
 
     const token = getStoredAccessToken()
@@ -86,21 +78,31 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config
+    const originalRequest = error.config as RetriableRequestConfig | undefined
 
-    // Se é erro 401 e ainda não tentou refresh
     if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/refresh')
+      shouldAttemptTokenRefresh({
+        statusCode: error.response?.status,
+        url: originalRequest?.url,
+        hasRetried: originalRequest?._retry,
+        hasAccessToken: Boolean(getStoredAccessToken()),
+        hasRefreshToken: Boolean(getStoredRefreshToken()),
+      })
     ) {
       if (isRefreshing) {
-        // Se já está fazendo refresh, aguardar na fila
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         })
           .then((token) => {
+            if (!originalRequest) {
+              return Promise.reject(
+                new ApiError('Sua sessao expirou. Entre novamente.', {
+                  code: 'SESSION_EXPIRED',
+                  statusCode: 401,
+                }),
+              )
+            }
+
             originalRequest.headers = originalRequest.headers ?? {}
             originalRequest.headers.Authorization = `Bearer ${token}`
             return apiClient(originalRequest)
@@ -110,6 +112,15 @@ apiClient.interceptors.response.use(
           })
       }
 
+      if (!originalRequest) {
+        return Promise.reject(
+          new ApiError('Sua sessao expirou. Entre novamente.', {
+            code: 'SESSION_EXPIRED',
+            statusCode: 401,
+          }),
+        )
+      }
+
       originalRequest._retry = true
       isRefreshing = true
 
@@ -117,7 +128,10 @@ apiClient.interceptors.response.use(
         const refreshToken = getStoredRefreshToken()
 
         if (!refreshToken) {
-          throw new Error('No refresh token available')
+          throw new ApiError('Sua sessao expirou. Entre novamente.', {
+            code: 'SESSION_EXPIRED',
+            statusCode: 401,
+          })
         }
 
         const response = await axios.post<
@@ -132,7 +146,7 @@ apiClient.interceptors.response.use(
             headers: {
               Authorization: `Bearer ${refreshToken}`,
             },
-            timeout: API_REQUEST_TIMEOUT_MS,
+            timeout: REFRESH_REQUEST_TIMEOUT_MS,
           },
         )
 
@@ -152,18 +166,30 @@ apiClient.interceptors.response.use(
 
         return apiClient(originalRequest)
       } catch (err) {
-        processQueue(err as Error, null)
-
-        clearStoredAuthTokens()
-        useAppStore.getState().clearAuthSession()
-
-        window.location.href = '/login'
-
-        return Promise.reject(err)
+        const normalizedError = normalizeHttpError(err)
+        processQueue(normalizedError, null)
+        clearExpiredSession(normalizedError.code === 'SESSION_EXPIRED')
+        return Promise.reject(normalizedError)
       }
     }
 
-    return Promise.reject(error)
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !hasRefreshSession() &&
+      !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/signup')
+    ) {
+      const sessionExpiredError = new ApiError('Sua sessao expirou. Entre novamente.', {
+        code: 'SESSION_EXPIRED',
+        statusCode: 401,
+      })
+
+      clearExpiredSession()
+      return Promise.reject(sessionExpiredError)
+    }
+
+    return Promise.reject(normalizeHttpError(error))
   },
 )
 
@@ -178,18 +204,6 @@ export type ApiResponse<T> = {
   path?: string
 }
 
-export class ApiError extends Error {
-  statusCode?: number
-  details?: unknown
-
-  constructor(message: string, statusCode?: number, details?: unknown) {
-    super(message)
-    this.name = 'ApiError'
-    this.statusCode = statusCode
-    this.details = details
-  }
-}
-
 // Helper para requisições
 export const apiCall = async <T,>(
   method: 'get' | 'post' | 'put' | 'patch' | 'delete',
@@ -198,7 +212,7 @@ export const apiCall = async <T,>(
   config?: AxiosRequestConfig,
 ): Promise<T> => {
   if (isBrowserOffline()) {
-    throw new ApiError(buildConnectivityErrorMessage())
+    throw createOfflineError()
   }
 
   try {
@@ -222,26 +236,6 @@ export const apiCall = async <T,>(
 
     return response.data.data
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.code === 'ECONNABORTED') {
-        throw new ApiError(buildTimeoutErrorMessage(), 408)
-      }
-
-      if (error.code === 'ERR_NETWORK' || (error.request && !error.response)) {
-        throw new ApiError(buildConnectivityErrorMessage())
-      }
-
-      const message =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        error.message
-
-      throw new ApiError(
-        message,
-        error.response?.status,
-        error.response?.data?.details,
-      )
-    }
-    throw error
+    throw normalizeHttpError(error)
   }
 }
