@@ -89,10 +89,38 @@ export const patientNavigation: NavigationItem[] = [
 export const medicalNavigation: NavigationItem[] = [
   {
     label: 'Painel médico',
-    description: 'Acompanhe pacientes, sinais e evolução',
+    description: 'Visão geral do acompanhamento clínico',
     to: '/medical',
     icon: Stethoscope,
     keywords: ['medico', 'pacientes', 'evolucao', 'painel', 'clinico'],
+  },
+  {
+    label: 'Meus pacientes',
+    description: 'Lista de pacientes com vínculo ativo',
+    to: '/medical/patients',
+    icon: Users,
+    keywords: ['pacientes', 'vinculos', 'acompanhamento', 'buscar paciente'],
+  },
+  {
+    label: 'Relatórios',
+    description: 'Gerar e consultar relatórios clínicos',
+    to: '/medical/reports',
+    icon: FileText,
+    keywords: ['relatorios', 'gerar', 'historico', 'pdf'],
+  },
+  {
+    label: 'Meu perfil',
+    description: 'Dados profissionais e identificação',
+    to: '/medical/profile',
+    icon: UserRound,
+    keywords: ['perfil', 'medico', 'crm', 'especialidade', 'clinica'],
+  },
+  {
+    label: 'Configurações',
+    description: 'Alertas, notificações e segurança',
+    to: '/medical/settings',
+    icon: Cog,
+    keywords: ['configuracoes', 'notificacoes', 'alertas', 'seguranca'],
   },
 ]
 
@@ -150,7 +178,7 @@ export const workspaceConfig = {
   medical: {
     shortLabel: 'Médico',
     navigation: medicalNavigation,
-    searchPlaceholder: 'Buscar pacientes, sintomas ou evolução...',
+    searchPlaceholder: 'Buscar paciente...',
   },
   admin: {
     shortLabel: 'Admin',
@@ -215,7 +243,7 @@ export const roleOptions: Array<{
 ]
 
 export function inferRoleFromPath(pathname: string): WorkspaceVariant {
-  if (pathname.startsWith('/medical')) {
+  if (pathname.startsWith('/medical') || pathname.startsWith('/doctor')) {
     return 'medical'
   }
 

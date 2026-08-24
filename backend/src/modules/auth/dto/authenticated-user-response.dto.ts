@@ -50,6 +50,12 @@ export class AuthenticatedUserResponseDto {
   @ApiPropertyOptional()
   professionalPhone?: string | null;
 
+  @ApiPropertyOptional()
+  professionalClinic?: string | null;
+
+  @ApiPropertyOptional()
+  professionalBio?: string | null;
+
   @ApiProperty()
   onboardingCompleted!: boolean;
 

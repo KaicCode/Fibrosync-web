@@ -43,6 +43,8 @@ interface CreateUserRecordInput {
   professionalCouncilNumber?: string | null;
   professionalCouncilState?: string | null;
   professionalPhone?: string | null;
+  professionalClinic?: string | null;
+  professionalBio?: string | null;
   onboardingCompleted?: boolean;
 }
 
@@ -146,6 +148,8 @@ export class UsersService {
       professionalCouncilNumber: dto.professionalCouncilNumber ?? undefined,
       professionalCouncilState: dto.professionalCouncilState ?? undefined,
       professionalPhone: dto.professionalPhone ?? undefined,
+      professionalClinic: dto.professionalClinic ?? undefined,
+      professionalBio: dto.professionalBio ?? undefined,
       onboardingCompleted: this.resolveOnboardingCompleted(
         role,
         dto.onboardingCompleted,
@@ -157,7 +161,23 @@ export class UsersService {
     userId: string,
     dto: UpdateProfileDto,
   ): Promise<PublicUser> {
-    await this.findPublicById(userId);
+    const existing = await this.findPublicById(userId);
+    const isMedical = existing.role === Role.MEDICAL;
+
+    if (isMedical) {
+      await this.ensureProfessionalIdentityAvailable(
+        dto.professionalCouncilType !== undefined
+          ? dto.professionalCouncilType
+          : existing.professionalCouncilType,
+        dto.professionalCouncilNumber !== undefined
+          ? dto.professionalCouncilNumber
+          : existing.professionalCouncilNumber,
+        dto.professionalCouncilState !== undefined
+          ? dto.professionalCouncilState
+          : existing.professionalCouncilState,
+        userId,
+      );
+    }
 
     const data: Prisma.UserUpdateInput = {
       fullName: dto.fullName?.trim(),
@@ -181,6 +201,41 @@ export class UsersService {
             : null,
       timezone: dto.timezone?.trim(),
       onboardingCompleted: dto.onboardingCompleted,
+      specialty: isMedical
+        ? dto.specialty === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.specialty)
+        : undefined,
+      professionalCouncilType: isMedical
+        ? dto.professionalCouncilType === undefined
+          ? undefined
+          : this.normalizeNullableUppercaseText(dto.professionalCouncilType)
+        : undefined,
+      professionalCouncilNumber: isMedical
+        ? dto.professionalCouncilNumber === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.professionalCouncilNumber)
+        : undefined,
+      professionalCouncilState: isMedical
+        ? dto.professionalCouncilState === undefined
+          ? undefined
+          : this.normalizeNullableUppercaseText(dto.professionalCouncilState)
+        : undefined,
+      professionalPhone: isMedical
+        ? dto.professionalPhone === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.professionalPhone)
+        : undefined,
+      professionalClinic: isMedical
+        ? dto.professionalClinic === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.professionalClinic)
+        : undefined,
+      professionalBio: isMedical
+        ? dto.professionalBio === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.professionalBio)
+        : undefined,
     };
 
     return this.prisma.user.update({
@@ -220,6 +275,10 @@ export class UsersService {
         dto.professionalCouncilState !== undefined
           ? dto.professionalCouncilState
           : existing.professionalCouncilState,
+      professionalClinic:
+        dto.professionalClinic !== undefined
+          ? dto.professionalClinic
+          : existing.professionalClinic,
     };
 
     this.validateRoleSpecificPayload(nextRole, effectiveDoctorIdentity);
@@ -303,6 +362,16 @@ export class UsersService {
         ? dto.professionalPhone === undefined
           ? undefined
           : this.normalizeNullableText(dto.professionalPhone)
+        : null,
+      professionalClinic: shouldUseMedicalFields
+        ? dto.professionalClinic === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.professionalClinic)
+        : null,
+      professionalBio: shouldUseMedicalFields
+        ? dto.professionalBio === undefined
+          ? undefined
+          : this.normalizeNullableText(dto.professionalBio)
         : null,
       onboardingCompleted: onboardingCompletedUpdate,
     };
@@ -682,6 +751,12 @@ export class UsersService {
           : undefined,
         professionalPhone: isMedical
           ? (this.normalizeNullableText(input.professionalPhone) ?? undefined)
+          : undefined,
+        professionalClinic: isMedical
+          ? (this.normalizeNullableText(input.professionalClinic) ?? undefined)
+          : undefined,
+        professionalBio: isMedical
+          ? (this.normalizeNullableText(input.professionalBio) ?? undefined)
           : undefined,
         onboardingCompleted: this.resolveOnboardingCompleted(
           role,

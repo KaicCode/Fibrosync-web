@@ -17,6 +17,8 @@ export const userPublicSelect = {
   professionalCouncilNumber: true,
   professionalCouncilState: true,
   professionalPhone: true,
+  professionalClinic: true,
+  professionalBio: true,
   onboardingCompleted: true,
   lastLoginAt: true,
   createdAt: true,

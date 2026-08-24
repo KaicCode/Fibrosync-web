@@ -21,6 +21,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CommunityPostsModule } from './modules/community-posts/community-posts.module';
 import { CrisisPredictionModule } from './modules/crisis-prediction/crisis-prediction.module';
 import { DailyRecordsModule } from './modules/daily-records/daily-records.module';
+import { DoctorModule } from './modules/doctor/doctor.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SystemSettingsModule } from './modules/system-settings/system-settings.module';
@@ -45,6 +46,7 @@ import { WeatherModule } from './modules/weather/weather.module';
     CommunityPostsModule,
     SymptomsModule,
     DailyRecordsModule,
+    DoctorModule,
     WeatherModule,
     CrisisPredictionModule,
     NotificationsModule,

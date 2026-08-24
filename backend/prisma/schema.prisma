@@ -24,6 +24,8 @@ model User {
   professionalCouncilNumber String?      @map("professional_council_number") @db.VarChar(40)
   professionalCouncilState  String?      @map("professional_council_state") @db.VarChar(2)
   professionalPhone   String?            @map("professional_phone") @db.VarChar(32)
+  professionalClinic  String?            @map("professional_clinic") @db.VarChar(160)
+  professionalBio     String?            @map("professional_bio")
   onboardingCompleted Boolean            @default(false) @map("onboarding_completed")
   lastLoginAt         DateTime?          @map("last_login_at")
   deletedAt           DateTime?          @map("deleted_at")
@@ -42,6 +44,11 @@ model User {
   userSettings        UserSettings?
   weatherRecords      WeatherRecord[]
   exerciseHistories   ExerciseHistory[]
+  doctorPatientLinksAsDoctor DoctorPatientAccess[] @relation("DoctorPatientAccessDoctor")
+  doctorPatientLinksAsPatient DoctorPatientAccess[] @relation("DoctorPatientAccessPatient")
+  doctorPatientLinksAuthorizedBy DoctorPatientAccess[] @relation("DoctorPatientAccessAuthorizedBy")
+  doctorNotesAuthored DoctorNote[] @relation("DoctorNoteAuthor")
+  doctorNotesAboutPatient DoctorNote[] @relation("DoctorNotePatient")
   systemSettingsUpdates SystemSettings[] @relation("SystemSettingsUpdatedBy")
   systemSettingsAuditLogs SystemSettingsAuditLog[] @relation("SystemSettingsAuditChangedBy")
 
@@ -320,6 +327,47 @@ model Notification {
   @@map("notifications")
 }
 
+model DoctorPatientAccess {
+  id               String                    @id @default(uuid()) @db.Uuid
+  doctorId         String                    @map("doctor_id") @db.Uuid
+  patientId        String                    @map("patient_id") @db.Uuid
+  status           DoctorPatientAccessStatus @default(PENDING)
+  authorizedByUserId String?                 @map("authorized_by_user_id") @db.Uuid
+  authorizationSource String?                @map("authorization_source") @db.VarChar(40)
+  authorizedAt     DateTime?                 @map("authorized_at")
+  revokedAt        DateTime?                 @map("revoked_at")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  doctor           User                      @relation("DoctorPatientAccessDoctor", fields: [doctorId], references: [id], onDelete: Cascade)
+  patient          User                      @relation("DoctorPatientAccessPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  authorizedByUser User?                     @relation("DoctorPatientAccessAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: SetNull)
+  notes            DoctorNote[]
+
+  @@unique([doctorId, patientId])
+  @@index([doctorId, status, updatedAt])
+  @@index([patientId, status, updatedAt])
+  @@map("doctor_patient_access")
+}
+
+model DoctorNote {
+  id               String               @id @default(uuid()) @db.Uuid
+  accessId         String?              @map("access_id") @db.Uuid
+  doctorId         String               @map("doctor_id") @db.Uuid
+  patientId        String               @map("patient_id") @db.Uuid
+  content          String
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  deletedAt        DateTime?            @map("deleted_at")
+  access           DoctorPatientAccess? @relation(fields: [accessId], references: [id], onDelete: SetNull)
+  doctor           User                 @relation("DoctorNoteAuthor", fields: [doctorId], references: [id], onDelete: Cascade)
+  patient          User                 @relation("DoctorNotePatient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, createdAt])
+  @@index([doctorId, createdAt])
+  @@index([accessId])
+  @@map("doctor_notes")
+}
+
 model Report {
   id          String       @id @default(uuid()) @db.Uuid
   userId      String       @map("user_id") @db.Uuid
@@ -413,6 +461,12 @@ enum AccountStatus {
   PENDING_PROFILE
   ACTIVE
   SUSPENDED
+}
+
+enum DoctorPatientAccessStatus {
+  PENDING
+  ACTIVE
+  REVOKED
 }
 
 enum SymptomCategory {

@@ -64,4 +64,46 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsBoolean()
   onboardingCompleted?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  specialty?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  professionalCouncilType?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  professionalCouncilNumber?: string | null;
+
+  @ApiPropertyOptional({ minLength: 2, maxLength: 2 })
+  @IsOptional()
+  @IsString()
+  @Length(2, 2)
+  professionalCouncilState?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  professionalPhone?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  professionalClinic?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1200)
+  professionalBio?: string | null;
 }

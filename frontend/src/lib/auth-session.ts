@@ -88,6 +88,8 @@ export function mapUserToSessionUser(user: UserProfile): AuthUser {
     professionalCouncilNumber: user.professionalCouncilNumber ?? null,
     professionalCouncilState: user.professionalCouncilState ?? null,
     professionalPhone: user.professionalPhone ?? null,
+    professionalClinic: user.professionalClinic ?? null,
+    professionalBio: user.professionalBio ?? null,
     onboardingCompleted: user.onboardingCompleted,
     lastLoginAt: user.lastLoginAt ?? null,
     createdAt: user.createdAt,

@@ -104,7 +104,7 @@ export function WorkspaceSidebar({
           ))}
         </nav>
 
-        {variant === 'admin' ? (
+        {variant === 'admin' && canAccessAdmin ? (
           <div className="shrink-0 rounded-[1.35rem] border border-white/75 bg-white/78 p-3 shadow-soft backdrop-blur-xl">
             <div className="mb-2.5 flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
@@ -120,55 +120,31 @@ export function WorkspaceSidebar({
 
             <div className="grid grid-cols-3 gap-2">
               {roleOptions.map((option) => (
-                (() => {
-                  const isLocked = option.role === 'admin' && !canAccessAdmin
-
-                  if (isLocked) {
-                    return (
-                      <div
-                        key={option.role}
-                        className="flex cursor-not-allowed flex-col items-center justify-center gap-1 rounded-[1rem] border border-transparent bg-brand-50/35 px-2 py-2.5 text-center opacity-60"
-                        aria-disabled="true"
-                        title="Faça login com uma conta ADMIN para acessar."
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-muted-foreground shadow-soft">
-                          <option.icon className="h-4 w-4" />
-                        </div>
-                        <p className="text-xs font-semibold tracking-[-0.02em] text-foreground">
-                          {option.label}
-                        </p>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <NavLink
-                      key={option.role}
-                      to={option.href}
-                      onClick={onNavigate}
-                      className={cn(
-                        'group flex flex-col items-center justify-center gap-1 rounded-[1rem] border px-2 py-2.5 text-center transition-all duration-300 hover:-translate-y-[1px]',
-                        currentRole === option.role
-                          ? 'border-brand-300/45 bg-[linear-gradient(135deg,rgba(123,77,255,0.16),rgba(92,135,255,0.1))] shadow-soft'
-                          : 'border-transparent bg-brand-50/50 hover:border-white/80 hover:bg-white',
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'flex h-8 w-8 items-center justify-center rounded-xl transition-colors',
-                          currentRole === option.role
-                            ? 'bg-brand-gradient text-white'
-                            : 'bg-white text-muted-foreground shadow-soft group-hover:text-brand-700',
-                        )}
-                      >
-                        <option.icon className="h-4 w-4" />
-                      </div>
-                      <p className="text-xs font-semibold tracking-[-0.02em] text-foreground">
-                        {option.label}
-                      </p>
-                    </NavLink>
-                  )
-                })()
+                <NavLink
+                  key={option.role}
+                  to={option.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'group flex flex-col items-center justify-center gap-1 rounded-[1rem] border px-2 py-2.5 text-center transition-all duration-300 hover:-translate-y-[1px]',
+                    currentRole === option.role
+                      ? 'border-brand-300/45 bg-[linear-gradient(135deg,rgba(123,77,255,0.16),rgba(92,135,255,0.1))] shadow-soft'
+                      : 'border-transparent bg-brand-50/50 hover:border-white/80 hover:bg-white',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'flex h-8 w-8 items-center justify-center rounded-xl transition-colors',
+                      currentRole === option.role
+                        ? 'bg-brand-gradient text-white'
+                        : 'bg-white text-muted-foreground shadow-soft group-hover:text-brand-700',
+                    )}
+                  >
+                    <option.icon className="h-4 w-4" />
+                  </div>
+                  <p className="text-xs font-semibold tracking-[-0.02em] text-foreground">
+                    {option.label}
+                  </p>
+                </NavLink>
               ))}
             </div>
           </div>

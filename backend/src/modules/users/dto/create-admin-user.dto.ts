@@ -110,6 +110,18 @@ export class CreateAdminUserDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  professionalClinic?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1200)
+  professionalBio?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
   onboardingCompleted?: boolean;
 }

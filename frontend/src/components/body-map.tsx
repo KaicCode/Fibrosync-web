@@ -21,6 +21,7 @@ type BodyMapProps = {
   onToggleBackArea: (areaId: string) => void;
   compact?: boolean;
   showLegend?: boolean;
+  readOnly?: boolean;
 };
 
 function FigureSilhouette({ side }: { side: "front" | "back" }) {
@@ -132,10 +133,12 @@ function AreaButton({
   area,
   selected,
   onToggle,
+  readOnly = false,
 }: {
   area: BodyAreaDefinition;
   selected: boolean;
   onToggle: (areaId: string) => void;
+  readOnly?: boolean;
 }) {
   const centerX = area.x + area.width / 2;
   const centerY = area.y + area.height / 2;
@@ -145,14 +148,19 @@ function AreaButton({
       <TooltipTrigger asChild>
         <motion.button
           type="button"
-          whileTap={{ scale: 0.96 }}
-          whileHover={{ scale: 1.06 }}
-          onClick={() => onToggle(area.id)}
+          whileTap={readOnly ? undefined : { scale: 0.96 }}
+          whileHover={readOnly ? undefined : { scale: 1.06 }}
+          onClick={() => {
+            if (!readOnly) {
+              onToggle(area.id)
+            }
+          }}
           className={cn(
             "absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2",
             selected
               ? "drop-shadow-[0_0_16px_rgba(139,92,246,0.22)]"
               : "hover:drop-shadow-[0_0_12px_rgba(139,92,246,0.14)]",
+            readOnly ? "cursor-default" : "cursor-pointer",
           )}
           style={{
             left: `${centerX}%`,
@@ -207,6 +215,7 @@ const FigureCard = memo(function FigureCard({
   selectedAreas,
   onToggleArea,
   compact = false,
+  readOnly = false,
 }: {
   title: string;
   subtitle: string;
@@ -215,6 +224,7 @@ const FigureCard = memo(function FigureCard({
   selectedAreas: string[];
   onToggleArea: (areaId: string) => void;
   compact?: boolean;
+  readOnly?: boolean;
 }) {
   return (
     <div
@@ -258,6 +268,7 @@ const FigureCard = memo(function FigureCard({
             area={area}
             selected={selectedAreas.includes(area.id)}
             onToggle={onToggleArea}
+            readOnly={readOnly}
           />
         ))}
       </div>
@@ -272,6 +283,7 @@ export function BodyMap({
   onToggleBackArea,
   compact = false,
   showLegend = true,
+  readOnly = false,
 }: BodyMapProps) {
   return (
     <TooltipProvider>
@@ -284,6 +296,7 @@ export function BodyMap({
           selectedAreas={frontSelectedAreas}
           onToggleArea={onToggleFrontArea}
           compact={compact}
+          readOnly={readOnly}
         />
         <FigureCard
           title="Vista traseira"
@@ -293,6 +306,7 @@ export function BodyMap({
           selectedAreas={backSelectedAreas}
           onToggleArea={onToggleBackArea}
           compact={compact}
+          readOnly={readOnly}
         />
       </div>
       {showLegend ? (

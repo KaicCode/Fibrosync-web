@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { PageLoader } from '@/components/page-loader'
 import { AuthLayout } from '@/layouts/auth-layout'
 import { AdminLayout, MedicalLayout, PatientLayout } from '@/layouts/workspace-layout'
@@ -34,6 +34,31 @@ const SettingsPage = lazy(() =>
 const MedicalDashboardPage = lazy(() =>
   import('@/pages/medical/medical-dashboard-page').then((module) => ({
     default: module.MedicalDashboardPage,
+  })),
+)
+const MedicalPatientsPage = lazy(() =>
+  import('@/pages/medical/medical-patients-page').then((module) => ({
+    default: module.MedicalPatientsPage,
+  })),
+)
+const MedicalPatientPage = lazy(() =>
+  import('@/pages/medical/medical-patient-page').then((module) => ({
+    default: module.MedicalPatientPage,
+  })),
+)
+const MedicalReportsPage = lazy(() =>
+  import('@/pages/medical/medical-reports-page').then((module) => ({
+    default: module.MedicalReportsPage,
+  })),
+)
+const MedicalProfilePage = lazy(() =>
+  import('@/pages/medical/medical-profile-page').then((module) => ({
+    default: module.MedicalProfilePage,
+  })),
+)
+const MedicalSettingsPage = lazy(() =>
+  import('@/pages/medical/medical-settings-page').then((module) => ({
+    default: module.MedicalSettingsPage,
   })),
 )
 const AdminDashboardPage = lazy(() =>
@@ -115,9 +140,16 @@ export function AppRouter() {
 
         <Route element={<MedicalLayout />}>
           <Route path="/medical" element={<MedicalDashboardPage />} />
+          <Route path="/medical/patients" element={<MedicalPatientsPage />} />
+          <Route path="/medical/patients/:patientId" element={<MedicalPatientPage />} />
+          <Route path="/medical/reports" element={<MedicalReportsPage />} />
+          <Route path="/medical/profile" element={<MedicalProfilePage />} />
+          <Route path="/medical/settings" element={<MedicalSettingsPage />} />
           <Route path="/medical/ai-active" element={<AiActivePreviewPage />} />
           <Route path="/medical/search" element={<WorkspaceSearchPage />} />
         </Route>
+
+        <Route path="/doctor/*" element={<DoctorWorkspaceRedirect />} />
 
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminDashboardPage />} />
@@ -134,5 +166,17 @@ export function AppRouter() {
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
+  )
+}
+
+function DoctorWorkspaceRedirect() {
+  const location = useLocation()
+  const nextPathname = location.pathname.replace(/^\/doctor\b/, '/medical')
+
+  return (
+    <Navigate
+      to={`${nextPathname}${location.search}${location.hash}`}
+      replace
+    />
   )
 }

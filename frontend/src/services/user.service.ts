@@ -18,6 +18,8 @@ export interface UserProfile {
   professionalCouncilNumber?: string | null;
   professionalCouncilState?: string | null;
   professionalPhone?: string | null;
+  professionalClinic?: string | null;
+  professionalBio?: string | null;
   onboardingCompleted: boolean;
   lastLoginAt?: string | null;
   createdAt: string;
