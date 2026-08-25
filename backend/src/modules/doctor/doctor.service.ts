@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   AccountStatus,
+  DoctorPatientAccessAuditEventType,
   DoctorPatientAccessStatus,
   Role,
   type Prisma,
@@ -757,6 +758,8 @@ export class DoctorService {
         status: DoctorPatientAccessStatus.ACTIVE,
         authorizedByUserId: adminUserId,
         authorizationSource: dto.authorizationSource?.trim() || 'ADMIN',
+        requestedAt: new Date(),
+        respondedAt: new Date(),
         authorizedAt: new Date(),
         revokedAt: null,
       },
@@ -766,6 +769,8 @@ export class DoctorService {
         status: DoctorPatientAccessStatus.ACTIVE,
         authorizedByUserId: adminUserId,
         authorizationSource: dto.authorizationSource?.trim() || 'ADMIN',
+        requestedAt: new Date(),
+        respondedAt: new Date(),
         authorizedAt: new Date(),
       },
       select: {
@@ -774,8 +779,22 @@ export class DoctorService {
         patientId: true,
         status: true,
         authorizedAt: true,
+        requestedAt: true,
+        respondedAt: true,
         revokedAt: true,
         authorizationSource: true,
+      },
+    });
+
+    await this.prisma.doctorPatientAccessAuditLog.create({
+      data: {
+        accessId: access.id,
+        actorUserId: adminUserId,
+        doctorId: access.doctorId,
+        patientId: access.patientId,
+        eventType: DoctorPatientAccessAuditEventType.DOCTOR_LINK_ADMIN_GRANTED,
+        previousStatus: null,
+        nextStatus: DoctorPatientAccessStatus.ACTIVE,
       },
     });
 
@@ -787,7 +806,10 @@ export class DoctorService {
     };
   }
 
-  async revokeAccessLink(accessId: string): Promise<unknown> {
+  async revokeAccessLink(
+    adminUserId: string,
+    accessId: string,
+  ): Promise<unknown> {
     const existing = await this.prisma.doctorPatientAccess.findUnique({
       where: {
         id: accessId,
@@ -808,6 +830,7 @@ export class DoctorService {
       },
       data: {
         status: DoctorPatientAccessStatus.REVOKED,
+        respondedAt: new Date(),
         revokedAt: new Date(),
       },
       select: {
@@ -816,8 +839,22 @@ export class DoctorService {
         patientId: true,
         status: true,
         authorizedAt: true,
+        requestedAt: true,
+        respondedAt: true,
         revokedAt: true,
         authorizationSource: true,
+      },
+    });
+
+    await this.prisma.doctorPatientAccessAuditLog.create({
+      data: {
+        accessId: access.id,
+        actorUserId: adminUserId,
+        doctorId: access.doctorId,
+        patientId: access.patientId,
+        eventType: DoctorPatientAccessAuditEventType.DOCTOR_LINK_ADMIN_REVOKED,
+        previousStatus: existing.status,
+        nextStatus: DoctorPatientAccessStatus.REVOKED,
       },
     });
 

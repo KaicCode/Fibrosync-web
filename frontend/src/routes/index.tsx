@@ -31,6 +31,11 @@ const ProfilePage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('@/pages/patient/settings-page').then((module) => ({ default: module.SettingsPage })),
 )
+const ProfessionalsPage = lazy(() =>
+  import('@/pages/patient/professionals-page').then((module) => ({
+    default: module.ProfessionalsPage,
+  })),
+)
 const MedicalDashboardPage = lazy(() =>
   import('@/pages/medical/medical-dashboard-page').then((module) => ({
     default: module.MedicalDashboardPage,
@@ -134,6 +139,7 @@ export function AppRouter() {
           <Route path="/app/movement" element={<MovementPage />} />
           <Route path="/app/calendar" element={<CalendarPage />} />
           <Route path="/app/community" element={<AiActivePreviewPage />} />
+          <Route path="/app/professionals" element={<ProfessionalsPage />} />
           <Route path="/app/profile" element={<ProfilePage />} />
           <Route path="/app/settings" element={<SettingsPage />} />
         </Route>

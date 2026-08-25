@@ -23,6 +23,10 @@ export function WorkspaceSidebar({
   const currentRole = variant
   const authSession = useAppStore((state) => state.authSession)
   const canAccessAdmin = authSession?.user.role === 'ADMIN'
+  const navigationItems =
+    variant === 'patient' && authSession?.user.role === 'ADMIN'
+      ? config.navigation.filter((item) => item.to !== '/app/professionals')
+      : config.navigation
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,243,255,0.92))] shadow-panel backdrop-blur-2xl">
@@ -40,12 +44,12 @@ export function WorkspaceSidebar({
         <div className="flex items-center justify-between px-1">
           <p className="section-label">Navegação</p>
           <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground/75">
-            {config.navigation.length} áreas
+            {navigationItems.length} áreas
           </p>
         </div>
 
         <nav className="scrollbar-subtle flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-1">
-          {config.navigation.map((item) => (
+          {navigationItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

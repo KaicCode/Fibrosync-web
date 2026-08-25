@@ -26,6 +26,7 @@ model User {
   professionalPhone   String?            @map("professional_phone") @db.VarChar(32)
   professionalClinic  String?            @map("professional_clinic") @db.VarChar(160)
   professionalBio     String?            @map("professional_bio")
+  patientLinkCode     String?            @unique @map("patient_link_code") @db.VarChar(16)
   onboardingCompleted Boolean            @default(false) @map("onboarding_completed")
   lastLoginAt         DateTime?          @map("last_login_at")
   deletedAt           DateTime?          @map("deleted_at")
@@ -334,6 +335,8 @@ model DoctorPatientAccess {
   status           DoctorPatientAccessStatus @default(PENDING)
   authorizedByUserId String?                 @map("authorized_by_user_id") @db.Uuid
   authorizationSource String?                @map("authorization_source") @db.VarChar(40)
+  requestedAt      DateTime?                 @map("requested_at")
+  respondedAt      DateTime?                 @map("responded_at")
   authorizedAt     DateTime?                 @map("authorized_at")
   revokedAt        DateTime?                 @map("revoked_at")
   createdAt        DateTime                  @default(now()) @map("created_at")
@@ -347,6 +350,25 @@ model DoctorPatientAccess {
   @@index([doctorId, status, updatedAt])
   @@index([patientId, status, updatedAt])
   @@map("doctor_patient_access")
+}
+
+model DoctorPatientAccessAuditLog {
+  id             String                            @id @default(uuid()) @db.Uuid
+  accessId       String?                           @map("access_id") @db.Uuid
+  actorUserId    String                            @map("actor_user_id") @db.Uuid
+  doctorId       String?                           @map("doctor_id") @db.Uuid
+  patientId      String?                           @map("patient_id") @db.Uuid
+  eventType      DoctorPatientAccessAuditEventType @map("event_type")
+  previousStatus DoctorPatientAccessStatus?        @map("previous_status")
+  nextStatus     DoctorPatientAccessStatus?        @map("next_status")
+  metadata       Json?
+  createdAt      DateTime                          @default(now()) @map("created_at")
+
+  @@index([actorUserId, eventType, createdAt])
+  @@index([doctorId, createdAt])
+  @@index([patientId, createdAt])
+  @@index([accessId, createdAt])
+  @@map("doctor_patient_access_audit_logs")
 }
 
 model DoctorNote {
@@ -466,7 +488,20 @@ enum AccountStatus {
 enum DoctorPatientAccessStatus {
   PENDING
   ACTIVE
+  REJECTED
   REVOKED
+}
+
+enum DoctorPatientAccessAuditEventType {
+  DOCTOR_LINK_LOOKUP
+  DOCTOR_LINK_REQUEST_ATTEMPTED
+  DOCTOR_LINK_REQUESTED
+  DOCTOR_LINK_ACCEPTED
+  DOCTOR_LINK_REJECTED
+  DOCTOR_LINK_REVOKED
+  DOCTOR_LINK_ADMIN_GRANTED
+  DOCTOR_LINK_ADMIN_REVOKED
+  PATIENT_LINK_CODE_REGENERATED
 }
 
 enum SymptomCategory {

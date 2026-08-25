@@ -1,11 +1,18 @@
-import { useDeferredValue, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Search, UsersRound } from 'lucide-react'
+import { useDeferredValue, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Search, UserPlus, UsersRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/page-header'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePageTitle } from '@/hooks/use-page-title'
@@ -14,8 +21,12 @@ import {
   type DoctorPatientFilter,
   type DoctorPeriodDays,
 } from '@/services/doctor.service'
+import { professionalLinksService } from '@/services/professional-links.service'
+import { useAppStore } from '@/store/app-store'
+import { toast } from '@/store/toast-store'
 import {
   formatMedicalDate,
+  formatMedicalDateTime,
   resolveFollowUpTone,
 } from './medical-shared'
 
@@ -32,9 +43,18 @@ const filterOptions: Array<{
 export function MedicalPatientsPage() {
   usePageTitle('Meus pacientes')
 
+  const authSession = useAppStore((state) => state.authSession)
+  const canManageInviteCodes = authSession?.user.role === 'MEDICAL'
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<DoctorPatientFilter>('all')
+  const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false)
+  const [linkCode, setLinkCode] = useState('')
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [lookupResult, setLookupResult] = useState<Awaited<
+    ReturnType<typeof professionalLinksService.lookupPatientByCode>
+  > | null>(null)
   const deferredSearch = useDeferredValue(search)
+  const queryClient = useQueryClient()
 
   const patientsQuery = useQuery({
     queryKey: ['doctorPatients', deferredSearch, filter],
@@ -48,12 +68,77 @@ export function MedicalPatientsPage() {
       }),
   })
 
+  const requestsQuery = useQuery({
+    queryKey: ['doctorPatientLinkRequests'],
+    queryFn: () => professionalLinksService.listDoctorRequests(),
+    enabled: canManageInviteCodes,
+  })
+
+  const lookupMutation = useMutation({
+    mutationFn: (code: string) => professionalLinksService.lookupPatientByCode(code),
+    onSuccess: (result) => {
+      setLookupResult(result)
+      setLookupError(null)
+    },
+    onError: (error) => {
+      setLookupResult(null)
+      setLookupError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível buscar este código agora.',
+      )
+    },
+  })
+
+  const requestMutation = useMutation({
+    mutationFn: (code: string) => professionalLinksService.requestPatientLink(code),
+    onSuccess: () => {
+      toast.success(
+        'Solicitação enviada',
+        'Agora é necessário aguardar a autorização do paciente.',
+      )
+      setIsAddPatientDialogOpen(false)
+      setLinkCode('')
+      setLookupError(null)
+      setLookupResult(null)
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['doctorPatientLinkRequests'] }),
+        queryClient.invalidateQueries({ queryKey: ['doctorPatients'] }),
+      ])
+    },
+    onError: (error) => {
+      toast.error(
+        'Não foi possível concluir esta ação',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      )
+    },
+  })
+
+  const pendingRequests = useMemo(
+    () =>
+      requestsQuery.data?.items.filter((item) => item.status === 'PENDING') ?? [],
+    [requestsQuery.data?.items],
+  )
+  const updatedRequests = useMemo(
+    () =>
+      requestsQuery.data?.items.filter((item) => item.status !== 'PENDING') ?? [],
+    [requestsQuery.data?.items],
+  )
+
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="Meus pacientes"
         title="Acompanhe apenas pacientes com vínculo ativo"
         description="A busca e os filtros abaixo consideram somente pacientes autorizados para acompanhamento clínico."
+        actions={
+          canManageInviteCodes ? (
+            <Button onClick={() => setIsAddPatientDialogOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              Adicionar paciente
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className="card-surface p-5">
@@ -81,6 +166,89 @@ export function MedicalPatientsPage() {
           </div>
         </div>
       </div>
+
+      {canManageInviteCodes ? (
+        <div className="grid gap-5 xl:grid-cols-2">
+          <div className="card-surface p-5">
+            <p className="section-label">Aguardando autorização</p>
+            <h2 className="mt-2 text-xl font-semibold md:text-2xl">
+              Solicitações pendentes
+            </h2>
+            <div className="mt-5 space-y-3">
+              {requestsQuery.isLoading ? (
+                <>
+                  <Skeleton className="h-28 w-full" />
+                  <Skeleton className="h-28 w-full" />
+                </>
+              ) : pendingRequests.length > 0 ? (
+                pendingRequests.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-[1.1rem] border border-white/80 bg-white/82 px-4 py-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {item.patient.maskedName}
+                      </p>
+                      <Badge variant="warning">Aguardando autorização</Badge>
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Solicitação enviada em{' '}
+                      {formatMedicalDateTime(item.requestedAt ?? item.updatedAt)}.
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Nenhuma solicitação aguardando resposta no momento.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="card-surface p-5">
+            <p className="section-label">Atualizações recentes</p>
+            <h2 className="mt-2 text-xl font-semibold md:text-2xl">
+              Solicitações já respondidas
+            </h2>
+            <div className="mt-5 space-y-3">
+              {requestsQuery.isLoading ? (
+                <>
+                  <Skeleton className="h-28 w-full" />
+                  <Skeleton className="h-28 w-full" />
+                </>
+              ) : updatedRequests.length > 0 ? (
+                updatedRequests.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-[1.1rem] border border-white/80 bg-white/82 px-4 py-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {item.patient.maskedName}
+                      </p>
+                      <Badge variant={item.status === 'REVOKED' ? 'neutral' : 'default'}>
+                        {item.status === 'REJECTED'
+                          ? 'Solicitação não aceita'
+                          : 'Acesso removido'}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {item.status === 'REJECTED'
+                        ? 'A solicitação não foi aceita.'
+                        : 'Seu acesso a este paciente foi encerrado.'}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Nenhuma atualização recente de solicitação.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {patientsQuery.isLoading ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -173,6 +341,112 @@ export function MedicalPatientsPage() {
           ))}
         </div>
       )}
+
+      <Dialog
+        open={canManageInviteCodes && isAddPatientDialogOpen}
+        onOpenChange={(nextOpen) => {
+          setIsAddPatientDialogOpen(nextOpen)
+
+          if (!nextOpen) {
+            setLinkCode('')
+            setLookupError(null)
+            setLookupResult(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar paciente</DialogTitle>
+            <DialogDescription>
+              Use o código fornecido pelo paciente para enviar uma solicitação de acompanhamento.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4">
+            <label className="space-y-2">
+              <p className="text-sm font-semibold text-foreground">
+                Código do paciente
+              </p>
+              <Input
+                value={linkCode}
+                onChange={(event) => {
+                  setLinkCode(event.target.value.toUpperCase())
+                  setLookupError(null)
+                }}
+                placeholder="FS-XXXXXX"
+                className="h-12 rounded-[1.2rem]"
+              />
+            </label>
+
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => lookupMutation.mutate(linkCode.trim())}
+                disabled={lookupMutation.isPending || linkCode.trim().length < 6}
+              >
+                {lookupMutation.isPending ? 'Buscando...' : 'Buscar paciente'}
+              </Button>
+            </div>
+
+            {lookupError ? (
+              <div
+                aria-live="polite"
+                className="rounded-[1rem] border border-amber-100 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-900"
+              >
+                {lookupError}
+              </div>
+            ) : null}
+
+            {lookupResult ? (
+              <div
+                aria-live="polite"
+                className="rounded-[1.2rem] border border-white/80 bg-white/84 px-4 py-4 shadow-soft"
+              >
+                <p className="section-label">Paciente encontrado</p>
+                <h3 className="mt-2 text-lg font-semibold text-foreground">
+                  {lookupResult.maskedName}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {lookupResult.note}
+                </p>
+                {lookupResult.existingStatus === 'ACTIVE' ? (
+                  <p className="mt-3 text-sm font-medium text-muted-foreground">
+                    Este paciente já está vinculado a você.
+                  </p>
+                ) : null}
+                {lookupResult.existingStatus === 'PENDING' ? (
+                  <p className="mt-3 text-sm font-medium text-muted-foreground">
+                    Já existe uma solicitação aguardando resposta.
+                  </p>
+                ) : null}
+                {lookupResult.existingStatus === 'REJECTED' ? (
+                  <p className="mt-3 text-sm font-medium text-muted-foreground">
+                    A solicitação anterior não foi aceita. Você pode enviar uma nova solicitação.
+                  </p>
+                ) : null}
+                {lookupResult.existingStatus === 'REVOKED' ? (
+                  <p className="mt-3 text-sm font-medium text-muted-foreground">
+                    O acesso anterior foi removido. Você pode enviar uma nova solicitação.
+                  </p>
+                ) : null}
+
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={() => requestMutation.mutate(linkCode.trim())}
+                    disabled={!lookupResult.canRequest || requestMutation.isPending}
+                  >
+                    {requestMutation.isPending
+                      ? 'Enviando...'
+                      : 'Enviar solicitação'}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

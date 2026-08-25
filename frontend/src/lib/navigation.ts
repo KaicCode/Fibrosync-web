@@ -71,6 +71,13 @@ export const patientNavigation: NavigationItem[] = [
     keywords: ['comunidade', 'feed', 'pessoas', 'apoio', 'posts'],
   },
   {
+    label: 'Profissionais',
+    description: 'Código de vínculo e autorizações médicas',
+    to: '/app/professionals',
+    icon: Stethoscope,
+    keywords: ['profissionais', 'medico', 'codigo', 'vinculo', 'autorizacoes'],
+  },
+  {
     label: 'Perfil',
     description: 'Metas, evolução e conquistas',
     to: '/app/profile',

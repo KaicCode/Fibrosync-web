@@ -170,8 +170,9 @@ export class DoctorController {
     summary: 'Revokes a doctor-patient access link. Admin only.',
   })
   revokeAccessLink(
+    @CurrentUser('sub') adminUserId: string,
     @Param('accessId', new ParseUUIDPipe()) accessId: string,
   ): Promise<unknown> {
-    return this.doctorService.revokeAccessLink(accessId);
+    return this.doctorService.revokeAccessLink(adminUserId, accessId);
   }
 }

@@ -43,6 +43,14 @@ interface AiAlertInput {
   repeatedCycles?: string[];
 }
 
+interface GenericNotificationInput {
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  payload?: Prisma.InputJsonValue | null;
+}
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -279,6 +287,33 @@ export class NotificationsService {
     });
 
     return this.mapNotification(updated);
+  }
+
+  async createGenericInAppNotification(
+    input: GenericNotificationInput,
+  ): Promise<void> {
+    const settings = await this.systemSettingsService.getRuntimeSettings();
+    const canExposeNotification = await this.canExposeInAppNotifications(
+      input.userId,
+      settings.inAppNotificationsEnabled,
+    );
+
+    if (!canExposeNotification) {
+      return;
+    }
+
+    await this.prisma.notification.create({
+      data: {
+        userId: input.userId,
+        type: input.type,
+        channel: NotificationChannel.IN_APP,
+        status: NotificationStatus.SENT,
+        title: input.title,
+        message: input.message,
+        payload: input.payload ?? undefined,
+        sentAt: new Date(),
+      },
+    });
   }
 
   private composeCrisisMessage(

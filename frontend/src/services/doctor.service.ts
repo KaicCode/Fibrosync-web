@@ -18,7 +18,7 @@ export type DoctorPatientListItem = {
   latestPainLevel: number | null
   followUpStatus: 'recent' | 'stale' | 'incomplete'
   followUpLabel: string
-  accessStatus: 'PENDING' | 'ACTIVE' | 'REVOKED'
+  accessStatus: 'PENDING' | 'ACTIVE' | 'REJECTED' | 'REVOKED'
 }
 
 export type DoctorDashboardResponse = {
@@ -67,7 +67,7 @@ export type DoctorPatientDetailResponse = {
     countryCode: string | null
     lastRecordAt: string | null
     lastPainLevel: number | null
-    accessStatus: 'PENDING' | 'ACTIVE' | 'REVOKED'
+    accessStatus: 'PENDING' | 'ACTIVE' | 'REJECTED' | 'REVOKED'
     authorizedAt: string | null
     authorizationSource: string | null
     sharingEnabled: boolean
