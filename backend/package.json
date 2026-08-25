@@ -24,6 +24,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts",
+    "users:activate-medical": "tsx prisma/activate-medical-user.ts",
     "postinstall": "prisma generate",
     "dev": "nest start --watch"
   },
