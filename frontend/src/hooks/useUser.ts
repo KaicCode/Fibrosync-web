@@ -5,7 +5,6 @@ import {
   hasStoredAuthTokens,
 } from '@/lib/auth-session';
 import { useAppStore } from '@/store/app-store';
-import { supabaseSyncService } from '@/services/supabase-sync.service';
 import { userService } from '../services/user.service';
 import type { UserProfile } from '../services/user.service';
 
@@ -25,13 +24,6 @@ export function useUser() {
     mutationFn: (data: Partial<UserProfile>) => userService.updateProfile(data),
     onSuccess: (updatedUser) => {
       queryClient.setQueryData(['currentUser'], updatedUser);
-      void supabaseSyncService.upsertRecord({
-        entityId: updatedUser.id,
-        entityType: 'user-profile',
-        userId: updatedUser.id,
-        userEmail: updatedUser.email,
-        payload: updatedUser as unknown as Record<string, unknown>,
-      });
     },
   });
 

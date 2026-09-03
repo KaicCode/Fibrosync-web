@@ -1,7 +1,5 @@
 import { apiCall } from "@/lib/api-client";
-import { useAppStore } from "@/store/app-store";
 import type { WeatherData } from "@/services/weather.service";
-import { supabaseSyncService } from "@/services/supabase-sync.service";
 
 export interface DailyRecordSymptomSignal {
   fatigueLevel: number;
@@ -142,42 +140,17 @@ export const dailyRecordService = {
   createDailyRecord: async (
     data: CreateDailyRecordDto,
   ): Promise<DailyRecord> => {
-    const record = await apiCall<DailyRecord>("post", "/daily-records", data);
-    const user = useAppStore.getState().authSession?.user ?? null;
-
-    void supabaseSyncService.upsertRecord({
-      entityId: record.id,
-      entityType: "daily-record",
-      userId: user?.id ?? null,
-      userEmail: user?.email ?? null,
-      payload: record as unknown as Record<string, unknown>,
-    });
-
-    return record;
+    return apiCall<DailyRecord>("post", "/daily-records", data);
   },
 
   updateDailyRecord: async (
     id: string,
     data: Partial<CreateDailyRecordDto>,
   ): Promise<DailyRecord> => {
-    const record = await apiCall<DailyRecord>("patch", `/daily-records/${id}`, data);
-    const user = useAppStore.getState().authSession?.user ?? null;
-
-    void supabaseSyncService.upsertRecord({
-      entityId: record.id,
-      entityType: "daily-record",
-      userId: user?.id ?? null,
-      userEmail: user?.email ?? null,
-      payload: record as unknown as Record<string, unknown>,
-    });
-
-    return record;
+    return apiCall<DailyRecord>("patch", `/daily-records/${id}`, data);
   },
 
   deleteDailyRecord: async (id: string): Promise<void> => {
     await apiCall<void>("delete", `/daily-records/${id}`);
-    const user = useAppStore.getState().authSession?.user ?? null;
-
-    void supabaseSyncService.markAsDeleted("daily-record", id, user);
   },
 };

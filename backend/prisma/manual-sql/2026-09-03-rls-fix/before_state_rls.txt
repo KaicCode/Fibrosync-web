@@ -1,0 +1,27 @@
+            table_name            | rls_enabled | rls_forced 
+----------------------------------+-------------+------------
+ _prisma_migrations               | f           | f
+ ai_insights                      | f           | f
+ ai_predictions                   | f           | f
+ community_posts                  | f           | f
+ crisis_predictions               | f           | f
+ daily_records                    | f           | f
+ doctor_notes                     | f           | f
+ doctor_patient_access            | f           | f
+ doctor_patient_access_audit_logs | f           | f
+ exercise_histories               | f           | f
+ exercises                        | f           | f
+ notifications                    | f           | f
+ refresh_tokens                   | f           | f
+ reports                          | f           | f
+ symptom_entries                  | f           | f
+ symptom_signals                  | f           | f
+ symptoms                         | f           | f
+ system_settings                  | f           | f
+ system_settings_audit_logs       | f           | f
+ user_risk_profiles               | f           | f
+ user_settings                    | f           | f
+ users                            | f           | f
+ weather_records                  | f           | f
+(23 rows)
+

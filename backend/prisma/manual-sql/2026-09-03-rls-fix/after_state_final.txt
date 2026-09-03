@@ -1,0 +1,14 @@
+ total_tables | rls_enabled | rls_forced 
+--------------+-------------+------------
+           23 |          23 |          0
+(1 row)
+
+ grantee | grants_on_23_tables 
+---------+---------------------
+(0 rows)
+
+ current_user | users_visible_to_postgres 
+--------------+---------------------------
+ postgres     |                         8
+(1 row)
+

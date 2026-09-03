@@ -5,7 +5,6 @@ import {
   storeAuthTokens,
 } from '@/lib/auth-session';
 import { useAppStore } from '@/store/app-store';
-import { supabaseSyncService } from '@/services/supabase-sync.service';
 import { authService } from '../services/auth.service';
 import type { LoginDto, SignupDto } from '../services/auth.service';
 
@@ -21,13 +20,6 @@ export function useAuth() {
         refreshToken: data.refreshToken,
       });
       setAuthSession(buildAuthSession(data.accessToken, data.user));
-      void supabaseSyncService.upsertRecord({
-        entityId: data.user.id,
-        entityType: 'user-profile',
-        userId: data.user.id,
-        userEmail: data.user.email,
-        payload: data.user as unknown as Record<string, unknown>,
-      });
     },
   });
 
@@ -39,13 +31,6 @@ export function useAuth() {
         refreshToken: data.refreshToken,
       });
       setAuthSession(buildAuthSession(data.accessToken, data.user));
-      void supabaseSyncService.upsertRecord({
-        entityId: data.user.id,
-        entityType: 'user-profile',
-        userId: data.user.id,
-        userEmail: data.user.email,
-        payload: data.user as unknown as Record<string, unknown>,
-      });
     },
   });
 
