@@ -58,7 +58,9 @@ export function InstallPwaButton({ className, variant = 'default' }: InstallPwaB
             ) : null}
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Instale o FibroSync neste dispositivo</TooltipContent>
+        <TooltipContent className="border-white/80 bg-white/96 text-black shadow-soft">
+          Instale o FibroSync neste dispositivo
+        </TooltipContent>
       </Tooltip>
 
       <InstallPwaModal open={iosModalOpen} onOpenChange={setIosModalOpen} />
