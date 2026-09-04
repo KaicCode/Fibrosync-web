@@ -13,6 +13,7 @@ import {
 import { Link } from "react-router-dom";
 import { TrendLineChart } from "@/components/charts/trend-line-chart";
 import { PageHeader } from "@/components/page-header";
+import { InstallPwaCard } from "@/components/pwa/install-pwa-card";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -248,6 +249,8 @@ export function DashboardPage() {
           </div>
         }
       />
+
+      <InstallPwaCard />
 
       {dailySummary || dailyReminder ? (
         <div className="grid gap-4 xl:grid-cols-2">

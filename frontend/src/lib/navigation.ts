@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import { matchPath } from 'react-router-dom'
 import {
   BarChart3,
   CalendarDays,
@@ -25,6 +26,15 @@ export type NavigationItem = {
   icon: LucideIcon
   badge?: string
   keywords?: string[]
+  /**
+   * Marks this item as the owner of a route subtree (e.g. a list page that
+   * has a real detail route nested under it, like `/medical/patients/:id`).
+   * Only set this when a child route genuinely exists — leave it unset so
+   * the item only matches its exact `to` path, which is what keeps a
+   * dashboard/root item (e.g. `/app`) from lighting up on every sibling
+   * route nested under the same first path segment.
+   */
+  matchDescendants?: boolean
 }
 
 export const patientNavigation: NavigationItem[] = [
@@ -107,6 +117,8 @@ export const medicalNavigation: NavigationItem[] = [
     to: '/medical/patients',
     icon: Users,
     keywords: ['pacientes', 'vinculos', 'acompanhamento', 'buscar paciente'],
+    // Owns /medical/patients/:patientId, so it should stay active there too.
+    matchDescendants: true,
   },
   {
     label: 'Relatórios',
@@ -267,6 +279,49 @@ function normalizeSearchValue(value: string): string {
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
     .trim()
+}
+
+/**
+ * Single source of truth for deciding whether a navigation item represents
+ * the current route. An item matches only its exact `to` path, unless it
+ * explicitly declares `matchDescendants` (because it genuinely owns a
+ * nested detail route) — in which case it also matches paths nested under
+ * it. This is what keeps a dashboard/root item (e.g. `/app`, `/medical`)
+ * from lighting up alongside every other item nested under the same first
+ * path segment, without resorting to a generic `pathname.startsWith()`.
+ *
+ * Uses React Router's own `matchPath` so segment boundaries are respected
+ * (e.g. `/medical/patients` never matches `/medical/patients-archive`).
+ */
+export function isNavigationItemActive(
+  item: Pick<NavigationItem, 'to' | 'matchDescendants'>,
+  pathname: string,
+): boolean {
+  return Boolean(
+    matchPath({ path: item.to, end: !item.matchDescendants }, pathname),
+  )
+}
+
+/**
+ * Returns the single navigation item that represents the current route, or
+ * `undefined` if none does. If more than one item's rule matches (which
+ * should not normally happen given the exact-match default above), the
+ * item with the most specific — i.e. longest — `to` path wins, so the
+ * contract of "only one active item" always holds.
+ */
+export function getActiveNavigationItem<T extends NavigationItem>(
+  items: T[],
+  pathname: string,
+): T | undefined {
+  const matches = items.filter((item) => isNavigationItemActive(item, pathname))
+
+  if (matches.length <= 1) {
+    return matches[0]
+  }
+
+  return matches.reduce((mostSpecific, item) =>
+    item.to.length > mostSpecific.to.length ? item : mostSpecific,
+  )
 }
 
 export function matchesNavigationItem(item: NavigationItem, query: string): boolean {

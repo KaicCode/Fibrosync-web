@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { InstallPwaButton } from '@/components/pwa/install-pwa-button'
 import { useAuth } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
 import { useUser } from '@/hooks/useUser'
@@ -202,6 +203,7 @@ export function WorkspaceTopbar({
             <LogOut className="h-4 w-4" />
             {isLoggingOut ? 'Saindo...' : 'Sair'}
           </Button>
+          <InstallPwaButton variant="compact" />
           <div className="hidden items-center gap-3 rounded-full border border-white/80 bg-white/88 px-2 py-1.5 shadow-soft lg:flex">
             <Avatar className="h-9 w-9">
               <AvatarImage src={resolveUserAvatar(currentUser)} alt={displayName} />

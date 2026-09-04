@@ -1,9 +1,10 @@
 import { ArrowRightLeft, ChevronRight } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { BrandLogo } from '@/components/brand-logo'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import {
+  isNavigationItemActive,
   roleOptions,
   workspaceConfig,
   type WorkspaceVariant,
@@ -21,6 +22,7 @@ export function WorkspaceSidebar({
 }: WorkspaceSidebarProps) {
   const config = workspaceConfig[variant]
   const currentRole = variant
+  const location = useLocation()
   const authSession = useAppStore((state) => state.authSession)
   const canAccessAdmin = authSession?.user.role === 'ADMIN'
   const navigationItems =
@@ -49,21 +51,22 @@ export function WorkspaceSidebar({
         </div>
 
         <nav className="scrollbar-subtle flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-1">
-          {navigationItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                cn(
-                  'group rounded-[1.15rem] border px-3 py-2.5 text-sm transition-all duration-300 hover:-translate-y-[1px]',
+          {navigationItems.map((item) => {
+            const isActive = isNavigationItemActive(item, location.pathname)
+
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={onNavigate}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'group rounded-[1.15rem] border px-3 py-2.5 text-sm outline-none transition-all duration-300 hover:-translate-y-[1px] focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2',
                   isActive
                     ? 'border-brand-300/40 bg-[linear-gradient(135deg,rgba(123,77,255,0.16),rgba(92,135,255,0.12))] text-foreground shadow-[0_18px_46px_rgba(123,77,255,0.16)]'
                     : 'border-transparent bg-white/55 text-muted-foreground hover:border-white/80 hover:bg-white/80 hover:text-foreground hover:shadow-soft',
-                )
-              }
-            >
-              {({ isActive }) => (
+                )}
+              >
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(
@@ -103,9 +106,9 @@ export function WorkspaceSidebar({
                     )}
                   />
                 </div>
-              )}
-            </NavLink>
-          ))}
+              </Link>
+            )
+          })}
         </nav>
 
         {variant === 'admin' && canAccessAdmin ? (
@@ -124,12 +127,13 @@ export function WorkspaceSidebar({
 
             <div className="grid grid-cols-3 gap-2">
               {roleOptions.map((option) => (
-                <NavLink
+                <Link
                   key={option.role}
                   to={option.href}
                   onClick={onNavigate}
+                  aria-current={currentRole === option.role ? 'page' : undefined}
                   className={cn(
-                    'group flex flex-col items-center justify-center gap-1 rounded-[1rem] border px-2 py-2.5 text-center transition-all duration-300 hover:-translate-y-[1px]',
+                    'group flex flex-col items-center justify-center gap-1 rounded-[1rem] border px-2 py-2.5 text-center outline-none transition-all duration-300 hover:-translate-y-[1px] focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2',
                     currentRole === option.role
                       ? 'border-brand-300/45 bg-[linear-gradient(135deg,rgba(123,77,255,0.16),rgba(92,135,255,0.1))] shadow-soft'
                       : 'border-transparent bg-brand-50/50 hover:border-white/80 hover:bg-white',
@@ -148,7 +152,7 @@ export function WorkspaceSidebar({
                   <p className="text-xs font-semibold tracking-[-0.02em] text-foreground">
                     {option.label}
                   </p>
-                </NavLink>
+                </Link>
               ))}
             </div>
           </div>
