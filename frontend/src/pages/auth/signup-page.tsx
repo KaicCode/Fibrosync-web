@@ -1,4 +1,4 @@
-import { type ChangeEvent, type ReactNode, useMemo, useState } from 'react'
+import { type ChangeEvent, type ReactNode, useMemo, useRef, useState } from 'react'
 import {
   BarChart3,
   CalendarDays,
@@ -103,6 +103,83 @@ function SignupField({
         {rightIcon ? (
           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">{rightIcon}</div>
         ) : null}
+      </div>
+    </label>
+  )
+}
+
+function formatBirthDateInput(rawValue: string) {
+  const digits = rawValue.replace(/\D/g, '').slice(0, 8)
+  const day = digits.slice(0, 2)
+  const month = digits.slice(2, 4)
+  const year = digits.slice(4, 8)
+
+  return [day, month, year].filter(Boolean).join('/')
+}
+
+function birthDateToIsoInput(value: string) {
+  const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+
+  if (!match) {
+    return ''
+  }
+
+  const [, day, month, year] = match
+  return `${year}-${month}-${day}`
+}
+
+function isoInputToBirthDate(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+
+  if (!match) {
+    return ''
+  }
+
+  const [, year, month, day] = match
+  return `${day}/${month}/${year}`
+}
+
+function BirthDateField({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (nextValue: string) => void
+}) {
+  const dateInputRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <label className="space-y-2.5">
+      <span className="text-sm font-medium text-slate-900">Data de nascimento</span>
+      <div className="relative">
+        <CalendarDays className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+        <Input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={value}
+          maxLength={10}
+          onChange={(event) => onChange(formatBirthDateInput(event.target.value))}
+          className="h-12 rounded-[0.95rem] border-slate-200 bg-white/95 pl-12 pr-12 text-sm text-slate-700 placeholder:text-slate-400 md:text-base"
+          placeholder="dd/mm/aaaa"
+        />
+        <div className="absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2">
+          <CalendarDays className="pointer-events-none absolute inset-0 m-auto h-5 w-5 text-slate-500" />
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={birthDateToIsoInput(value)}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(event) => {
+              const formatted = isoInputToBirthDate(event.target.value)
+              if (formatted) {
+                onChange(formatted)
+              }
+            }}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            aria-label="Escolher data de nascimento no calendário"
+          />
+        </div>
       </div>
     </label>
   )
@@ -325,12 +402,11 @@ export function SignupPage() {
                   value={formValues.name}
                   onChange={handleInputChange('name')}
                 />
-                <SignupField
-                  label="Data de nascimento"
-                  icon={CalendarDays}
-                  placeholder="dd/mm/aaaa"
+                <BirthDateField
                   value={formValues.birthDate}
-                  onChange={handleInputChange('birthDate')}
+                  onChange={(nextValue) =>
+                    setFormValues((current) => ({ ...current, birthDate: nextValue }))
+                  }
                 />
               </div>
 
