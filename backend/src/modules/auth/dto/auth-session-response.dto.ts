@@ -8,8 +8,8 @@ export class AuthSessionResponseDto {
   @ApiProperty()
   accessToken!: string;
 
-  @ApiProperty()
-  refreshToken!: string;
+  // F-14: the refresh token is no longer returned in the response body —
+  // it is set as an httpOnly cookie instead (see AuthController).
 
   @ApiProperty({ example: 'Bearer' })
   tokenType!: 'Bearer';

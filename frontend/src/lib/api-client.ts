@@ -4,25 +4,20 @@ import type {
   AxiosRequestConfig,
   InternalAxiosRequestConfig,
 } from 'axios'
-import {
-  getStoredAccessToken,
-  getStoredRefreshToken,
-  storeAuthTokens,
-} from '@/lib/auth-session'
+import { getStoredAccessToken, storeAuthTokens } from '@/lib/auth-session'
 import {
   clearExpiredSession,
   createOfflineError,
-  hasRefreshSession,
   isBrowserOffline,
   normalizeHttpError,
   shouldAttemptTokenRefresh,
 } from '@/lib/auth-http'
 import { ApiError } from '@/lib/http-errors'
 import { resolveApiUrl } from '@/lib/resolve-api-url'
+import { performTokenRefresh } from '@/lib/session-refresh'
 
 const API_URL = resolveApiUrl()
 const API_REQUEST_TIMEOUT_MS = 30000
-const REFRESH_REQUEST_TIMEOUT_MS = 30000
 
 // Criar instância do Axios
 export const apiClient: AxiosInstance = axios.create({
@@ -31,6 +26,12 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // F-14: required so the browser sends/receives the httpOnly refresh-token
+  // cookie on requests to the API's origin — a different origin from the
+  // frontend's (api.fibrosync.com vs. fibrosync.com in production), even
+  // though both are same-site (same registrable domain), so this is still
+  // a cross-origin request from the browser's point of view.
+  withCredentials: true,
 })
 
 // Flag para evitar requisições infinitas de refresh
@@ -85,8 +86,6 @@ apiClient.interceptors.response.use(
         statusCode: error.response?.status,
         url: originalRequest?.url,
         hasRetried: originalRequest?._retry,
-        hasAccessToken: Boolean(getStoredAccessToken()),
-        hasRefreshToken: Boolean(getStoredRefreshToken()),
       })
     ) {
       if (isRefreshing) {
@@ -125,37 +124,11 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const refreshToken = getStoredRefreshToken()
+        // F-14: the refresh token is never read here — it lives only in
+        // the httpOnly cookie, which the browser attaches automatically.
+        const { accessToken } = await performTokenRefresh()
 
-        if (!refreshToken) {
-          throw new ApiError('Sua sessao expirou. Entre novamente.', {
-            code: 'SESSION_EXPIRED',
-            statusCode: 401,
-          })
-        }
-
-        const response = await axios.post<
-          ApiResponse<{
-            accessToken: string
-            refreshToken: string
-          }>
-        >(
-          `${API_URL}/auth/refresh`,
-          undefined,
-          {
-            headers: {
-              Authorization: `Bearer ${refreshToken}`,
-            },
-            timeout: REFRESH_REQUEST_TIMEOUT_MS,
-          },
-        )
-
-        const { accessToken, refreshToken: nextRefreshToken } = response.data.data
-
-        storeAuthTokens({
-          accessToken,
-          refreshToken: nextRefreshToken,
-        })
+        storeAuthTokens({ accessToken })
 
         apiClient.defaults.headers.common.Authorization = `Bearer ${accessToken}`
 
@@ -175,8 +148,7 @@ apiClient.interceptors.response.use(
 
     if (
       error.response?.status === 401 &&
-      originalRequest &&
-      !hasRefreshSession() &&
+      originalRequest?._retry &&
       !originalRequest.url?.includes('/auth/login') &&
       !originalRequest.url?.includes('/auth/signup')
     ) {

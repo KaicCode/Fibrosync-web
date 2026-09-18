@@ -1,72 +1,27 @@
+import { getAccessToken, setAccessToken } from '@/lib/token-store'
 import type { UserProfile } from '@/services/user.service'
 import type { AuthSession, AuthUser } from '@/store/app-store'
 import type { ApiUserRole } from '@/lib/user-role'
 
-const ACCESS_TOKEN_KEYS = ['accessToken', 'access_token'] as const
-const REFRESH_TOKEN_KEYS = ['refreshToken', 'refresh_token'] as const
-
-function readFirstAvailableKey(keys: readonly string[]): string | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  for (const key of keys) {
-    const value = window.localStorage.getItem(key)
-
-    if (value) {
-      return value
-    }
-  }
-
-  return null
-}
-
-function writeTokenKeys(
-  keys: readonly string[],
-  value: string | null | undefined,
-): void {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  if (!value) {
-    for (const key of keys) {
-      window.localStorage.removeItem(key)
-    }
-    return
-  }
-
-  for (const key of keys) {
-    window.localStorage.setItem(key, value)
-  }
-}
+// F-14: the access token lives only in memory (see token-store.ts) and the
+// refresh token lives only in an httpOnly cookie set by the backend — it
+// never reaches this module, or any other frontend code, at all. Function
+// names are kept stable to minimize call-site churn across the app.
 
 export function getStoredAccessToken(): string | null {
-  return readFirstAvailableKey(ACCESS_TOKEN_KEYS)
-}
-
-export function getStoredRefreshToken(): string | null {
-  return readFirstAvailableKey(REFRESH_TOKEN_KEYS)
+  return getAccessToken()
 }
 
 export function hasStoredAuthTokens(): boolean {
-  return Boolean(getStoredAccessToken() || getStoredRefreshToken())
+  return Boolean(getStoredAccessToken())
 }
 
-export function storeAuthTokens(tokens: {
-  accessToken: string
-  refreshToken?: string | null
-}): void {
-  writeTokenKeys(ACCESS_TOKEN_KEYS, tokens.accessToken)
-
-  if (tokens.refreshToken !== undefined) {
-    writeTokenKeys(REFRESH_TOKEN_KEYS, tokens.refreshToken)
-  }
+export function storeAuthTokens(tokens: { accessToken: string }): void {
+  setAccessToken(tokens.accessToken)
 }
 
 export function clearStoredAuthTokens(): void {
-  writeTokenKeys(ACCESS_TOKEN_KEYS, null)
-  writeTokenKeys(REFRESH_TOKEN_KEYS, null)
+  setAccessToken(null)
 }
 
 export function mapUserToSessionUser(user: UserProfile): AuthUser {

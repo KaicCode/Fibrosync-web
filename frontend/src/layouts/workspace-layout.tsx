@@ -8,7 +8,7 @@ import {
   buildAuthSession,
   clearStoredAuthTokens,
   getStoredAccessToken,
-  hasStoredAuthTokens,
+  storeAuthTokens,
 } from '@/lib/auth-session'
 import type { WorkspaceVariant } from '@/lib/navigation'
 import {
@@ -17,7 +17,7 @@ import {
   canAccessPatientWorkspace,
   resolveHomePathByRole,
 } from '@/lib/user-role'
-import { userService } from '@/services/user.service'
+import { performTokenRefresh } from '@/lib/session-refresh'
 import { useAppStore } from '@/store/app-store'
 
 type WorkspaceLayoutProps = {
@@ -121,25 +121,22 @@ function ProtectedWorkspaceLayout({
   const authSession = useAppStore((state) => state.authSession)
   const setAuthSession = useAppStore((state) => state.setAuthSession)
   const clearAuthSession = useAppStore((state) => state.clearAuthSession)
-  const hasAccessToken = Boolean(getStoredAccessToken())
-  const hasTokens = hasStoredAuthTokens()
-  const isAuthenticated = Boolean(authSession && hasAccessToken)
+  const isAuthenticated = Boolean(authSession && getStoredAccessToken())
   const [status, setStatus] = useState<GuardStatus>(() =>
-    isAuthenticated ? 'ready' : hasTokens ? 'checking' : 'unauthenticated',
+    isAuthenticated ? 'ready' : 'checking',
   )
 
+  // F-14: the access token lives only in memory and does not survive a
+  // page reload, and the refresh token is an httpOnly cookie invisible to
+  // this code — so there is no client-side flag to check for "was logged
+  // in" any more. Every mount without an in-memory session attempts one
+  // silent refresh against the httpOnly cookie; a guest (no valid cookie)
+  // simply gets a fast 401 and is redirected to /login as before.
   useEffect(() => {
-    const accessToken = getStoredAccessToken()
-    const hasStoredTokens = hasStoredAuthTokens()
-
-    if (!hasStoredTokens) {
-      if (authSession) {
-        clearAuthSession()
-      }
-      return
-    }
-
-    if (authSession && accessToken) {
+    // Already authenticated at mount time (e.g. navigating here right
+    // after login within the same SPA session) — the initial `status`
+    // state above already accounts for this, nothing else to do.
+    if (isAuthenticated) {
       return
     }
 
@@ -148,13 +145,14 @@ function ProtectedWorkspaceLayout({
     const restoreSession = async () => {
       try {
         setStatus('checking')
-        const user = await userService.getCurrentUser()
+        const session = await performTokenRefresh()
 
         if (isCancelled) {
           return
         }
 
-        setAuthSession(buildAuthSession(getStoredAccessToken() ?? '', user))
+        storeAuthTokens({ accessToken: session.accessToken })
+        setAuthSession(buildAuthSession(session.accessToken, session.user))
         setStatus('ready')
       } catch {
         if (isCancelled) {
@@ -172,18 +170,15 @@ function ProtectedWorkspaceLayout({
     return () => {
       isCancelled = true
     }
-  }, [authSession, clearAuthSession, setAuthSession])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  if (status === 'checking' && hasTokens) {
+  if (status === 'checking') {
     return <PageLoader />
   }
 
-  if (!hasTokens) {
+  if (status === 'unauthenticated' || !authSession) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  }
-
-  if (!authSession) {
-    return <PageLoader />
   }
 
   if (!canAccessVariant(authSession.user.role)) {

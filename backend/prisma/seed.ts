@@ -22,9 +22,51 @@ const adminSeedEmail =
   process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase() ??
   'fibrosyncadmin@gmail.com';
 const legacyAdminSeedEmail = 'admin@fibrosync.local';
-const adminSeedPassword = process.env.ADMIN_SEED_PASSWORD ?? '2026Admin@$';
 const adminSeedFullName =
   process.env.ADMIN_SEED_FULL_NAME?.trim() ?? 'FibroSync Admin';
+
+const MIN_ADMIN_SEED_PASSWORD_LENGTH = 12;
+// Requires at least one lowercase letter, one uppercase letter, one digit and
+// one symbol. Intentionally stricter than the regular signup password rule
+// (SignupDto) because this credential grants the ADMIN role.
+const ADMIN_SEED_PASSWORD_COMPLEXITY_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
+/**
+ * Reads and validates ADMIN_SEED_PASSWORD from the environment.
+ *
+ * There is intentionally NO default/fallback value: a seed running without
+ * this variable set must abort rather than silently create (or reset) an
+ * administrator account with a predictable, source-controlled password.
+ */
+function readAdminSeedPassword(): string {
+  const password = process.env.ADMIN_SEED_PASSWORD;
+
+  if (!password) {
+    throw new Error(
+      'ADMIN_SEED_PASSWORD is not set. Refusing to seed the administrator ' +
+        'account: this script no longer ships a default admin password. ' +
+        'Set ADMIN_SEED_PASSWORD to a strong, unique password (at least ' +
+        `${MIN_ADMIN_SEED_PASSWORD_LENGTH} characters, mixing uppercase, ` +
+        'lowercase, a digit and a symbol) in your environment before ' +
+        'running the seed.',
+    );
+  }
+
+  if (
+    password.length < MIN_ADMIN_SEED_PASSWORD_LENGTH ||
+    !ADMIN_SEED_PASSWORD_COMPLEXITY_REGEX.test(password)
+  ) {
+    throw new Error(
+      'ADMIN_SEED_PASSWORD does not meet the minimum strength requirements ' +
+        `(at least ${MIN_ADMIN_SEED_PASSWORD_LENGTH} characters, including ` +
+        'an uppercase letter, a lowercase letter, a digit and a symbol). ' +
+        'Refusing to seed the administrator account.',
+    );
+  }
+
+  return password;
+}
 
 const defaultSymptoms: Array<{
   name: string;
@@ -74,6 +116,7 @@ const defaultSymptoms: Array<{
 ];
 
 async function ensureAdminUser(): Promise<void> {
+  const adminSeedPassword = readAdminSeedPassword();
   const passwordHash = await bcrypt.hash(adminSeedPassword, bcryptSaltRounds);
   const adminData = {
     fullName: adminSeedFullName,

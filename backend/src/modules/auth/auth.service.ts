@@ -27,7 +27,7 @@ interface TokenPair {
   refreshTokenExpiresAt: Date;
 }
 
-interface SessionResponse {
+export interface SessionResponse {
   user: PublicUser;
   accessToken: string;
   refreshToken: string;

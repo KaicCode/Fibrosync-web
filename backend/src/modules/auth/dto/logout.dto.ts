@@ -1,15 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 
 export class LogoutDto {
-  @ApiPropertyOptional({
-    description:
-      'Current refresh token. When omitted, all active refresh tokens for the user are revoked.',
-  })
-  @IsOptional()
-  @IsString()
-  refreshToken?: string;
-
+  // F-14: the refresh token is no longer accepted from the client — it is
+  // read from the httpOnly cookie on the server side instead.
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()

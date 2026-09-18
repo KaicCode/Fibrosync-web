@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -8,7 +8,7 @@ import {
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { WEATHER_ROUTES } from './weather.routes';
 import { WeatherService } from './weather.service';
-import { CurrentWeatherQueryDto, WeatherSnapshotDto } from './weather.types';
+import { CurrentWeatherRequestDto, WeatherSnapshotDto } from './weather.types';
 
 @ApiTags('Weather')
 @ApiBearerAuth('access-token')
@@ -16,7 +16,11 @@ import { CurrentWeatherQueryDto, WeatherSnapshotDto } from './weather.types';
 export class WeatherController {
   constructor(private readonly weatherService: WeatherService) {}
 
-  @Get(WEATHER_ROUTES.current)
+  // F-20: POST + body instead of GET + query string, so coordinates never
+  // land in the URL (browser history, proxy/CDN access logs, Referer
+  // headers).
+  @Post(WEATHER_ROUTES.current)
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
       'Returns current weather conditions for the provided coordinates using Open-Meteo.',
@@ -24,8 +28,8 @@ export class WeatherController {
   @ApiOkResponse({ type: WeatherSnapshotDto })
   current(
     @CurrentUser('sub') userId: string,
-    @Query() query: CurrentWeatherQueryDto,
+    @Body() body: CurrentWeatherRequestDto,
   ): Promise<WeatherSnapshotDto> {
-    return this.weatherService.getCurrentWeather(userId, query.lat, query.lon);
+    return this.weatherService.getCurrentWeather(userId, body.lat, body.lon);
   }
 }

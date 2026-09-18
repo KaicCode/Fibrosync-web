@@ -15,10 +15,7 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: (data: LoginDto) => authService.login(data),
     onSuccess: (data) => {
-      storeAuthTokens({
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-      });
+      storeAuthTokens({ accessToken: data.accessToken });
       setAuthSession(buildAuthSession(data.accessToken, data.user));
     },
   });
@@ -26,10 +23,7 @@ export function useAuth() {
   const signupMutation = useMutation({
     mutationFn: (data: SignupDto) => authService.signup(data),
     onSuccess: (data) => {
-      storeAuthTokens({
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-      });
+      storeAuthTokens({ accessToken: data.accessToken });
       setAuthSession(buildAuthSession(data.accessToken, data.user));
     },
   });

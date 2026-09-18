@@ -54,7 +54,10 @@ const WEATHER_DATA_SOURCES: WeatherDataSource[] = [
   'safe-fallback',
 ];
 
-export class CurrentWeatherQueryDto {
+// F-20: sent in the request body (POST), not a query string, so precise
+// coordinates never appear in the URL (browser history, proxy/CDN access
+// logs, Referer headers).
+export class CurrentWeatherRequestDto {
   @ApiProperty({ example: -6.77 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 6 })

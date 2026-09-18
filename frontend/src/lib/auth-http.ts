@@ -1,9 +1,5 @@
 import axios from 'axios'
-import {
-  clearStoredAuthTokens,
-  getStoredAccessToken,
-  getStoredRefreshToken,
-} from '@/lib/auth-session'
+import { clearStoredAuthTokens } from '@/lib/auth-session'
 import { useAppStore } from '@/store/app-store'
 import {
   ApiError,
@@ -37,19 +33,21 @@ export function isRefreshExcludedRequest(url?: string): boolean {
   return REFRESH_EXCLUDED_ROUTES.some((route) => url.includes(route))
 }
 
+// F-14: the refresh token lives in an httpOnly cookie, invisible to
+// JavaScript, so this can no longer check "do we have a refresh token"
+// client-side — the backend is the only source of truth for that. Any
+// qualifying 401 is worth one refresh attempt; if there is no valid
+// session cookie, performTokenRefresh() simply fails fast and
+// clearExpiredSession() runs from the caller's catch block.
 export function shouldAttemptTokenRefresh(input: {
   statusCode?: number
   url?: string
   hasRetried?: boolean
-  hasAccessToken?: boolean
-  hasRefreshToken?: boolean
 }): boolean {
   return Boolean(
     input.statusCode === 401 &&
       !input.hasRetried &&
-      !isRefreshExcludedRequest(input.url) &&
-      input.hasAccessToken &&
-      input.hasRefreshToken,
+      !isRefreshExcludedRequest(input.url),
   )
 }
 
@@ -148,8 +146,4 @@ export function createOfflineError(): ApiError {
   return new ApiError(buildConnectivityErrorMessage(), {
     code: 'NETWORK_ERROR',
   })
-}
-
-export function hasRefreshSession(): boolean {
-  return Boolean(getStoredAccessToken() && getStoredRefreshToken())
 }

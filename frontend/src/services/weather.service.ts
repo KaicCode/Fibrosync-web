@@ -19,9 +19,10 @@ export interface WeatherData {
 }
 
 export const weatherService = {
+  // F-20: coordinates travel in the POST body, never in a query string, so
+  // they never land in the browser's URL history, proxy/CDN access logs or
+  // Referer headers.
   getCurrentWeather: async (lat: number, lon: number): Promise<WeatherData> => {
-    return apiCall<WeatherData>("get", "/weather/current", undefined, {
-      params: { lat, lon },
-    });
+    return apiCall<WeatherData>("post", "/weather/current", { lat, lon });
   },
 };

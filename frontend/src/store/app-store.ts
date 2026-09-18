@@ -88,11 +88,14 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: 'fibrosync-web-state',
+      // F-14: authSession (which carries the access token) is deliberately
+      // NOT persisted — the access token must live only in memory. A page
+      // reload re-derives a fresh authSession via the httpOnly
+      // refresh-token cookie (see components/session-bootstrap.tsx).
       partialize: (state) => ({
         role: state.role,
         communityFilter: state.communityFilter,
         painDraft: state.painDraft,
-        authSession: state.authSession,
       }),
     },
   ),

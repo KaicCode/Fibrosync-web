@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard, seconds } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import aiConfig from './config/ai.config';
 import appConfig from './config/app.config';
@@ -38,6 +39,18 @@ import { WeatherModule } from './modules/weather/weather.module';
       load: [appConfig, authConfig, databaseConfig, aiConfig],
       validationSchema,
     }),
+    // F-10: baseline rate limiting for every route (in-memory storage —
+    // adequate for a single backend instance; a multi-instance deployment
+    // would need a shared store such as Redis, see remediation report).
+    // Sensitive auth endpoints override this with stricter per-route
+    // limits via @Throttle (see AuthController).
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: seconds(60),
+        limit: 120,
+      },
+    ]),
     DatabaseModule,
     AuthModule,
     AdminAnalyticsModule,
@@ -57,6 +70,10 @@ import { WeatherModule } from './modules/weather/weather.module';
   ],
   controllers: [AppController],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

@@ -1,8 +1,5 @@
 import { apiCall } from '@/lib/api-client';
-import {
-  clearStoredAuthTokens,
-  getStoredRefreshToken,
-} from '@/lib/auth-session';
+import { clearStoredAuthTokens } from '@/lib/auth-session';
 import type { UserProfile } from './user.service';
 
 const INITIAL_AUTH_TIMEOUT_MS = 45000;
@@ -26,7 +23,8 @@ export interface SignupDto {
 
 export interface AuthResponse {
   accessToken: string;
-  refreshToken: string;
+  // F-14: the refresh token is no longer part of the response body — the
+  // backend sets it as an httpOnly cookie instead.
   tokenType: string;
   accessTokenTtl: string;
   refreshTokenTtl: string;
@@ -47,14 +45,10 @@ export const authService = {
   },
 
   logout: async (): Promise<void> => {
-    const refreshToken = getStoredRefreshToken();
-
+    // F-14: the refresh token is never sent by the client — the backend
+    // reads it from the httpOnly cookie and clears that cookie itself.
     try {
-      await apiCall<void>(
-        'post',
-        '/auth/logout',
-        refreshToken ? { refreshToken } : undefined,
-      );
+      await apiCall<void>('post', '/auth/logout');
     } finally {
       clearStoredAuthTokens();
     }
