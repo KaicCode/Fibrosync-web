@@ -631,11 +631,10 @@ export function LandingPage() {
                 <div className="absolute bottom-8 right-8 h-24 w-24 rounded-full border border-white/20 bg-white/10 blur-2xl" />
 
                 <div className="relative mx-auto max-w-3xl">
-                  <p className="section-label text-white/80">CTA final</p>
-                  <h2 className="mt-4 text-3xl font-semibold tracking-[-0.06em] text-white sm:text-4xl lg:text-[3.1rem]">
+                  <h2 className="text-3xl font-semibold tracking-[-0.06em] text-white sm:text-4xl lg:text-[3.1rem]">
                     Comece hoje gratuitamente.
                   </h2>
-                  <p className="mt-4 text-sm leading-7 text-white/82 sm:text-base lg:text-lg">
+                  <p className="mt-4 text-sm leading-7 text-white sm:text-base lg:text-lg">
                     Crie sua conta, acompanhe seus registros e compartilhe uma leitura mais
                     completa da sua jornada com a equipe de saude.
                   </p>
@@ -658,8 +657,14 @@ export function LandingPage() {
                     </Button>
                   </div>
 
-                  <p className="mt-6 text-sm text-white/78">
-                    Contato inicial: <a href="mailto:contato@fibrosync.app" className="font-semibold text-white">contato@fibrosync.app</a>
+                  <p className="mt-6 text-sm text-white">
+                    Contato inicial:{' '}
+                    <a
+                      href="mailto:contato@fibrosync.app"
+                      className="font-bold text-white"
+                    >
+                      contato@fibrosync.app
+                    </a>
                   </p>
                 </div>
               </div>
