@@ -726,9 +726,9 @@ export function LandingPage() {
             <div>
               <p className="section-label text-brand-700/90">Legal</p>
               <div className="mt-4 flex flex-col gap-3 text-sm">
-                <a href="#politica-de-privacidade" className="text-slate-600 transition hover:text-brand-700">
+                <Link to="/politica-de-privacidade" className="text-slate-600 transition hover:text-brand-700">
                   Politica de Privacidade
-                </a>
+                </Link>
                 <Link to="/termos-de-uso" className="text-slate-600 transition hover:text-brand-700">
                   Termos de Uso
                 </Link>
@@ -767,10 +767,7 @@ export function LandingPage() {
           </div>
 
           <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            <div
-              id="politica-de-privacidade"
-              className="rounded-[1.5rem] border border-white/80 bg-white/70 p-5 backdrop-blur-xl"
-            >
+            <div className="rounded-[1.5rem] border border-white/80 bg-white/70 p-5 backdrop-blur-xl">
               <p className="section-label text-brand-700/90">Politica de Privacidade</p>
               <p className="mt-3 text-sm leading-7 text-slate-600">
                 Dados de saude exigem cuidado redobrado. O FibroSync foi apresentado com foco
