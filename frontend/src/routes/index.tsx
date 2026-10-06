@@ -10,6 +10,11 @@ const LandingPage = lazy(() =>
 const TermsOfUsePage = lazy(() =>
   import('@/pages/auth/terms-of-use-page').then((module) => ({ default: module.TermsOfUsePage })),
 )
+const PrivacyPolicyPage = lazy(() =>
+  import('@/pages/auth/privacy-policy-page').then((module) => ({
+    default: module.PrivacyPolicyPage,
+  })),
+)
 const LoginPage = lazy(() =>
   import('@/pages/auth/login-page').then((module) => ({ default: module.LoginPage })),
 )
@@ -127,6 +132,7 @@ export function AppRouter() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/landingpage" element={<Navigate to="/" replace />} />
         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
+        <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
 
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
