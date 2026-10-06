@@ -738,7 +738,7 @@ export function LandingPage() {
               <p className="section-label text-brand-700/90">Redes sociais</p>
               <div className="mt-4 flex flex-col gap-3 text-sm">
                 <a
-                  href="https://www.instagram.com/"
+                  href="https://www.instagram.com/fibro_sync/"
                   target="_blank"
                   rel="noreferrer"
                   className="text-slate-600 transition hover:text-brand-700"
