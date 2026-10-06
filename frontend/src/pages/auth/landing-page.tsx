@@ -719,7 +719,6 @@ export function LandingPage() {
                 <a href="mailto:suporte@fibrosync.app" className="transition hover:text-brand-700">
                   suporte@fibrosync.app
                 </a>
-                <p>Atendimento remoto com foco em pacientes e equipes de saude.</p>
               </div>
             </div>
 
@@ -763,27 +762,6 @@ export function LandingPage() {
                   YouTube
                 </a>
               </div>
-            </div>
-          </div>
-
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            <div className="rounded-[1.5rem] border border-white/80 bg-white/70 p-5 backdrop-blur-xl">
-              <p className="section-label text-brand-700/90">Politica de Privacidade</p>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
-                Dados de saude exigem cuidado redobrado. O FibroSync foi apresentado com foco
-                em consentimento, seguranca e compartilhamento consciente das informacoes.
-              </p>
-            </div>
-
-            <div
-              id="termos-de-uso"
-              className="rounded-[1.5rem] border border-white/80 bg-white/70 p-5 backdrop-blur-xl"
-            >
-              <p className="section-label text-brand-700/90">Termos de Uso</p>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
-                A plataforma apoia acompanhamento e organizacao da jornada, sem substituir
-                orientacao medica profissional ou atendimento clinico especializado.
-              </p>
             </div>
           </div>
 
