@@ -7,6 +7,9 @@ import { AdminLayout, MedicalLayout, PatientLayout } from '@/layouts/workspace-l
 const LandingPage = lazy(() =>
   import('@/pages/auth/landing-page').then((module) => ({ default: module.LandingPage })),
 )
+const TermsOfUsePage = lazy(() =>
+  import('@/pages/auth/terms-of-use-page').then((module) => ({ default: module.TermsOfUsePage })),
+)
 const LoginPage = lazy(() =>
   import('@/pages/auth/login-page').then((module) => ({ default: module.LoginPage })),
 )
@@ -123,6 +126,7 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/landingpage" element={<Navigate to="/" replace />} />
+        <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
 
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
