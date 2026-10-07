@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { dailyRecordService } from "../services/daily-record.service";
 import type {
   CreateDailyRecordDto,
+  CreateDailyRecordInput,
   DailyRecordFilters,
 } from "../services/daily-record.service";
 
@@ -21,7 +22,7 @@ export function useDailyRecords(filters?: DailyRecordFilters) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateDailyRecordDto) =>
+    mutationFn: (data: CreateDailyRecordInput) =>
       dailyRecordService.createDailyRecord(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dailyRecords"] });

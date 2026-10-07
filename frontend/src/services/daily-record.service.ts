@@ -1,4 +1,4 @@
-import { apiCall } from "@/lib/api-client";
+import { apiCall, apiClient } from "@/lib/api-client";
 import type { WeatherData } from "@/services/weather.service";
 
 export interface DailyRecordSymptomSignal {
@@ -52,6 +52,7 @@ export interface DailyRecord {
   weatherImpact: string | null;
   weatherSnapshot: WeatherData | null;
   notes: string | null;
+  exams: ExamAttachment[];
   painType: string | null;
   painAreas: string[];
   frontPainAreas: string[];
@@ -64,6 +65,14 @@ export interface DailyRecord {
   symptomEntries: DailyRecordSymptomEntry[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ExamAttachment {
+  id: string;
+  name: string;
+  contentType: string;
+  size: number;
+  uploadedAt: string;
 }
 
 export interface SymptomSignalPayload {
@@ -110,6 +119,8 @@ export interface CreateDailyRecordDto {
   symptomSignal?: SymptomSignalPayload;
 }
 
+export type CreateDailyRecordInput = CreateDailyRecordDto & { exams?: File[] };
+
 interface DailyRecordListResponse {
   items: DailyRecord[];
 }
@@ -138,9 +149,36 @@ export const dailyRecordService = {
   },
 
   createDailyRecord: async (
-    data: CreateDailyRecordDto,
+    data: CreateDailyRecordInput,
   ): Promise<DailyRecord> => {
-    return apiCall<DailyRecord>("post", "/daily-records", data);
+    const { exams, ...record } = data;
+    if (!exams?.length)
+      return apiCall<DailyRecord>("post", "/daily-records", record);
+    const form = new FormData();
+    form.append("record", JSON.stringify(record));
+    exams.forEach((file) => form.append("exams", file));
+    return apiCall<DailyRecord>("post", "/daily-records/with-exams", form, {
+      headers: { "Content-Type": undefined },
+      timeout: 120000,
+    });
+  },
+
+  downloadExam: async (
+    recordId: string,
+    exam: ExamAttachment,
+  ): Promise<void> => {
+    const response = await apiClient.get<Blob>(
+      `/daily-records/${recordId}/exams/${exam.id}`,
+      { responseType: "blob", timeout: 60000 },
+    );
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = exam.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
   },
 
   updateDailyRecord: async (

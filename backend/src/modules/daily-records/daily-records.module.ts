@@ -3,11 +3,12 @@ import { CrisisPredictionModule } from '@/modules/crisis-prediction/crisis-predi
 import { WeatherModule } from '@/modules/weather/weather.module';
 import { DailyRecordsController } from './daily-records.controller';
 import { DailyRecordsService } from './daily-records.service';
+import { CloudinaryExamsService } from './cloudinary-exams.service';
 
 @Module({
   imports: [CrisisPredictionModule, WeatherModule],
   controllers: [DailyRecordsController],
-  providers: [DailyRecordsService],
+  providers: [DailyRecordsService, CloudinaryExamsService],
   exports: [DailyRecordsService],
 })
 export class DailyRecordsModule {}

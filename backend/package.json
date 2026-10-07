@@ -10,6 +10,7 @@
   "scripts": {
     "prebuild": "prisma generate",
     "build": "nest build && tsc-alias",
+    "test:exams": "node --import tsx tests/exam-upload.test.ts",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
