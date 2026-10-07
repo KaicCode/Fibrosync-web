@@ -225,16 +225,26 @@ type MarketingCardProps = {
   icon?: LucideIcon
   number?: string
   eyebrow?: string
+  titleInHeader?: boolean
+  headerTitleClassName?: string
 }
 
-function MarketingCard({ title, description, icon: Icon, number, eyebrow }: MarketingCardProps) {
+function MarketingCard({
+  title,
+  description,
+  icon: Icon,
+  number,
+  eyebrow,
+  titleInHeader = false,
+  headerTitleClassName,
+}: MarketingCardProps) {
   return (
     <div className="group relative h-full overflow-hidden rounded-[1.75rem] border border-white/75 bg-white/80 p-6 shadow-soft backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_64px_rgba(110,92,176,0.18)]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.14),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(37,99,235,0.1),transparent_30%)] opacity-0 transition duration-300 group-hover:opacity-100" />
       <div className="relative">
         <div className="flex items-center gap-3">
           {number ? (
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#7C3AED_0%,#2563EB_100%)] text-sm font-semibold tracking-[0.2em] text-white shadow-glow">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#7C3AED_0%,#2563EB_100%)] text-sm font-semibold tracking-[0.2em] text-white shadow-glow">
               {number}
             </div>
           ) : null}
@@ -243,11 +253,21 @@ function MarketingCard({ title, description, icon: Icon, number, eyebrow }: Mark
               <Icon className="h-5 w-5" />
             </div>
           ) : null}
-          {eyebrow ? <p className="section-label text-brand-700/90">{eyebrow}</p> : null}
+          {titleInHeader ? (
+            <h3 className={cn('text-lg font-bold tracking-[-0.04em] text-slate-950', headerTitleClassName)}>
+              {title}
+            </h3>
+          ) : eyebrow ? (
+            <p className="section-label text-brand-700/90">{eyebrow}</p>
+          ) : null}
         </div>
 
-        <h3 className="mt-5 text-xl font-semibold tracking-[-0.05em] text-slate-950">{title}</h3>
-        <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
+        {!titleInHeader ? (
+          <h3 className="mt-5 text-xl font-semibold tracking-[-0.05em] text-slate-950">{title}</h3>
+        ) : null}
+        <p className={cn(titleInHeader ? 'mt-5' : 'mt-3', 'text-sm leading-7 text-slate-600')}>
+          {description}
+        </p>
       </div>
     </div>
   )
@@ -397,16 +417,14 @@ export function LandingPage() {
       </header>
 
       <main>
-        <section id="inicio" className="scroll-mt-28 px-4 pb-20 pt-32 sm:px-6 sm:pt-36 lg:px-8 lg:pb-28 lg:pt-40">
+        <section id="inicio" className="scroll-mt-28 px-4 pb-10 pt-32 sm:px-6 sm:pt-36 lg:px-8 lg:pb-12 lg:pt-40">
           <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
             <LandingReveal className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-4 py-2 text-sm font-medium text-brand-700 shadow-soft backdrop-blur-xl">
-                <ShieldCheck className="h-4 w-4" />
-                Plataforma inteligente para acompanhamento da fibromialgia
-              </div>
-
-              <h1 className="mt-6 text-4xl font-semibold leading-[1.02] tracking-[-0.08em] text-slate-950 sm:text-5xl lg:text-[4.3rem]">
-                Entenda sua fibromialgia. Acompanhe sua evolucao. Viva com mais qualidade.
+              <h1 className="text-3xl font-semibold leading-[1.12] tracking-[-0.05em] text-slate-950 sm:text-4xl lg:text-[3.75rem] lg:leading-[1.08]">
+                Entenda sua <span className="text-brand-600">fibromialgia</span>. Acompanhe sua
+                evolucao.
+                <br />
+                <span className="font-bold text-slate-950">Viva com mais qualidade.</span>
               </h1>
 
               <p className="mt-6 max-w-xl text-base leading-8 text-slate-600 sm:text-lg">
@@ -519,19 +537,14 @@ export function LandingPage() {
                 ))}
               </div>
 
-              <p className="mt-5 text-center text-sm leading-6 text-slate-500">
-                O mockup oficial do FibroSync permanece em destaque, sem cortes ou distorcoes,
-                para transmitir confianca, precisao e evolucao visual do produto.
-              </p>
             </LandingReveal>
           </div>
         </section>
 
-        <section id="como-funciona" className="scroll-mt-28 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <section id="como-funciona" className="scroll-mt-28 px-4 pb-10 pt-10 sm:px-6 lg:px-8 lg:pb-12 lg:pt-12">
           <div className="mx-auto max-w-7xl">
             <LandingReveal>
               <LandingSectionHeading
-                eyebrow="Fluxo simplificado"
                 title="Como o FibroSync transforma acompanhamento em clareza"
                 description="Cada etapa foi pensada para reduzir esforco, aumentar consistencia e gerar informacoes realmente uteis para o dia a dia."
               />
@@ -542,9 +555,9 @@ export function LandingPage() {
                 <LandingReveal key={step.title} delay={index * 0.06}>
                   <MarketingCard
                     number={step.number}
-                    eyebrow="Passo a passo"
                     title={step.title}
                     description={step.description}
+                    titleInHeader
                   />
                 </LandingReveal>
               ))}
@@ -552,11 +565,10 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="funcionalidades" className="scroll-mt-28 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <section id="funcionalidades" className="scroll-mt-28 px-4 pb-20 pt-10 sm:px-6 lg:px-8 lg:pb-28 lg:pt-12">
           <div className="mx-auto max-w-7xl rounded-[2rem] border border-white/70 bg-white/58 p-6 shadow-panel backdrop-blur-2xl sm:p-8 lg:p-10">
             <LandingReveal>
               <LandingSectionHeading
-                eyebrow="Funcionalidades"
                 title="Recursos desenhados para rotina, previsibilidade e suporte clinico"
                 description="Um ecossistema visualmente elegante para registrar sintomas, explorar tendencias e compartilhar informacoes com mais seguranca."
               />
@@ -567,9 +579,10 @@ export function LandingPage() {
                 <LandingReveal key={feature.title} delay={index * 0.04}>
                   <MarketingCard
                     icon={feature.icon}
-                    eyebrow="FibroSync"
                     title={feature.title}
                     description={feature.description}
+                    titleInHeader
+                    headerTitleClassName="text-brand-700"
                   />
                 </LandingReveal>
               ))}
@@ -582,7 +595,6 @@ export function LandingPage() {
             <div className="grid gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
               <LandingReveal className="lg:sticky lg:top-28">
                 <LandingSectionHeading
-                  eyebrow="Sobre a plataforma"
                   align="left"
                   title="Tecnologia premium para auxiliar pessoas com fibromialgia com mais contexto e autonomia"
                   description="O FibroSync e uma plataforma criada para auxiliar pessoas com fibromialgia no acompanhamento da dor, sintomas, sono, humor e evolucao clinica atraves de tecnologia. A proposta e tornar o autocuidado mais claro, acolhedor e util tanto para pacientes quanto para profissionais da saude."
@@ -611,9 +623,10 @@ export function LandingPage() {
                   <LandingReveal key={item.title} delay={index * 0.05}>
                     <MarketingCard
                       icon={item.icon}
-                      eyebrow="Confiança + saude"
                       title={item.title}
                       description={item.description}
+                      titleInHeader
+                      headerTitleClassName="text-brand-700"
                     />
                   </LandingReveal>
                 ))}
@@ -686,11 +699,6 @@ export function LandingPage() {
                   <p className="text-sm text-slate-500">Confianca, clareza e acompanhamento continuo.</p>
                 </div>
               </div>
-
-              <p className="mt-4 max-w-md text-sm leading-7 text-slate-600">
-                Uma landing page desenhada para comunicar saude, tecnologia e acessibilidade
-                sem perder a sensacao premium do produto.
-              </p>
             </div>
 
             <div>
@@ -711,19 +719,18 @@ export function LandingPage() {
                 <a href="mailto:suporte@fibrosync.app" className="transition hover:text-brand-700">
                   suporte@fibrosync.app
                 </a>
-                <p>Atendimento remoto com foco em pacientes e equipes de saude.</p>
               </div>
             </div>
 
             <div>
               <p className="section-label text-brand-700/90">Legal</p>
               <div className="mt-4 flex flex-col gap-3 text-sm">
-                <a href="#politica-de-privacidade" className="text-slate-600 transition hover:text-brand-700">
+                <Link to="/politica-de-privacidade" className="text-slate-600 transition hover:text-brand-700">
                   Politica de Privacidade
-                </a>
-                <a href="#termos-de-uso" className="text-slate-600 transition hover:text-brand-700">
+                </Link>
+                <Link to="/termos-de-uso" className="text-slate-600 transition hover:text-brand-700">
                   Termos de Uso
-                </a>
+                </Link>
               </div>
             </div>
 
@@ -731,7 +738,7 @@ export function LandingPage() {
               <p className="section-label text-brand-700/90">Redes sociais</p>
               <div className="mt-4 flex flex-col gap-3 text-sm">
                 <a
-                  href="https://www.instagram.com/"
+                  href="https://www.instagram.com/fibro_sync/"
                   target="_blank"
                   rel="noreferrer"
                   className="text-slate-600 transition hover:text-brand-700"
@@ -758,33 +765,8 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            <div
-              id="politica-de-privacidade"
-              className="rounded-[1.5rem] border border-white/80 bg-white/70 p-5 backdrop-blur-xl"
-            >
-              <p className="section-label text-brand-700/90">Politica de Privacidade</p>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
-                Dados de saude exigem cuidado redobrado. O FibroSync foi apresentado com foco
-                em consentimento, seguranca e compartilhamento consciente das informacoes.
-              </p>
-            </div>
-
-            <div
-              id="termos-de-uso"
-              className="rounded-[1.5rem] border border-white/80 bg-white/70 p-5 backdrop-blur-xl"
-            >
-              <p className="section-label text-brand-700/90">Termos de Uso</p>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
-                A plataforma apoia acompanhamento e organizacao da jornada, sem substituir
-                orientacao medica profissional ou atendimento clinico especializado.
-              </p>
-            </div>
-          </div>
-
           <div className="mt-8 flex flex-col gap-3 border-t border-white/70 pt-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>© {new Date().getFullYear()} FibroSync. Todos os direitos reservados.</p>
-            <p>Politica de Privacidade • Termos de Uso • Design responsivo e premium</p>
           </div>
         </div>
       </footer>

@@ -528,13 +528,16 @@ export function SignupPage() {
                 />
                 <span>
                   Eu concordo com os{' '}
-                  <a href="#" className="font-medium text-brand-500 hover:text-brand-600">
+                  <Link to="/termos-de-uso" className="font-medium text-brand-500 hover:text-brand-600">
                     Termos de Uso
-                  </a>{' '}
+                  </Link>{' '}
                   e com a{' '}
-                  <a href="#" className="font-medium text-brand-500 hover:text-brand-600">
+                  <Link
+                    to="/politica-de-privacidade"
+                    className="font-medium text-brand-500 hover:text-brand-600"
+                  >
                     Política de Privacidade.
-                  </a>
+                  </Link>
                 </span>
               </label>
 

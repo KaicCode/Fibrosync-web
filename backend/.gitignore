@@ -3,6 +3,7 @@ dist
 .env
 *.log
 .pnpm/
+.local-postgres/
 
 
 /src/generated/prisma
