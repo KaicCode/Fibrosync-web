@@ -1,4 +1,11 @@
-import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
+import {
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -7,6 +14,7 @@ import {
   Check,
   CloudSun,
   Droplets,
+  FileText,
   HeartPulse,
   LoaderCircle,
   LocateFixed,
@@ -15,7 +23,9 @@ import {
   Plus,
   Save,
   Sparkles,
+  Upload,
   Waves,
+  X,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { BodyMap } from "@/components/body-map";
@@ -40,6 +50,11 @@ import { useCurrentLocation, useWeather } from "@/hooks/useWeather";
 import { resolvePatientActionError } from "@/lib/patient-feedback";
 import { toast } from "@/store/toast-store";
 import { cn } from "@/lib/utils";
+import {
+  EXAM_FILE_ACCEPT,
+  formatExamSize,
+  validateExamSelection,
+} from "@/lib/exam-files";
 
 type SymptomState = {
   stiffness: number;
@@ -463,6 +478,9 @@ export function PainLogPage() {
     createInitialState(initialRecordDate),
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [examFiles, setExamFiles] = useState<File[]>([]);
+  const examInputRef = useRef<HTMLInputElement>(null);
+  const saveInProgress = useRef(false);
   const { createRecord, isCreating } = useDailyRecords();
   const isCurrentDayRecord = form.recordDate === formatDateKey(new Date());
   const {
@@ -484,10 +502,7 @@ export function PainLogPage() {
   const painDescriptor = resolvePainDescriptor(form.painLevel);
   const selectedAreaLabels = useMemo(
     () =>
-      resolveBodyAreaLabels([
-        ...form.frontPainAreas,
-        ...form.backPainAreas,
-      ]),
+      resolveBodyAreaLabels([...form.frontPainAreas, ...form.backPainAreas]),
     [form.backPainAreas, form.frontPainAreas],
   );
   const deferredAreaLabels = useDeferredValue(selectedAreaLabels);
@@ -527,7 +542,10 @@ export function PainLogPage() {
     }));
   }
 
-  function toggleArea(side: "frontPainAreas" | "backPainAreas", areaId: string) {
+  function toggleArea(
+    side: "frontPainAreas" | "backPainAreas",
+    areaId: string,
+  ) {
     setForm((current) => {
       const exists = current[side].includes(areaId);
       return {
@@ -599,7 +617,10 @@ export function PainLogPage() {
       return "A hidratacao precisa estar entre 0 e 8 litros.";
     }
 
-    if (form.physicalActivityMinutes < 0 || form.physicalActivityMinutes > 1440) {
+    if (
+      form.physicalActivityMinutes < 0 ||
+      form.physicalActivityMinutes > 1440
+    ) {
       return "Os minutos de atividade fisica precisam estar entre 0 e 1440.";
     }
 
@@ -610,7 +631,31 @@ export function PainLogPage() {
     return null;
   }
 
+  function handleExamSelection(event: ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    const nextFiles = [...examFiles];
+    selected.forEach((file) => {
+      if (
+        !nextFiles.some(
+          (existing) =>
+            existing.name === file.name &&
+            existing.size === file.size &&
+            existing.lastModified === file.lastModified,
+        )
+      )
+        nextFiles.push(file);
+    });
+    const error = validateExamSelection(nextFiles);
+    if (error) {
+      toast.error("Verifique os exames", error);
+      return;
+    }
+    setExamFiles(nextFiles);
+  }
+
   async function handleSave() {
+    if (saveInProgress.current) return;
     const validationError = validateForm();
 
     if (validationError) {
@@ -620,9 +665,11 @@ export function PainLogPage() {
     }
 
     setSubmitError(null);
+    saveInProgress.current = true;
 
     try {
       await createRecord({
+        exams: examFiles,
         recordDate: form.recordDate,
         painLevel: form.painLevel,
         fatigueLevel: form.fatigueLevel,
@@ -635,7 +682,9 @@ export function PainLogPage() {
         physicalActivityMinutes: form.physicalActivityMinutes,
         medicationTaken: form.medicationTaken,
         weatherImpact: form.weatherImpact.trim() || undefined,
-        weatherSnapshot: isCurrentDayRecord ? weather ?? undefined : undefined,
+        weatherSnapshot: isCurrentDayRecord
+          ? (weather ?? undefined)
+          : undefined,
         notes: form.notes.trim() || undefined,
         painType: form.painType || undefined,
         painAreas: selectedAreaLabels,
@@ -680,15 +729,18 @@ export function PainLogPage() {
 
       toast.success(
         "Registro salvo com sucesso",
-        "Suas informacoes foram adicionadas ao seu acompanhamento.",
+        examFiles.length
+          ? "Seu registro e os exames foram salvos. Consulte os anexos no calendário."
+          : "Suas informacoes foram adicionadas ao seu acompanhamento.",
       );
+      setExamFiles([]);
     } catch (error) {
       const feedback = resolvePatientActionError(error, "save-record");
 
-      setSubmitError(
-        feedback.description,
-      );
+      setSubmitError(feedback.description);
       toast.error(feedback.title, feedback.description);
+    } finally {
+      saveInProgress.current = false;
     }
   }
 
@@ -707,7 +759,9 @@ export function PainLogPage() {
                 type="date"
                 value={form.recordDate}
                 max={formatDateKey(new Date())}
-                onChange={(event) => updateField("recordDate", event.target.value)}
+                onChange={(event) =>
+                  updateField("recordDate", event.target.value)
+                }
                 className="h-10 w-[11.75rem] pl-9"
                 aria-label="Data do registro"
               />
@@ -862,7 +916,9 @@ export function PainLogPage() {
             <NumberTile
               label="Atividade"
               value={form.physicalActivityMinutes}
-              onChange={(value) => updateField("physicalActivityMinutes", value)}
+              onChange={(value) =>
+                updateField("physicalActivityMinutes", value)
+              }
               min={0}
               max={1440}
               step={5}
@@ -911,8 +967,7 @@ export function PainLogPage() {
                 Informacoes que ajudam a entender o seu dia
               </h2>
               <p className="mt-1 text-sm leading-5 text-slate-500">
-                Organize o contexto da dor com a mesma clareza da etapa
-                inicial.
+                Organize o contexto da dor com a mesma clareza da etapa inicial.
               </p>
             </div>
 
@@ -928,7 +983,10 @@ export function PainLogPage() {
                     active={form.painType === type}
                     label={type}
                     onClick={() =>
-                      updateField("painType", form.painType === type ? "" : type)
+                      updateField(
+                        "painType",
+                        form.painType === type ? "" : type,
+                      )
                     }
                   />
                 ))}
@@ -957,7 +1015,9 @@ export function PainLogPage() {
             <SelectionGroup
               title="Sintomas associados"
               description="Ative os sinais que acompanharam a dor e ajuste a intensidade quando precisar."
-              headerAdornment={<Badge variant="neutral">{activeSymptomCount} ativos</Badge>}
+              headerAdornment={
+                <Badge variant="neutral">{activeSymptomCount} ativos</Badge>
+              }
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -1002,7 +1062,9 @@ export function PainLogPage() {
             <SelectionGroup
               title="Clima de hoje"
               description="O clima aparece como um contexto complementar para este registro."
-              headerAdornment={<Badge variant="neutral">Contexto auxiliar</Badge>}
+              headerAdornment={
+                <Badge variant="neutral">Contexto auxiliar</Badge>
+              }
             >
               {isCurrentDayRecord &&
               (locationStatus === "loading" ||
@@ -1020,7 +1082,8 @@ export function PainLogPage() {
                           <div className="flex items-center gap-2 text-slate-800">
                             <CloudSun className="h-4.5 w-4.5 text-slate-500" />
                             <p className="text-lg font-semibold text-slate-950">
-                              {Math.round(weather.temperature)}°C - {conditionLabel}
+                              {Math.round(weather.temperature)}°C -{" "}
+                              {conditionLabel}
                             </p>
                           </div>
                           <p className="text-sm text-slate-500">
@@ -1061,8 +1124,8 @@ export function PainLogPage() {
                       <div className="space-y-2">
                         <p className="text-sm leading-5 text-slate-600">
                           {isCurrentDayRecord
-                            ? locationError ??
-                              "Sem clima automatico agora. O registro continua funcionando normalmente."
+                            ? (locationError ??
+                              "Sem clima automatico agora. O registro continua funcionando normalmente.")
                             : "Para datas anteriores, descreva manualmente o impacto do clima abaixo."}
                         </p>
                         {isCurrentDayRecord ? (
@@ -1094,7 +1157,9 @@ export function PainLogPage() {
                     <ToggleChip
                       key={option}
                       size="sm"
-                      active={form.symptomSignal.bodyTemperatureFeeling === option}
+                      active={
+                        form.symptomSignal.bodyTemperatureFeeling === option
+                      }
                       label={option}
                       onClick={() =>
                         updateSymptomField(
@@ -1140,7 +1205,56 @@ export function PainLogPage() {
         </div>
       </div>
 
-      <div className="panel-surface flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+      {examFiles.length > 0 ? (
+        <div
+          className="panel-surface space-y-3 p-4"
+          aria-label="Exames selecionados"
+        >
+          <p className="text-sm font-semibold text-slate-900">
+            Exames anexados ({examFiles.length}/5)
+          </p>
+          <ul className="space-y-2">
+            {examFiles.map((file, index) => (
+              <li
+                key={`${file.name}-${file.size}-${file.lastModified}`}
+                className="flex items-center gap-3 rounded-xl bg-slate-50 p-3"
+              >
+                <FileText
+                  className="h-5 w-5 shrink-0 text-violet-600"
+                  aria-hidden="true"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900">
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {formatExamSize(file.size)}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Remover ${file.name}`}
+                  disabled={isCreating}
+                  onClick={() =>
+                    setExamFiles((files) =>
+                      files.filter((_, fileIndex) => fileIndex !== index),
+                    )
+                  }
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-slate-500">
+            Os exames serão enviados ao salvar o registro.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="panel-surface flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {submitError ? (
             <span className="text-rose-700">{submitError}</span>
@@ -1151,20 +1265,51 @@ export function PainLogPage() {
           )}
         </div>
 
-        <Button size="lg" onClick={() => void handleSave()} disabled={isCreating}>
-          {isCreating ? (
-            <>
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              Salvar registro
-            </>
-          )}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            ref={examInputRef}
+            type="file"
+            className="hidden"
+            accept={EXAM_FILE_ACCEPT}
+            multiple
+            onChange={handleExamSelection}
+            disabled={isCreating}
+            aria-label="Selecionar exames"
+          />
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            onClick={() => examInputRef.current?.click()}
+            disabled={isCreating || examFiles.length >= 5}
+            aria-describedby="exam-upload-hint"
+          >
+            <Upload className="h-4 w-4" />
+            Upload de exames{examFiles.length ? ` (${examFiles.length})` : ""}
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => void handleSave()}
+            disabled={isCreating}
+          >
+            {isCreating ? (
+              <>
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Salvar registro
+              </>
+            )}
+          </Button>
+        </div>
       </div>
+      <p id="exam-upload-hint" className="px-1 text-xs text-slate-500">
+        Até 5 exames em PDF, JPG ou PNG, com no máximo 10 MB cada.
+      </p>
     </div>
   );
 }

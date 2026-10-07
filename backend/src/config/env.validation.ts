@@ -31,4 +31,7 @@ export const validationSchema = Joi.object({
     .default(30),
   AI_PREDICTION_PROMPT_VERSION: Joi.string().default('v1'),
   OPENAI_API_KEY: Joi.string().allow('').optional(),
+  CLOUDINARY_CLOUD_NAME: Joi.string().allow('').optional(),
+  CLOUDINARY_API_KEY: Joi.string().allow('').optional(),
+  CLOUDINARY_API_SECRET: Joi.string().allow('').optional(),
 });

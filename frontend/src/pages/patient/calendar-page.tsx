@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/page-header'
+import { RecordExams } from '@/components/record-exams'
 import { StatCard } from '@/components/stat-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -463,6 +464,8 @@ export function CalendarPage() {
                           <span className="font-semibold text-foreground">Observacao:</span> {record.notes}
                         </p>
                       ) : null}
+
+                      <RecordExams recordId={record.id} exams={record.exams} />
 
                       <div className="mt-4 grid grid-cols-2 gap-2 rounded-[1rem] bg-brand-50/55 p-3 text-xs text-muted-foreground">
                         <div>

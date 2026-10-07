@@ -1,7 +1,9 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
+  StreamableFile,
 } from '@nestjs/common';
 import { Prisma, SymptomCategory } from '@prisma/client';
 import { calculateDataReliability } from '@/common/utils/data-reliability.util';
@@ -36,6 +38,9 @@ import {
   dailyRecordResponseSelect,
   type DailyRecordDetails,
 } from './daily-records.select';
+import { CloudinaryExamsService } from './cloudinary-exams.service';
+import { parseStoredExams, toExamAttachment } from './exam-attachments';
+import type { ExamAttachment, ExamUploadFile } from './exam-attachments';
 
 interface PainAreaPartitions {
   frontPainAreas: string[];
@@ -116,61 +121,113 @@ const NAME_BY_KEY = new Map(
 
 @Injectable()
 export class DailyRecordsService {
+  private readonly logger = new Logger(DailyRecordsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly crisisPredictionService: CrisisPredictionService,
     private readonly weatherService: WeatherService,
+    private readonly cloudinaryExams: CloudinaryExamsService,
   ) {}
 
-  async create(userId: string, dto: CreateDailyRecordDto): Promise<unknown> {
+  async create(
+    userId: string,
+    dto: CreateDailyRecordDto,
+    files: ExamUploadFile[] = [],
+  ): Promise<unknown> {
     const resolved = await this.resolveRecordInput(userId, dto);
+    const exams = files.length
+      ? await this.cloudinaryExams.uploadMany(files)
+      : [];
 
-    const record = await this.prisma.$transaction(async (tx) => {
-      const createdRecord = await tx.dailyRecord.create({
-        data: {
+    let record: { id: string };
+    try {
+      record = await this.prisma.$transaction(async (tx) => {
+        const createdRecord = await tx.dailyRecord.create({
+          data: {
+            userId,
+            recordDate: resolved.recordDate,
+            painLevel: resolved.painLevel,
+            painType: resolved.painType,
+            painAreas: resolved.painAreas,
+            painTriggers: resolved.painTriggers,
+            fatigueLevel: resolved.fatigueLevel,
+            batteryLevel: resolved.batteryLevel,
+            sleepHours: resolved.sleepHours,
+            sleepQuality: resolved.sleepQuality,
+            stressLevel: resolved.stressLevel,
+            moodLevel: resolved.moodLevel,
+            exerciseMinutes: resolved.physicalActivity,
+            waterIntakeLiters: resolved.hydration,
+            medicationAdherence: resolved.medicationTaken,
+            weatherFeeling: resolved.weatherFeeling,
+            derivedSignals: resolved.derivedSignals,
+            metadata: this.buildRecordMetadata(
+              exams.length
+                ? { exams: exams.map((exam) => ({ ...exam })) }
+                : undefined,
+              resolved,
+            ),
+            notes: resolved.notes,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        await this.createLinkedSymptomSignal(
+          tx,
           userId,
-          recordDate: resolved.recordDate,
-          painLevel: resolved.painLevel,
-          painType: resolved.painType,
-          painAreas: resolved.painAreas,
-          painTriggers: resolved.painTriggers,
-          fatigueLevel: resolved.fatigueLevel,
-          batteryLevel: resolved.batteryLevel,
-          sleepHours: resolved.sleepHours,
-          sleepQuality: resolved.sleepQuality,
-          stressLevel: resolved.stressLevel,
-          moodLevel: resolved.moodLevel,
-          exerciseMinutes: resolved.physicalActivity,
-          waterIntakeLiters: resolved.hydration,
-          medicationAdherence: resolved.medicationTaken,
-          weatherFeeling: resolved.weatherFeeling,
-          derivedSignals: resolved.derivedSignals,
-          metadata: this.buildRecordMetadata(undefined, resolved),
-          notes: resolved.notes,
-        },
-        select: {
-          id: true,
-        },
+          createdRecord.id,
+          resolved.symptomSignal,
+        );
+        await this.persistWeatherSnapshot(tx, userId, resolved.weatherSnapshot);
+        await this.replaceSymptomEntries(
+          tx,
+          createdRecord.id,
+          resolved.symptomEntries,
+        );
+
+        return createdRecord;
       });
+    } catch (error) {
+      await this.cloudinaryExams.removeMany(exams);
+      throw error;
+    }
 
-      await this.createLinkedSymptomSignal(
-        tx,
+    try {
+      await this.crisisPredictionService.upsertForDailyRecord(
         userId,
-        createdRecord.id,
-        resolved.symptomSignal,
+        record.id,
       );
-      await this.persistWeatherSnapshot(tx, userId, resolved.weatherSnapshot);
-      await this.replaceSymptomEntries(
-        tx,
-        createdRecord.id,
-        resolved.symptomEntries,
+    } catch {
+      this.logger.error(
+        `Não foi possível atualizar a previsão do registro ${record.id}.`,
       );
-
-      return createdRecord;
-    });
-
-    await this.crisisPredictionService.upsertForDailyRecord(userId, record.id);
+    }
     return this.findOneForUser(userId, record.id);
+  }
+
+  async downloadExam(
+    userId: string,
+    id: string,
+    examId: string,
+  ): Promise<StreamableFile> {
+    const record = await this.prisma.dailyRecord.findFirst({
+      where: { id, userId },
+      select: { metadata: true },
+    });
+    if (!record) throw new NotFoundException('Daily record not found.');
+    const exam = parseStoredExams(record.metadata).find(
+      (item) => item.id === examId,
+    );
+    if (!exam) throw new NotFoundException('Exame não encontrado.');
+    const buffer = await this.cloudinaryExams.download(exam);
+    return new StreamableFile(buffer, {
+      type: exam.contentType,
+      length: buffer.length,
+      disposition: `attachment; filename="exame"; filename*=UTF-8''${encodeURIComponent(exam.name)}`,
+    });
   }
 
   async listForUser(
@@ -302,13 +359,18 @@ export class DailyRecordsService {
   }
 
   async remove(userId: string, id: string): Promise<{ message: string }> {
-    await this.findOneForUser(userId, id);
+    const record = await this.prisma.dailyRecord.findFirst({
+      where: { id, userId },
+      select: { metadata: true },
+    });
+    if (!record) throw new NotFoundException('Daily record not found.');
 
     await this.prisma.dailyRecord.delete({
       where: {
         id,
       },
     });
+    await this.cloudinaryExams.removeMany(parseStoredExams(record.metadata));
 
     return {
       message: 'Daily record deleted successfully.',
@@ -340,7 +402,7 @@ export class DailyRecordsService {
     const batteryLevel =
       dto.batteryLevel !== undefined
         ? Math.min(Math.max(Math.round(Number(dto.batteryLevel)), 0), 10)
-        : existingRecord?.batteryLevel ?? null;
+        : (existingRecord?.batteryLevel ?? null);
     const stressLevel = this.resolveRequiredNumber(
       'stressLevel',
       dto.stressLevel,
@@ -1054,6 +1116,7 @@ export class DailyRecordsService {
     weatherImpact: string | null;
     weatherSnapshot: WeatherSnapshot | null;
     notes: string | null;
+    exams: ExamAttachment[];
     painType: string | null;
     painAreas: string[];
     frontPainAreas: string[];
@@ -1125,6 +1188,7 @@ export class DailyRecordsService {
       weatherImpact: record.weatherFeeling,
       weatherSnapshot,
       notes: record.notes,
+      exams: parseStoredExams(record.metadata).map(toExamAttachment),
       painType: record.painType,
       painAreas: record.painAreas,
       frontPainAreas: partitions.frontPainAreas,

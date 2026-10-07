@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { WeatherSnapshotDto } from '@/modules/weather/weather.types';
 
+class ExamAttachmentResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty() contentType!: string;
+  @ApiProperty() size!: number;
+  @ApiProperty({ format: 'date-time' }) uploadedAt!: string;
+}
+
 class DailyRecordSymptomSignalResponseDto {
   @ApiPropertyOptional()
   id?: string;
@@ -93,6 +101,9 @@ class DailyRecordSymptomEntryResponseDto {
 }
 
 export class DailyRecordResponseDto {
+  @ApiProperty({ type: [ExamAttachmentResponseDto] })
+  exams!: ExamAttachmentResponseDto[];
+
   @ApiProperty()
   id!: string;
 
