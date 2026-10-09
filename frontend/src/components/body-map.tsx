@@ -61,6 +61,7 @@ function FigureSilhouette({ side }: { side: "front" | "back" }) {
         />
         <path
           d="M67 60c-10 6-21 18-24 33l-8 35c-2 8 2 16 10 18 7 2 14-3 16-10l8-26 3 50-8 110c-1 9 5 16 13 16 8 0 14-6 15-14l8-70 8 70c1 8 7 14 15 14 8 0 14-7 13-16l-8-110 3-50 8 26c2 7 9 12 16 10 8-2 12-10 10-18l-8-35c-3-15-14-27-24-33"
+          transform="translate(-10 0)"
           fill={`url(#body-fill-${side})`}
           stroke={`url(#body-stroke-${side})`}
           strokeWidth="1.6"
@@ -144,66 +145,70 @@ function AreaButton({
   const centerY = area.y + area.height / 2;
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <motion.button
-          type="button"
-          whileTap={readOnly ? undefined : { scale: 0.96 }}
-          whileHover={readOnly ? undefined : { scale: 1.06 }}
-          onClick={() => {
-            if (!readOnly) {
-              onToggle(area.id)
-            }
-          }}
-          className={cn(
-            "absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2",
-            selected
-              ? "drop-shadow-[0_0_16px_rgba(139,92,246,0.22)]"
-              : "hover:drop-shadow-[0_0_12px_rgba(139,92,246,0.14)]",
-            readOnly ? "cursor-default" : "cursor-pointer",
-          )}
-          style={{
-            left: `${centerX}%`,
-            top: `${centerY}%`,
-          }}
-          aria-pressed={selected}
-          aria-label={`${area.label}. ${selected ? "Selecionada" : "Nao selecionada"}.`}
-        >
-          {selected ? (
-            <motion.span
-              aria-hidden="true"
-              className="absolute h-5 w-5 rounded-full bg-violet-300/25"
-              animate={{ opacity: [0.28, 0.5, 0.28], scale: [0.9, 1.08, 0.9] }}
-              transition={{ duration: 2.1, repeat: Number.POSITIVE_INFINITY }}
-            />
-          ) : null}
-          <span
-            aria-hidden="true"
+    <div
+      className="absolute -translate-x-1/2 -translate-y-1/2"
+      style={{
+        left: `${centerX}%`,
+        top: `${centerY}%`,
+      }}
+    >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.button
+            type="button"
+            whileTap={readOnly ? undefined : { scale: 0.96 }}
+            whileHover={readOnly ? undefined : { scale: 1.06 }}
+            onClick={() => {
+              if (!readOnly) {
+                onToggle(area.id)
+              }
+            }}
             className={cn(
-              "absolute h-5 w-5 rounded-full bg-transparent",
-              selected ? "bg-violet-200/10" : "bg-white/0",
-            )}
-          />
-          <span
-            aria-hidden="true"
-            className={cn(
-              "relative rounded-full border transition-all duration-200",
+              "relative flex h-7 w-7 items-center justify-center rounded-full outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2",
               selected
-                ? "h-3.5 w-3.5 border-violet-100 bg-violet-600 shadow-[0_0_0_3px_rgba(255,255,255,0.7),0_0_0_6px_rgba(139,92,246,0.12)]"
-                : "h-3 w-3 border-[1.2px] border-slate-400/70 bg-white/60 shadow-[0_0_0_1px_rgba(255,255,255,0.72)] hover:border-violet-300 hover:bg-violet-100/70",
+                ? "drop-shadow-[0_0_16px_rgba(139,92,246,0.22)]"
+                : "hover:drop-shadow-[0_0_12px_rgba(139,92,246,0.14)]",
+              readOnly ? "cursor-default" : "cursor-pointer",
             )}
-          />
-          <span className="sr-only">{area.label}</span>
-        </motion.button>
-      </TooltipTrigger>
-      <TooltipContent
-        side="right"
-        className="border-white/15 bg-slate-950/95 px-3 py-2.5 shadow-[0_18px_42px_rgba(15,23,42,0.28)]"
-      >
-        <p className="font-semibold text-white">{area.label}</p>
-        <p className="mt-1 text-white/75">{area.description}</p>
-      </TooltipContent>
-    </Tooltip>
+            aria-pressed={selected}
+            aria-label={`${area.label}. ${selected ? "Selecionada" : "Nao selecionada"}.`}
+          >
+            {selected ? (
+              <motion.span
+                aria-hidden="true"
+                className="absolute h-5 w-5 rounded-full bg-violet-300/25"
+                animate={{ opacity: [0.28, 0.5, 0.28], scale: [0.9, 1.08, 0.9] }}
+                transition={{ duration: 2.1, repeat: Number.POSITIVE_INFINITY }}
+              />
+            ) : null}
+            <span
+              aria-hidden="true"
+              className={cn(
+                "absolute h-5 w-5 rounded-full bg-transparent",
+                selected ? "bg-violet-200/10" : "bg-white/0",
+              )}
+            />
+            <span
+              aria-hidden="true"
+              className={cn(
+                "relative rounded-full border transition-all duration-200",
+                selected
+                  ? "h-3.5 w-3.5 border-violet-100 bg-violet-600 shadow-[0_0_0_3px_rgba(255,255,255,0.7),0_0_0_6px_rgba(139,92,246,0.12)]"
+                  : "h-3 w-3 border-[1.2px] border-slate-400/70 bg-white/60 shadow-[0_0_0_1px_rgba(255,255,255,0.72)] hover:border-violet-300 hover:bg-violet-100/70",
+              )}
+            />
+            <span className="sr-only">{area.label}</span>
+          </motion.button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="right"
+          className="border-white/15 bg-slate-950/95 px-3 py-2.5 shadow-[0_18px_42px_rgba(15,23,42,0.28)]"
+        >
+          <p className="font-semibold text-white">{area.label}</p>
+          <p className="mt-1 text-white/75">{area.description}</p>
+        </TooltipContent>
+      </Tooltip>
+    </div>
   );
 }
 
