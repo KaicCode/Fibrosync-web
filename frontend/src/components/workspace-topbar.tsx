@@ -1,6 +1,7 @@
 import { type FormEvent, useMemo, useState } from 'react'
 import { LogOut, Menu, Search, Sparkles } from 'lucide-react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { BrandLogo } from '@/components/brand-logo'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import {
   workspaceConfig,
   workspaceSearchPathByVariant,
   matchesNavigationItem,
+  getActiveNavigationItem,
   type WorkspaceVariant,
 } from '@/lib/navigation'
 import { resolveRoleLabel } from '@/lib/user-role'
@@ -23,15 +25,20 @@ import {
   resolveUserInitials,
 } from '@/lib/user-profile'
 import { useAppStore } from '@/store/app-store'
+import { cn } from '@/lib/utils'
 
 type WorkspaceTopbarProps = {
   variant: WorkspaceVariant
   onOpenSidebar: () => void
+  isSidebarOpen: boolean
+  sidebarId: string
 }
 
 export function WorkspaceTopbar({
   variant,
   onOpenSidebar,
+  isSidebarOpen,
+  sidebarId,
 }: WorkspaceTopbarProps) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -39,35 +46,41 @@ export function WorkspaceTopbar({
   const config = workspaceConfig[variant]
   const authSession = useAppStore((state) => state.authSession)
   const { user } = useUser()
-  const { logout, isLoggingOut } = useAuth()
-  const [searchDraft, setSearchDraft] = useState('')
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const currentUser = user ?? authSession?.user ?? null
+  const isPatient = variant === 'patient'
+  const activeItem = getActiveNavigationItem(config.navigation, location.pathname)
   const displayName = resolveUserDisplayName(currentUser)
   const searchPath = workspaceSearchPathByVariant[variant]
   const searchQueryFromRoute =
     location.pathname === searchPath ? searchParams.get('q')?.trim() ?? '' : ''
+  const [searchDraft, setSearchDraft] = useState({
+    locationKey: location.key,
+    value: searchQueryFromRoute,
+  })
   const userSubtitle = currentUser
     ? currentUser.countryCode
       ? `${resolveCountryLabel(currentUser.countryCode)}`
       : resolveRoleLabel(currentUser.role)
     : 'Paciente'
-  const visibleSearchValue = isSearchFocused ? searchDraft : searchQueryFromRoute
+  const visibleSearchValue = searchDraft.locationKey === location.key
+    ? searchDraft.value
+    : searchQueryFromRoute
 
   const searchSuggestions = useMemo(
     () =>
-      searchDraft.trim()
-        ? config.navigation.filter((item) => matchesNavigationItem(item, searchDraft)).slice(0, 4)
+      visibleSearchValue.trim()
+        ? config.navigation.filter((item) => matchesNavigationItem(item, visibleSearchValue)).slice(0, 4)
         : [],
-    [config.navigation, searchDraft],
+    [config.navigation, visibleSearchValue],
   )
 
-  const showSuggestions = isSearchFocused && searchDraft.trim().length > 0
+  const showSuggestions = isSearchFocused && visibleSearchValue.trim().length > 0
 
   function handleSearchSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault()
 
-    const query = searchDraft.trim()
+    const query = visibleSearchValue.trim()
     if (!query) {
       return
     }
@@ -82,49 +95,76 @@ export function WorkspaceTopbar({
   }
 
   return (
-    <header className="sticky top-0 z-20 pt-1">
-      <div className="flex items-center gap-3 rounded-[1.6rem] border border-white/70 bg-white/74 px-3.5 py-3 shadow-soft backdrop-blur-2xl md:px-5">
+    <header className={cn('sticky top-0 z-20 pt-1', isPatient && 'patient-workspace-topbar')}>
+      <div className={cn('flex items-center gap-3 rounded-[1.6rem] border border-white/70 bg-white/74 px-3.5 py-3 shadow-soft backdrop-blur-2xl md:px-5', isPatient && 'flex-wrap xl:flex-nowrap')}>
         <Button
+          id={`${sidebarId}-trigger`}
+          type="button"
           variant="secondary"
           size="icon"
-          className="xl:hidden"
+          className={cn('xl:hidden', isPatient && 'h-11 w-11 shrink-0')}
           onClick={onOpenSidebar}
+          aria-label="Abrir menu de navegação"
+          aria-haspopup="dialog"
+          aria-expanded={isSidebarOpen}
+          aria-controls={sidebarId}
         >
           <Menu className="h-5 w-5" />
         </Button>
 
+        {isPatient ? (
+          <div className="flex min-w-0 flex-1 items-center gap-3 xl:hidden">
+            <BrandLogo compact />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">FibroSync</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {activeItem?.label ?? config.shortLabel}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         <div
-          className="relative hidden flex-1 md:block"
-          onFocusCapture={() => {
-            setSearchDraft(searchQueryFromRoute)
-            setIsSearchFocused(true)
-          }}
+          className={cn('relative hidden flex-1 md:block', isPatient && 'order-last block basis-full xl:order-none xl:basis-auto')}
+          onFocusCapture={() => setIsSearchFocused(true)}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
               setIsSearchFocused(false)
             }
           }}
         >
-          <form onSubmit={handleSearchSubmit}>
+          <form onSubmit={handleSearchSubmit} role="search" aria-label={config.searchPlaceholder}>
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={visibleSearchValue}
-              onChange={(event) => setSearchDraft(event.target.value)}
+              onChange={(event) => {
+                setSearchDraft({ locationKey: location.key, value: event.target.value })
+                setIsSearchFocused(true)
+              }}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
                   setIsSearchFocused(false)
                 }
               }}
-              className="h-12 rounded-full border-white/80 bg-white/84 pl-11 pr-4 shadow-soft"
+              className={cn('h-12 rounded-full border-white/80 bg-white/84 pl-11 pr-4 shadow-soft', isPatient && 'pr-14 text-base xl:pr-4 xl:text-sm')}
               placeholder={config.searchPlaceholder}
+              aria-label={config.searchPlaceholder}
+              enterKeyHint="search"
             />
-            <button type="submit" className="sr-only">
-              Buscar
+            <button
+              type="submit"
+              className={isPatient
+                ? 'absolute right-0.5 top-0.5 flex h-11 w-11 items-center justify-center rounded-full text-brand-700 outline-none transition hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-ring xl:sr-only'
+                : 'sr-only'}
+              aria-label="Buscar"
+            >
+              {isPatient ? <Search className="h-4 w-4 xl:hidden" aria-hidden="true" /> : null}
+              <span className={isPatient ? 'sr-only' : undefined}>Buscar</span>
             </button>
           </form>
 
           {showSuggestions ? (
-            <div className="absolute inset-x-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[1.4rem] border border-white/80 bg-white/94 p-2 shadow-panel backdrop-blur-2xl">
+            <div className={cn('absolute inset-x-0 top-[calc(100%+0.6rem)] z-30 overflow-hidden rounded-[1.4rem] border border-white/80 bg-white/94 p-2 shadow-panel backdrop-blur-2xl', isPatient && 'max-xl:max-h-[50dvh] max-xl:overflow-y-auto max-xl:overscroll-contain')}>
               <button
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
@@ -136,7 +176,7 @@ export function WorkspaceTopbar({
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-foreground">
-                    Buscar por "{searchDraft.trim()}"
+                    Buscar por "{visibleSearchValue.trim()}"
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     Ver resultados em todo o contexto atual
@@ -177,33 +217,11 @@ export function WorkspaceTopbar({
           ) : null}
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className={cn('ml-auto flex items-center gap-3', isPatient && 'hidden xl:flex')}>
           <Badge className="hidden bg-brand-50/90 px-3 py-1.5 text-brand-700 shadow-soft md:inline-flex">
             {config.shortLabel} mode
           </Badge>
-          <Button
-            variant="soft"
-            size="sm"
-            className="shrink-0"
-            onClick={() => navigate(workspaceAiActivePathByVariant[variant])}
-          >
-            <Sparkles className="h-4 w-4" />
-            IA ativa
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="shrink-0"
-            disabled={isLoggingOut}
-            onClick={() => {
-              void logout()
-            }}
-          >
-            <LogOut className="h-4 w-4" />
-            {isLoggingOut ? 'Saindo...' : 'Sair'}
-          </Button>
-          <InstallPwaButton variant="compact" />
+          <WorkspaceNavigationActions variant={variant} />
           <div className="hidden items-center gap-3 rounded-full border border-white/80 bg-white/88 px-2 py-1.5 shadow-soft lg:flex">
             <Avatar className="h-9 w-9">
               <AvatarImage src={resolveUserAvatar(currentUser)} alt={displayName} />
@@ -217,5 +235,53 @@ export function WorkspaceTopbar({
         </div>
       </div>
     </header>
+  )
+}
+
+export function WorkspaceNavigationActions({
+  variant,
+  mobile = false,
+  onNavigate,
+}: {
+  variant: WorkspaceVariant
+  mobile?: boolean
+  onNavigate?: () => void
+}) {
+  const navigate = useNavigate()
+  const { logout, isLoggingOut } = useAuth()
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="soft"
+        size="sm"
+        className={cn('shrink-0', mobile && 'min-h-11 flex-1')}
+        onClick={() => {
+          navigate(workspaceAiActivePathByVariant[variant])
+          onNavigate?.()
+        }}
+      >
+        <Sparkles className="h-4 w-4" />
+        IA ativa
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className={cn('shrink-0', mobile && 'min-h-11 flex-1')}
+        disabled={isLoggingOut}
+        onClick={() => {
+          void logout()
+        }}
+      >
+        <LogOut className="h-4 w-4" />
+        {isLoggingOut ? 'Saindo...' : 'Sair'}
+      </Button>
+      <InstallPwaButton
+        variant="compact"
+        className={mobile ? 'min-h-11 w-full' : undefined}
+      />
+    </>
   )
 }

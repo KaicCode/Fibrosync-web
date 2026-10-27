@@ -139,4 +139,69 @@
   html {
     scroll-behavior: auto;
   }
+
+  .patient-workspace-topbar *,
+  .patient-workspace-sidebar *,
+  .patient-mobile-navigation,
+  .patient-mobile-navigation * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .patient-workspace-sidebar a:hover {
+    transform: none;
+  }
+}
+
+/* Keep the existing desktop shell and other workspace variants unchanged. */
+@media (max-width: 1279px) {
+  .patient-workspace {
+    overflow: clip;
+  }
+
+  .patient-workspace-content {
+    padding-top: max(1rem, env(safe-area-inset-top, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  }
+
+  .patient-workspace-topbar {
+    top: env(safe-area-inset-top, 0px);
+  }
+
+  .patient-mobile-navigation {
+    --navigation-top: max(0.75rem, env(safe-area-inset-top, 0px));
+    --navigation-right: max(0.75rem, env(safe-area-inset-right, 0px));
+    --navigation-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+    --navigation-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    top: var(--navigation-top);
+    right: var(--navigation-right);
+    width: min(20rem, calc(100vw - var(--navigation-left) - var(--navigation-right)));
+    height: calc(100vh - var(--navigation-top) - var(--navigation-bottom));
+    height: calc(100dvh - var(--navigation-top) - var(--navigation-bottom));
+  }
+
+  .patient-mobile-navigation > button:last-child {
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .patient-workspace-sidebar nav a {
+    min-height: 2.75rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .patient-workspace-content {
+    padding-top: max(1.25rem, env(safe-area-inset-top, 0px));
+    padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+  }
 }

@@ -31,7 +31,7 @@ export function WorkspaceSidebar({
       : config.navigation
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,243,255,0.92))] shadow-panel backdrop-blur-2xl">
+    <div className={cn('relative flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,243,255,0.92))] shadow-panel backdrop-blur-2xl', variant === 'patient' && 'patient-workspace-sidebar')}>
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent" />
         <div className="absolute right-[-3rem] top-[-2rem] h-28 w-28 rounded-full bg-brand-300/20 blur-3xl" />
@@ -50,7 +50,7 @@ export function WorkspaceSidebar({
           </p>
         </div>
 
-        <nav className="scrollbar-subtle flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-1">
+        <nav aria-label={variant === 'patient' ? 'Navegação do paciente' : 'Navegação'} className="scrollbar-subtle flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-1">
           {navigationItems.map((item) => {
             const isActive = isNavigationItemActive(item, location.pathname)
 
