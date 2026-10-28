@@ -27,19 +27,19 @@ import { usePageTitle } from '@/hooks/use-page-title'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { label: 'Inicio', href: '#inicio' },
-  { label: 'Como Funciona', href: '#como-funciona' },
+  { label: 'Início', href: '#inicio' },
+  { label: 'Como funciona', href: '#como-funciona' },
   { label: 'Funcionalidades', href: '#funcionalidades' },
   { label: 'Sobre', href: '#sobre' },
   { label: 'Contato', href: '#contato' },
 ]
 
-const heroHighlights = ['Registro diario', 'Dashboard inteligente', 'Relatorios completos']
+const heroHighlights = ['Registro diário', 'Dashboard inteligente', 'Relatórios completos']
 
 const heroFloatingCards = [
   {
     emoji: '💜',
-    label: 'Dor Hoje',
+    label: 'Dor hoje',
     value: '4/10',
     detail: 'Registrada agora',
     className: '-left-4 top-10 lg:-left-12 lg:top-20',
@@ -48,21 +48,21 @@ const heroFloatingCards = [
     emoji: '😴',
     label: 'Sono',
     value: '7 horas',
-    detail: 'Noite mais estavel',
+    detail: 'Noite mais estável',
     className: 'right-2 top-5 lg:right-0 lg:top-12',
   },
   {
     emoji: '📈',
-    label: 'Evolucao',
+    label: 'Evolução',
     value: '+23%',
-    detail: 'Ultimos 30 dias',
+    detail: 'Últimos 30 dias',
     className: '-left-1 bottom-10 lg:-left-10 lg:bottom-20',
   },
   {
     emoji: '🤖',
     label: 'IA',
-    value: 'Analise concluida',
-    detail: 'Padroes atualizados',
+    value: 'Análise concluída',
+    detail: 'Padrões atualizados',
     className: 'right-0 bottom-3 lg:right-2 lg:bottom-12',
   },
 ]
@@ -71,22 +71,22 @@ const howItWorksSteps = [
   {
     number: '01',
     title: 'Crie sua conta',
-    description: 'Monte seu perfil em poucos minutos e personalize a forma como deseja acompanhar sua saude.',
+    description: 'Monte seu perfil em poucos minutos e personalize a forma como deseja acompanhar sua saúde.',
   },
   {
     number: '02',
     title: 'Registre seus sintomas',
-    description: 'Anote dor, sono, humor e gatilhos com uma rotina simples, rapida e acessivel.',
+    description: 'Anote dor, sono, humor e gatilhos com uma rotina simples, rápida e acessível.',
   },
   {
     number: '03',
-    title: 'Visualize graficos e historico',
-    description: 'Entenda sua evolucao com dados claros, dashboards objetivos e leitura visual amigavel.',
+    title: 'Visualize gráficos e histórico',
+    description: 'Entenda sua evolução com dados claros, dashboards objetivos e leitura visual amigável.',
   },
   {
     number: '04',
-    title: 'Compartilhe relatorios',
-    description: 'Leve informacoes relevantes para consultas e facilite a conversa com profissionais da saude.',
+    title: 'Compartilhe relatórios',
+    description: 'Leve informações relevantes para consultas e facilite a conversa com profissionais da saúde.',
   },
 ]
 
@@ -97,43 +97,43 @@ const features: Array<{
 }> = [
   {
     icon: HeartPulse,
-    title: 'Registro Diario',
+    title: 'Registro diário',
     description: 'Acompanhe dor, fadiga, rigidez, humor, sono e atividades em um fluxo intuitivo.',
   },
   {
     icon: LayoutGrid,
-    title: 'Dashboard Inteligente',
-    description: 'Tenha uma visao consolidada da sua jornada com indicadores claros e leitura premium.',
+    title: 'Dashboard inteligente',
+    description: 'Tenha uma visão consolidada da sua jornada com indicadores claros e leitura premium.',
   },
   {
     icon: Stethoscope,
-    title: 'Mapa Corporal',
-    description: 'Marque regioes do corpo com precisao para registrar sintomas sem confusao.',
+    title: 'Mapa corporal',
+    description: 'Marque regiões do corpo com precisão para registrar sintomas sem confusão.',
   },
   {
     icon: CalendarDays,
-    title: 'Calendario',
-    description: 'Consulte dias anteriores, identifique recorrencias e acompanhe sua consistencia.',
+    title: 'Calendário',
+    description: 'Consulte dias anteriores, identifique recorrências e acompanhe sua consistência.',
   },
   {
     icon: FileText,
-    title: 'Relatorios',
-    description: 'Gere resumos estruturados para consultas, retornos medicos e monitoramento clinico.',
+    title: 'Relatórios',
+    description: 'Gere resumos estruturados para consultas, retornos médicos e monitoramento clínico.',
   },
   {
     icon: Sparkles,
-    title: 'IA para Insights',
-    description: 'Descubra padroes ocultos e receba leituras mais inteligentes sobre sua rotina.',
+    title: 'IA para insights',
+    description: 'Descubra padrões ocultos e receba leituras mais inteligentes sobre sua rotina.',
   },
   {
     icon: Activity,
-    title: 'Historico',
-    description: 'Mantenha uma linha do tempo confiavel para entender gatilhos e progressos reais.',
+    title: 'Histórico',
+    description: 'Mantenha uma linha do tempo confiável para entender gatilhos e progressos reais.',
   },
   {
     icon: CloudRain,
-    title: 'Monitoramento Climatico',
-    description: 'Cruze sensacoes do corpo com variacoes do clima e perceba correlacoes relevantes.',
+    title: 'Monitoramento climático',
+    description: 'Cruze sensações do corpo com variações do clima e perceba correlações relevantes.',
   },
 ]
 
@@ -144,8 +144,8 @@ const aboutHighlights: Array<{
 }> = [
   {
     icon: ShieldCheck,
-    title: 'Confianca em cada registro',
-    description: 'Interface acolhedora para transformar dados sensiveis em acompanhamento consistente.',
+    title: 'Confiança em cada registro',
+    description: 'Interface acolhedora para transformar dados sensíveis em acompanhamento consistente.',
   },
   {
     icon: MoonStar,
@@ -154,13 +154,13 @@ const aboutHighlights: Array<{
   },
   {
     icon: BarChart3,
-    title: 'Evolucao clinica com clareza',
-    description: 'Graficos e historicos que ajudam a conversar melhor com a equipe de saude.',
+    title: 'Evolução clínica com clareza',
+    description: 'Gráficos e históricos que ajudam a conversar melhor com a equipe de saúde.',
   },
   {
     icon: Sparkles,
     title: 'Tecnologia a favor da autonomia',
-    description: 'Recursos inteligentes para apoiar decisoes com mais seguranca e menos sobrecarga.',
+    description: 'Recursos inteligentes para apoiar decisões com mais segurança e menos sobrecarga.',
   },
 ]
 
@@ -359,7 +359,7 @@ export function LandingPage() {
                 </Button>
                 <Button asChild className="shadow-[0_20px_45px_rgba(124,58,237,0.26)]">
                   <Link to="/signup">
-                    Criar Conta
+                    Criar conta
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -405,7 +405,7 @@ export function LandingPage() {
                   </Button>
                   <Button asChild className="w-full">
                     <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>
-                      Criar Conta
+                      Criar conta
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -422,21 +422,21 @@ export function LandingPage() {
             <LandingReveal className="max-w-2xl">
               <h1 className="text-3xl font-semibold leading-[1.12] tracking-[-0.05em] text-slate-950 sm:text-4xl lg:text-[3.75rem] lg:leading-[1.08]">
                 Entenda sua <span className="text-brand-600">fibromialgia</span>. Acompanhe sua
-                evolucao.
+                evolução.
                 <br />
                 <span className="font-bold text-slate-950">Viva com mais qualidade.</span>
               </h1>
 
               <p className="mt-6 max-w-xl text-base leading-8 text-slate-600 sm:text-lg">
                 O FibroSync ajuda pessoas com fibromialgia a registrar sintomas diariamente,
-                acompanhar sua evolucao, identificar padroes e compartilhar informacoes
-                importantes com profissionais da saude.
+                acompanhar sua evolução, identificar padrões e compartilhar informações
+                importantes com profissionais da saúde.
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg" className="min-w-[11rem] shadow-[0_24px_56px_rgba(124,58,237,0.28)]">
                   <Link to="/signup">
-                    Criar Conta
+                    Criar conta
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -464,9 +464,9 @@ export function LandingPage() {
 
               <div className="mt-10 grid gap-4 sm:grid-cols-3">
                 {[
-                  { value: '24/7', label: 'Registro continuo' },
-                  { value: 'IA', label: 'Insights acessiveis' },
-                  { value: '1 clique', label: 'Compartilhamento clinico' },
+                  { value: '24/7', label: 'Registro contínuo' },
+                  { value: 'IA', label: 'Insights acessíveis' },
+                  { value: '1 clique', label: 'Compartilhamento clínico' },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -504,7 +504,7 @@ export function LandingPage() {
                     <div>
                       <p className="section-label text-brand-700/90">Dashboard oficial</p>
                       <p className="mt-1 text-sm font-medium text-slate-600">
-                        Registro rapido, mapa corporal e evolucao clinica no mesmo fluxo.
+                        Registro rápido, mapa corporal e evolução clínica no mesmo fluxo.
                       </p>
                     </div>
                     <div className="rounded-full border border-brand-200/70 bg-brand-50/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
@@ -546,7 +546,7 @@ export function LandingPage() {
             <LandingReveal>
               <LandingSectionHeading
                 title="Como o FibroSync transforma acompanhamento em clareza"
-                description="Cada etapa foi pensada para reduzir esforco, aumentar consistencia e gerar informacoes realmente uteis para o dia a dia."
+                description="Cada etapa foi pensada para reduzir esforço, aumentar consistência e gerar informações realmente úteis para o dia a dia."
               />
             </LandingReveal>
 
@@ -569,8 +569,8 @@ export function LandingPage() {
           <div className="mx-auto max-w-7xl rounded-[2rem] border border-white/70 bg-white/58 p-6 shadow-panel backdrop-blur-2xl sm:p-8 lg:p-10">
             <LandingReveal>
               <LandingSectionHeading
-                title="Recursos desenhados para rotina, previsibilidade e suporte clinico"
-                description="Um ecossistema visualmente elegante para registrar sintomas, explorar tendencias e compartilhar informacoes com mais seguranca."
+                title="Recursos desenhados para rotina, previsibilidade e suporte clínico"
+                description="Um ecossistema visualmente elegante para registrar sintomas, explorar tendências e compartilhar informações com mais segurança."
               />
             </LandingReveal>
 
@@ -597,7 +597,7 @@ export function LandingPage() {
                 <LandingSectionHeading
                   align="left"
                   title="Tecnologia premium para auxiliar pessoas com fibromialgia com mais contexto e autonomia"
-                  description="O FibroSync e uma plataforma criada para auxiliar pessoas com fibromialgia no acompanhamento da dor, sintomas, sono, humor e evolucao clinica atraves de tecnologia. A proposta e tornar o autocuidado mais claro, acolhedor e util tanto para pacientes quanto para profissionais da saude."
+                  description="O FibroSync é uma plataforma criada para auxiliar pessoas com fibromialgia no acompanhamento da dor, dos sintomas, do sono, do humor e da evolução clínica por meio da tecnologia. A proposta é tornar o autocuidado mais claro, acolhedor e útil tanto para pacientes quanto para profissionais da saúde."
                 />
 
                 <div className="mt-8 rounded-[1.75rem] border border-white/75 bg-white/75 p-6 shadow-soft backdrop-blur-2xl">
@@ -607,11 +607,11 @@ export function LandingPage() {
                     </div>
                     <div>
                       <p className="text-lg font-semibold tracking-[-0.04em] text-slate-950">
-                        Cuidado com linguagem acessivel
+                        Cuidado com linguagem acessível
                       </p>
                       <p className="mt-2 text-sm leading-7 text-slate-600">
-                        Cada bloco da experiencia foi pensado para reduzir friccao, manter a
-                        leitura clara e apoiar decisoes com serenidade.
+                        Cada bloco da experiência foi pensado para reduzir fricção, manter a
+                        leitura clara e apoiar decisões com serenidade.
                       </p>
                     </div>
                   </div>
@@ -649,7 +649,7 @@ export function LandingPage() {
                   </h2>
                   <p className="mt-4 text-sm leading-7 text-white sm:text-base lg:text-lg">
                     Crie sua conta, acompanhe seus registros e compartilhe uma leitura mais
-                    completa da sua jornada com a equipe de saude.
+                    completa da sua jornada com a equipe de saúde.
                   </p>
 
                   <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
@@ -659,7 +659,7 @@ export function LandingPage() {
                       variant="secondary"
                       className="border-white/20 bg-white text-slate-950 hover:bg-white"
                     >
-                      <Link to="/signup">Criar Conta</Link>
+                      <Link to="/signup">Criar conta</Link>
                     </Button>
                     <Button
                       asChild
@@ -696,13 +696,13 @@ export function LandingPage() {
                   <p className="text-lg font-semibold tracking-[-0.05em] text-slate-950">
                     Fibro<span className="gradient-text">Sync</span>
                   </p>
-                  <p className="text-sm text-slate-500">Confianca, clareza e acompanhamento continuo.</p>
+                  <p className="text-sm text-slate-500">Confiança, clareza e acompanhamento contínuo.</p>
                 </div>
               </div>
             </div>
 
             <div>
-              <p className="section-label text-brand-700/90">Links rapidos</p>
+              <p className="section-label text-brand-700/90">Links rápidos</p>
               <div className="mt-4 flex flex-col gap-3">
                 {navItems.map((item) => (
                   <NavAnchor key={item.href} href={item.href} label={item.label} />
@@ -726,10 +726,10 @@ export function LandingPage() {
               <p className="section-label text-brand-700/90">Legal</p>
               <div className="mt-4 flex flex-col gap-3 text-sm">
                 <Link to="/politica-de-privacidade" className="text-slate-600 transition hover:text-brand-700">
-                  Politica de Privacidade
+                  Política de privacidade
                 </Link>
                 <Link to="/termos-de-uso" className="text-slate-600 transition hover:text-brand-700">
-                  Termos de Uso
+                  Termos de uso
                 </Link>
               </div>
             </div>
